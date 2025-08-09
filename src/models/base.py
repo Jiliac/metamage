@@ -22,8 +22,11 @@ def uuid_pk():
 
 class TimestampMixin:
     """Mixin to add created_at and updated_at timestamps to models."""
+
     created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    updated_at = Column(
+        DateTime, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
 
 
 def get_engine():
