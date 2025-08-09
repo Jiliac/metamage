@@ -27,20 +27,20 @@ def extract_format_from_filename(filename: str) -> str:
     """Extract format name from filename (e.g., 'Modern_data.json' -> 'Modern')."""
     path = Path(filename)
     basename = path.stem  # Remove .json extension
-    
+
     # Extract format before first underscore
-    if '_' in basename:
-        format_name = basename.split('_')[0]
+    if "_" in basename:
+        format_name = basename.split("_")[0]
     else:
         format_name = basename
-    
+
     return format_name
 
 
 def load_json_data(file_path: str) -> Dict[str, Any]:
     """Load and parse JSON data from file."""
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
         print(f"❌ File not found: {file_path}")
@@ -65,55 +65,49 @@ def get_format_id(session, format_name: str) -> str:
 def main():
     """Main function."""
     parser = argparse.ArgumentParser(description="Ingest Magic tournament data")
+    parser.add_argument("-f", "--file", required=True, help="JSON file to ingest")
     parser.add_argument(
-        "-f", "--file", 
-        required=True,
-        help="JSON file to ingest"
+        "--archetype", action="store_true", help="Ingest only archetypes"
     )
-    parser.add_argument(
-        "--archetype",
-        action="store_true",
-        help="Ingest only archetypes"
-    )
-    
+
     args = parser.parse_args()
-    
+
     print("🎯 Magic Tournament Database - Data Ingestion")
     print("=" * 50)
-    
+
     # Validate file exists
     if not Path(args.file).exists():
         print(f"❌ File not found: {args.file}")
         return
-    
+
     # Extract format from filename
     format_name = extract_format_from_filename(args.file)
     print(f"📋 Detected format: {format_name}")
-    
+
     # Load data
     print(f"📂 Loading data from {args.file}...")
     data = load_json_data(args.file)
-    
+
     if "Data" not in data:
         print("❌ Invalid JSON structure: missing 'Data' key")
         return
-    
+
     entries = data["Data"]
     print(f"📊 Found {len(entries)} entries")
-    
+
     # Initialize database
     engine = get_engine()
     Base.metadata.create_all(engine)
-    
+
     # Create session
     SessionFactory = get_session_factory()
     session = SessionFactory()
-    
+
     try:
         # Get format ID
         format_id = get_format_id(session, format_name)
         print(f"✅ Format ID: {format_id}")
-        
+
         # Determine what to ingest
         if args.archetype:
             print("🎭 Ingesting archetypes only...")
@@ -126,11 +120,11 @@ def main():
             # ingest_players(session, entries, format_id)
             # ingest_tournaments(session, entries, format_id)
             # ingest_cards(session, entries, format_id)
-        
+
         # Commit all changes
         session.commit()
         print("\n✅ Data ingestion completed successfully!")
-        
+
     except Exception as e:
         print(f"❌ Error during ingestion: {e}")
         session.rollback()
