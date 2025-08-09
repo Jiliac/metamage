@@ -1,7 +1,13 @@
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Index
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Index, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import TypeDecorator, VARCHAR
 from .base import Base, uuid_pk
+import enum
+
+
+class ChangeType(enum.Enum):
+    BAN = "BAN"
+    SET_RELEASE = "SET_RELEASE"
 
 
 class CaseInsensitiveText(TypeDecorator):
@@ -69,7 +75,6 @@ class Archetype(Base):
     id = uuid_pk()
     name = Column(CaseInsensitiveText(100), nullable=False, unique=True)
     color = Column(String(10), nullable=True)  # e.g., "BR", "UB", "G"
-    companion = Column(String(100), nullable=True)  # companion card name if any
 
     # Relationships
     tournament_entries = relationship("TournamentEntry", back_populates="archetype")
@@ -84,9 +89,8 @@ class MetaChange(Base):
     id = uuid_pk()
     format_id = Column(String(36), ForeignKey("formats.id"), nullable=False, index=True)
     date = Column(DateTime, nullable=False, index=True)
-    change_type = Column(String(20), nullable=False)  # BAN, UNBAN, SET_RELEASE, etc.
-    description = Column(Text, nullable=False)
-    card_name = Column(String(200), nullable=True)  # if change affects specific card
+    change_type = Column(Enum(ChangeType), nullable=False)
+    description = Column(Text, nullable=True)
     set_code = Column(String(10), nullable=True)  # if change is set release
 
     # Relationships
@@ -99,7 +103,4 @@ class MetaChange(Base):
 
 
 # Create indexes for performance
-Index("idx_player_normalized_handle", Player.normalized_handle)
-Index("idx_card_name", Card.name)
-Index("idx_card_oracle_id", Card.scryfall_oracle_id)
 Index("idx_meta_change_format_date", MetaChange.format_id, MetaChange.date)

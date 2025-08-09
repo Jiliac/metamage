@@ -154,7 +154,5 @@ Index(
     TournamentEntry.tournament_id,
     TournamentEntry.player_id,
 )
-Index("idx_entry_archetype", TournamentEntry.archetype_id)
 Index("idx_deck_card_entry_board", DeckCard.entry_id, DeckCard.board)
-Index("idx_match_pair_id", Match.pair_id)
 Index("idx_match_entry_opponent", Match.entry_id, Match.opponent_entry_id)
