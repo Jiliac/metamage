@@ -65,7 +65,8 @@ erDiagram
         int entry_id FK NOT NULL
         int card_id FK NOT NULL
         int count NOT NULL
-        text board NOT NULL   %% MAIN | SIDE
+        text board NOT NULL
+        %% board: MAIN | SIDE
         %% UNIQUE (entry_id, card_id, board)
     }
 
@@ -73,10 +74,14 @@ erDiagram
         int id PK
         int entry_id FK NOT NULL
         int opponent_entry_id FK NOT NULL
-        text result NOT NULL        %% WIN | LOSS | DRAW (from entry_id's perspective)
-        boolean mirror NOT NULL     %% true if same-archetype pairing
-        text stage                  %% e.g., SWISS | QF | SF | F
-        int round_no                %% round within stage
+        text result NOT NULL
+        %% result: WIN | LOSS | DRAW (from entry_id's perspective)
+        boolean mirror NOT NULL
+        %% mirror: true if same-archetype pairing
+        text stage
+        %% stage: e.g., SWISS | QF | SF | F
+        int round_no
+        %% round_no: round within stage
         %% To avoid double-counting in queries, aggregate by
         %% (stage, round_no, LEAST(entry_id, opponent_entry_id), GREATEST(...))
     }
