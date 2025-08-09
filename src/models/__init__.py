@@ -1,0 +1,1 @@
+# Models module for Magic: The Gathering tournament data
