@@ -45,19 +45,17 @@ We chose a normalized SQL database structure for several reasons:
 formats (id, name)
 meta_changes (id, format_id, date, change_type, description, card_name, set_code)
 players (id, handle, normalized_handle)
-cards (id, name, scryfall_id, oracle_id)
+cards (id, name, scryfall_oracle_id)
 archetypes (id, name, color, companion)
 
 -- Tournament data
-tournaments (id, name, date, format_id, source, link)
-rounds (id, tournament_id, number, stage) -- stage: SWISS|TOP8 (or similar)
+tournaments (id, name, date, format_id, source, link) -- source: MTGO|Melee|Other (to update)
 tournament_entries (id, tournament_id, player_id, archetype_id, wins, losses, draws, decklist_url)
 deck_cards (id, entry_id, card_id, count, board) -- board: MAIN|SIDE
-matches (id, round_id, entry_id, opponent_entry_id, result, games_won, games_lost, mirror)
+matches (id, entry_id, opponent_entry_id, result, mirror) -- Result: WIN|LOSS|DRAW, mirror true/false
 ```
 
 ##### Matches: rounds/stage and symmetry (what this means)
-- Rounds table records the pairing context (round number and stage such as SWISS or TOP8) for each match.
 - Each match row is one side of a pairing; use mirror = true for same-archetype pairings to let queries exclude mirrors.
 - To aggregate head-to-head without double-counting, group by unordered pairs using LEAST(entry_id, opponent_entry_id)/GREATEST(...), or enforce a unique constraint on that unordered pair at the round level.
 
@@ -169,3 +167,24 @@ The MCP server exposes both high-level tools and low-level SQL access:
 ## Conclusion
 
 This MCP server design provides a robust foundation for AI-powered tournament data analysis. By combining structured data storage, flexible querying capabilities, and external API integration, the system can answer virtually any question about Magic: The Gathering tournament performance while maintaining fast response times suitable for interactive chat experiences.
+
+## Open DB API Expansion (Optional)
+
+If desired, expose a simple public “open DB” read API over curated views only.
+
+- Scope
+  - Public, read-only data surfaced via reporting views (not base tables)
+  - SELECT-only role; restrict search_path to reporting, pg_temp
+- Safeguards (cost control, integrity)
+  - Database: default_transaction_read_only = on; statement_timeout (2–5s)
+  - API: enforce LIMIT (cap ~1000 rows), require date ranges for heavy endpoints
+  - Rate limiting: per-API-key token bucket + daily quotas; return 429 on excess
+  - Caching: short TTL (60–300s) for hot queries; optional CDN cache for GETs
+- Exposure model
+  - Whitelist endpoints (preferred) or validate SQL against a single allowed view
+  - Views marked WITH (security_barrier = true) and only include safe columns
+- Operations
+  - Per-key logging (route, params, duration, rows)
+  - Optional read replica for isolation; monitor with pg_stat_statements
+
+This keeps the API simple and cheap while preventing accidental heavy queries and ensuring the database cannot be mutated.
