@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Index, Enum
+from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Index, Enum, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import TypeDecorator, VARCHAR
 from .base import Base, uuid_pk, TimestampMixin
@@ -34,6 +34,7 @@ class Format(Base, TimestampMixin):
     # Relationships
     tournaments = relationship("Tournament", back_populates="format")
     meta_changes = relationship("MetaChange", back_populates="format")
+    archetypes = relationship("Archetype", back_populates="format")
 
     def __repr__(self):
         return f"<Format(id={self.id}, name='{self.name}')>"
@@ -73,11 +74,18 @@ class Archetype(Base, TimestampMixin):
     __tablename__ = "archetypes"
 
     id = uuid_pk()
-    name = Column(CaseInsensitiveText(100), nullable=False, unique=True)
+    format_id = Column(String(36), ForeignKey("formats.id"), nullable=False, index=True)
+    name = Column(CaseInsensitiveText(100), nullable=False)
     color = Column(String(10), nullable=True)  # e.g., "BR", "UB", "G"
 
     # Relationships
+    format = relationship("Format", back_populates="archetypes")
     tournament_entries = relationship("TournamentEntry", back_populates="archetype")
+
+    # Constraints
+    __table_args__ = (
+        UniqueConstraint("format_id", "name", name="uq_archetype_format_name"),
+    )
 
     def __repr__(self):
         return f"<Archetype(id={self.id}, name='{self.name}', color='{self.color}')>"

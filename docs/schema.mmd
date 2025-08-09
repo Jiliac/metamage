@@ -33,8 +33,10 @@ erDiagram
 
     archetypes {
         uuid id PK
+        uuid format_id FK
         citext name 
         text color
+        %% UNIQUE (format_id, name)
     }
 
     tournaments {
@@ -83,6 +85,7 @@ erDiagram
     %% Relationships
     formats ||--o{ tournaments : "format_id"
     formats ||--o{ meta_changes : "format_id"
+    formats ||--o{ archetypes : "format_id"
     tournaments ||--o{ tournament_entries : "tournament_id"
     players ||--o{ tournament_entries : "player_id"
     archetypes ||--o{ tournament_entries : "archetype_id"
