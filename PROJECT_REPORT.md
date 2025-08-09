@@ -136,6 +136,13 @@ The MCP server exposes both high-level tools and low-level SQL access:
 - Implement query timeout limits
 - Cache frequently accessed data (meta timeline, archetype list)
 
+### Data Types and Constraints
+- Use timestamptz for all dates; store source timezone if known.
+- Convert numeric strings in input (e.g., "Wins": "5") to integers on ingest; reject or flag invalid rows.
+- Add NOT NULL and foreign keys across the schema for referential integrity.
+- Enforce unique constraints on (tournament_id, player_id) and (entry_id, card_id, board).
+- Ensure UTF-8 and NFC normalization; use CITEXT for case-insensitive names/handles.
+
 ### Data Migration
 - Parse JSON tournament data into normalized tables
 - Handle card name variations (use Scryfall for normalization)
