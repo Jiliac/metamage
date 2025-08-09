@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Index, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import TypeDecorator, VARCHAR
-from .base import Base, uuid_pk
+from .base import Base, uuid_pk, TimestampMixin
 import enum
 
 
@@ -25,7 +25,7 @@ class CaseInsensitiveText(TypeDecorator):
         return value
 
 
-class Format(Base):
+class Format(Base, TimestampMixin):
     __tablename__ = "formats"
 
     id = uuid_pk()
@@ -39,7 +39,7 @@ class Format(Base):
         return f"<Format(id={self.id}, name='{self.name}')>"
 
 
-class Player(Base):
+class Player(Base, TimestampMixin):
     __tablename__ = "players"
 
     id = uuid_pk()
@@ -53,7 +53,7 @@ class Player(Base):
         return f"<Player(id={self.id}, handle='{self.handle}')>"
 
 
-class Card(Base):
+class Card(Base, TimestampMixin):
     __tablename__ = "cards"
 
     id = uuid_pk()
@@ -69,7 +69,7 @@ class Card(Base):
         return f"<Card(id={self.id}, name='{self.name}')>"
 
 
-class Archetype(Base):
+class Archetype(Base, TimestampMixin):
     __tablename__ = "archetypes"
 
     id = uuid_pk()
@@ -83,7 +83,7 @@ class Archetype(Base):
         return f"<Archetype(id={self.id}, name='{self.name}', color='{self.color}')>"
 
 
-class MetaChange(Base):
+class MetaChange(Base, TimestampMixin):
     __tablename__ = "meta_changes"
 
     id = uuid_pk()

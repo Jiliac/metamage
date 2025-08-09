@@ -1,6 +1,7 @@
-from sqlalchemy import create_engine, event, Column, String
+from sqlalchemy import create_engine, event, Column, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.sql import func
 import os
 import uuid
 
@@ -17,6 +18,12 @@ def generate_uuid():
 def uuid_pk():
     """Create a UUID primary key column."""
     return Column(String(36), primary_key=True, default=generate_uuid)
+
+
+class TimestampMixin:
+    """Mixin to add created_at and updated_at timestamps to models."""
+    created_at = Column(DateTime, nullable=False, server_default=func.now())
+    updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
 
 
 def get_engine():

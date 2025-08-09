@@ -11,7 +11,7 @@ from sqlalchemy import (
     Enum,
 )
 from sqlalchemy.orm import relationship
-from .base import Base, uuid_pk
+from .base import Base, uuid_pk, TimestampMixin
 import enum
 
 
@@ -32,7 +32,7 @@ class BoardType(enum.Enum):
     SIDE = "SIDE"
 
 
-class Tournament(Base):
+class Tournament(Base, TimestampMixin):
     __tablename__ = "tournaments"
 
     id = uuid_pk()
@@ -52,7 +52,7 @@ class Tournament(Base):
         return f"<Tournament(id={self.id}, name='{self.name}', date='{self.date}')>"
 
 
-class TournamentEntry(Base):
+class TournamentEntry(Base, TimestampMixin):
     __tablename__ = "tournament_entries"
 
     id = uuid_pk()
@@ -91,7 +91,7 @@ class TournamentEntry(Base):
         return f"<TournamentEntry(id={self.id}, player_id={self.player_id}, wins={self.wins})>"
 
 
-class DeckCard(Base):
+class DeckCard(Base, TimestampMixin):
     __tablename__ = "deck_cards"
 
     id = uuid_pk()
@@ -115,7 +115,7 @@ class DeckCard(Base):
         return f"<DeckCard(entry_id={self.entry_id}, card_id={self.card_id}, count={self.count})>"
 
 
-class Match(Base):
+class Match(Base, TimestampMixin):
     __tablename__ = "matches"
 
     id = uuid_pk()

@@ -38,7 +38,7 @@ def main():
         formats = session.query(Format).all()
         if formats:
             for fmt in formats:
-                print(f"  - {fmt.name} (UUID: {fmt.id})")
+                print(f"  - {fmt.name} (ID: {fmt.id}, Created: {fmt.created_at}, Updated: {fmt.updated_at})")
         else:
             print("  (empty)")
         
@@ -53,7 +53,7 @@ def main():
         print("\n📋 All formats after adding:")
         formats = session.query(Format).all()
         for fmt in formats:
-            print(f"  - {fmt.name} (ID: {fmt.id})")
+            print(f"  - {fmt.name} (ID: {fmt.id}, Created: {fmt.created_at}, Updated: {fmt.updated_at})")
         
         # Step 4: Delete the format we just created
         print(f"\n🗑️  Deleting format with UUID: {new_format.id}")
@@ -66,7 +66,7 @@ def main():
         formats = session.query(Format).all()
         if formats:
             for fmt in formats:
-                print(f"  - {fmt.name} (UUID: {fmt.id})")
+                print(f"  - {fmt.name} (ID: {fmt.id}, Created: {fmt.created_at}, Updated: {fmt.updated_at})")
         else:
             print("  (empty)")
             
