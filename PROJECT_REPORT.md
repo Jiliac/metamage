@@ -2,7 +2,7 @@
 
 ## Project Context
 
-This project aims to create a Model Context Protocol (MCP) server that enables AI assistants to answer complex questions about Magic: The Gathering tournament data, specifically focusing on the Pauper format. The data includes tournament results, deck compositions, matchup statistics, and meta evolution over time.
+This project aims to create a Model Context Protocol (MCP) server that enables AI assistants to answer complex questions about Magic: The Gathering tournament data. The data includes tournament results, deck compositions, matchup statistics, and meta evolution over time.
 
 ### Data Source
 The project works with tournament data that includes:
@@ -69,15 +69,18 @@ The MCP server exposes both high-level tools and low-level SQL access:
 ### Key Technical Decisions
 
 #### 1. SQL Database vs. NoSQL
+
 **Decision**: SQL (PostgreSQL recommended)
+
 **Rationale**: 
 - Tournament data is highly relational
 - Need for complex aggregation queries
-- ACID compliance for data integrity
 - Better support for analytical queries
 
 #### 2. Normalized vs. Denormalized Schema
+
 **Decision**: Normalized with strategic indexes
+
 **Rationale**:
 - Reduces data redundancy
 - Maintains data integrity
@@ -85,7 +88,9 @@ The MCP server exposes both high-level tools and low-level SQL access:
 - Performance maintained through proper indexing
 
 #### 3. External Card Data via Scryfall
+
 **Decision**: Use Scryfall API instead of storing card details
+
 **Rationale**:
 - Avoids maintaining large card database
 - Always up-to-date card information
@@ -93,7 +98,9 @@ The MCP server exposes both high-level tools and low-level SQL access:
 - Scryfall's fuzzy search handles typos/variations
 
 #### 4. Hybrid Tool Approach
+
 **Decision**: Provide both specific tools and general SQL access
+
 **Rationale**:
 - Pre-built tools for common queries (faster, safer)
 - SQL access for complex/unique queries
@@ -101,7 +108,9 @@ The MCP server exposes both high-level tools and low-level SQL access:
 - Maintains flexibility for power users
 
 #### 5. Mandatory Date Ranges
+
 **Decision**: Require date parameters for card usage queries
+
 **Rationale**:
 - Prevents accidental full-table scans
 - Most analysis needs temporal context
@@ -112,19 +121,16 @@ The MCP server exposes both high-level tools and low-level SQL access:
 
 ### Performance Optimization
 - Index on: archetype names, dates, card names, player names
-- Consider materialized views for complex card performance metrics
 - Implement query timeout limits
 - Cache frequently accessed data (meta timeline, archetype list)
 
 ### Data Migration
 - Parse JSON tournament data into normalized tables
-- Validate archetype consistency
 - Handle card name variations (use Scryfall for normalization)
 - Preserve all match-level detail
 
 ### Security
-- Read-only database access
-- SQL injection prevention through parameterized queries
+- Read-only database access (SELECT only even)
 - Rate limiting on MCP server
 - No sensitive data exposure
 
@@ -132,8 +138,6 @@ The MCP server exposes both high-level tools and low-level SQL access:
 1. **Advanced Card Analysis**: Pre-computed influence metrics
 2. **Trend Detection**: Automatic identification of rising/falling archetypes
 3. **Graph Generation**: Visual representations of data trends
-4. **Multi-Format Support**: Extend beyond Pauper format
-5. **Real-time Updates**: Automated tournament data ingestion
 
 ## Success Metrics
 - Query response time < 2 seconds for common queries
