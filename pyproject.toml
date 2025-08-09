@@ -1,7 +1,10 @@
 [project]
 name = "brainstorm-db-struct"
 version = "0.1.0"
-description = "Add your description here"
+description = "Magic: The Gathering Tournament Data Analysis MCP Server"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.13.0",
+]
