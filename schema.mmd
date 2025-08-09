@@ -3,11 +3,10 @@ erDiagram
     %% - tournaments.source: MTGO | Melee | Other
     %% - deck_cards.board: MAIN | SIDE
     %% - matches.result: WIN | LOSS | DRAW
-    %% - matches.stage: SWISS | QF | SF | F (examples)
 
     formats {
         int id PK
-        citext name "UNIQUE NOT NULL"
+        citext name
     }
 
     meta_changes {
@@ -29,7 +28,7 @@ erDiagram
     cards {
         int id PK
         citext name NOT NULL
-        uuid scryfall_oracle_id "UNIQUE NOT NULL"
+        uuid scryfall_oracle_id
     }
 
     archetypes {
@@ -78,10 +77,6 @@ erDiagram
         %% result: WIN | LOSS | DRAW (from entry_id's perspective)
         boolean mirror NOT NULL
         %% mirror: true if same-archetype pairing
-        text stage
-        %% stage: e.g., SWISS | QF | SF | F
-        int round_no
-        %% round_no: round within stage
         %% To avoid double-counting in queries, aggregate by
         %% (stage, round_no, LEAST(entry_id, opponent_entry_id), GREATEST(...))
     }
