@@ -103,7 +103,7 @@ The MCP server exposes both high-level tools and low-level SQL access:
 - Scryfall's fuzzy search handles typos/variations
 
 **Implementation**:
-- Store cards keyed by oracle_id (UUID, unique) to deduplicate across printings; optionally keep a representative scryfall_id (print UUID).
+- Store cards keyed by oracle_id (UUID, unique) to deduplicate across printings
 - Keep name as CITEXT for case-insensitive display/lookup; normalize input names (trim, NFC).
 - Ingest flow: check DB by name/cache → query Scryfall if missing → upsert by oracle_id → reference cards.id in deck_cards.
 
@@ -168,7 +168,7 @@ The MCP server exposes both high-level tools and low-level SQL access:
 
 This MCP server design provides a robust foundation for AI-powered tournament data analysis. By combining structured data storage, flexible querying capabilities, and external API integration, the system can answer virtually any question about Magic: The Gathering tournament performance while maintaining fast response times suitable for interactive chat experiences.
 
-## Open DB API Expansion (Optional)
+## Open DB API Expansion
 
 If desired, expose a simple public “open DB” read API over curated views only.
 
