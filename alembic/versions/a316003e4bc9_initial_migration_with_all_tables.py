@@ -25,9 +25,7 @@ def upgrade() -> None:
     op.create_table(
         "archetypes",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column(
-            "name", models.reference.CaseInsensitiveText(length=100), nullable=False
-        ),
+        sa.Column("name", sa.String(length=100), nullable=False),
         sa.Column("color", sa.String(length=10), nullable=True),
         sa.Column("companion", sa.String(length=100), nullable=True),
         sa.PrimaryKeyConstraint("id"),
@@ -36,9 +34,7 @@ def upgrade() -> None:
     op.create_table(
         "cards",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column(
-            "name", models.reference.CaseInsensitiveText(length=200), nullable=False
-        ),
+        sa.Column("name", sa.String(length=200), nullable=False),
         sa.Column("scryfall_oracle_id", sa.String(length=36), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
@@ -54,9 +50,7 @@ def upgrade() -> None:
     op.create_table(
         "formats",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column(
-            "name", models.reference.CaseInsensitiveText(length=100), nullable=False
-        ),
+        sa.Column("name", sa.String(length=100), nullable=False),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("name"),
     )
@@ -64,11 +58,7 @@ def upgrade() -> None:
         "players",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("handle", sa.String(length=100), nullable=False),
-        sa.Column(
-            "normalized_handle",
-            models.reference.CaseInsensitiveText(length=100),
-            nullable=False,
-        ),
+        sa.Column("normalized_handle", sa.String(length=100), nullable=False),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
