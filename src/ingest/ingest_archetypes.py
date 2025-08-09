@@ -84,15 +84,18 @@ def get_or_create_archetype(
     format_id: str,
     name: str,
     color: str = None,
-) -> Archetype:
+) -> tuple[Archetype, bool]:
     """
     Get existing archetype or create a new one.
     Uses cache for performance optimization.
+
+    Returns:
+        tuple: (Archetype, is_new) where is_new=True if archetype was just created
     """
     # Check cache first
     archetype = cache.get(format_id, name)
     if archetype:
-        return archetype
+        return archetype, False
 
     # Check database
     archetype = (
@@ -104,7 +107,7 @@ def get_or_create_archetype(
     if archetype:
         # Add to cache
         cache.add(format_id, name, archetype)
-        return archetype
+        return archetype, False
 
     # Create new archetype
     archetype = Archetype(format_id=format_id, name=name, color=color)
@@ -114,7 +117,7 @@ def get_or_create_archetype(
     # Add to cache
     cache.add(format_id, name, archetype)
 
-    return archetype
+    return archetype, True
 
 
 def ingest_archetypes(session: Session, entries: List[Dict[str, Any]], format_id: str):
@@ -156,12 +159,12 @@ def ingest_archetypes(session: Session, entries: List[Dict[str, Any]], format_id
 
         # Get or create archetype
         try:
-            archetype = get_or_create_archetype(
+            archetype, is_new = get_or_create_archetype(
                 session, cache, format_id, archetype_name, color
             )
 
             # Track statistics
-            if archetype.id in [a.id for a in session.new]:
+            if is_new:
                 stats["new_created"] += 1
                 stats["newly_created_archetypes"].add(archetype_name)
             else:

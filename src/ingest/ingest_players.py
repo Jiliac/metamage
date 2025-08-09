@@ -69,17 +69,22 @@ def extract_player_handle(entry: Dict[str, Any]) -> str:
     return handle if handle else None
 
 
-def get_or_create_player(session: Session, cache: PlayerCache, handle: str) -> Player:
+def get_or_create_player(
+    session: Session, cache: PlayerCache, handle: str
+) -> tuple[Player, bool]:
     """
     Get existing player or create a new one.
     Uses cache for performance optimization.
+
+    Returns:
+        tuple: (Player, is_new) where is_new=True if player was just created
     """
     normalized_handle = normalize_player_handle(handle)
 
     # Check cache first
     player = cache.get(normalized_handle)
     if player:
-        return player
+        return player, False
 
     # Check database
     player = (
@@ -91,7 +96,7 @@ def get_or_create_player(session: Session, cache: PlayerCache, handle: str) -> P
     if player:
         # Add to cache
         cache.add(normalized_handle, player)
-        return player
+        return player, False
 
     # Create new player
     player = Player(handle=handle, normalized_handle=normalized_handle)
@@ -101,7 +106,7 @@ def get_or_create_player(session: Session, cache: PlayerCache, handle: str) -> P
     # Add to cache
     cache.add(normalized_handle, player)
 
-    return player
+    return player, True
 
 
 def ingest_players(session: Session, entries: List[Dict[str, Any]]):
@@ -144,10 +149,10 @@ def ingest_players(session: Session, entries: List[Dict[str, Any]]):
 
         # Get or create player
         try:
-            player = get_or_create_player(session, cache, handle)
+            player, is_new = get_or_create_player(session, cache, handle)
 
             # Track statistics
-            if player.id in [p.id for p in session.new]:
+            if is_new:
                 stats["new_created"] += 1
                 stats["newly_created_players"].add(handle)
             else:
@@ -171,7 +176,12 @@ def ingest_players(session: Session, entries: List[Dict[str, Any]]):
 
     if stats["newly_created_players"]:
         print("  🆕 Newly created players:")
-        for handle in sorted(stats["newly_created_players"]):
+        sorted_players = sorted(stats["newly_created_players"])
+        for i, handle in enumerate(sorted_players):
+            if i >= 50:
+                remaining = len(sorted_players) - 50
+                print(f"    ... and {remaining} more players")
+                break
             print(f"    - {handle}")
     elif stats["new_created"] == 0:
         print("  ℹ️ No new players created (all already existed)")
