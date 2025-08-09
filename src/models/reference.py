@@ -1,4 +1,13 @@
-from sqlalchemy import Column, String, DateTime, ForeignKey, Text, Index, Enum, UniqueConstraint
+from sqlalchemy import (
+    Column,
+    String,
+    DateTime,
+    ForeignKey,
+    Text,
+    Index,
+    Enum,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import TypeDecorator, VARCHAR
 from .base import Base, uuid_pk, TimestampMixin
@@ -29,7 +38,10 @@ class Format(Base, TimestampMixin):
     __tablename__ = "formats"
 
     id = uuid_pk()
-    name = Column(CaseInsensitiveText(100), nullable=False, unique=True)
+    name = Column(CaseInsensitiveText(100), nullable=False)
+
+    # Constraints
+    __table_args__ = (UniqueConstraint("name", name="uq_format_name"),)
 
     # Relationships
     tournaments = relationship("Tournament", back_populates="format")
@@ -74,7 +86,12 @@ class Archetype(Base, TimestampMixin):
     __tablename__ = "archetypes"
 
     id = uuid_pk()
-    format_id = Column(String(36), ForeignKey("formats.id"), nullable=False, index=True)
+    format_id = Column(
+        String(36),
+        ForeignKey("formats.id", name="fk_archetype_format"),
+        nullable=False,
+        index=True,
+    )
     name = Column(CaseInsensitiveText(100), nullable=False)
     color = Column(String(10), nullable=True)  # e.g., "BR", "UB", "G"
 
@@ -95,7 +112,12 @@ class MetaChange(Base, TimestampMixin):
     __tablename__ = "meta_changes"
 
     id = uuid_pk()
-    format_id = Column(String(36), ForeignKey("formats.id"), nullable=False, index=True)
+    format_id = Column(
+        String(36),
+        ForeignKey("formats.id", name="fk_meta_changes_format"),
+        nullable=False,
+        index=True,
+    )
     date = Column(DateTime, nullable=False, index=True)
     change_type = Column(Enum(ChangeType), nullable=False)
     description = Column(Text, nullable=True)

@@ -24,6 +24,7 @@ def upgrade() -> None:
     with op.batch_alter_table('archetypes', schema=None) as batch_op:
         batch_op.add_column(sa.Column('format_id', sa.String(length=36), nullable=False))
         batch_op.create_index(batch_op.f('ix_archetypes_format_id'), ['format_id'], unique=False)
+        batch_op.drop_constraint('uq_archetype_name', type_='unique')  # Drop old constraint
         batch_op.create_unique_constraint('uq_archetype_format_name', ['format_id', 'name'])
         batch_op.create_foreign_key('fk_archetype_format', 'formats', ['format_id'], ['id'])
 
@@ -38,6 +39,6 @@ def downgrade() -> None:
         batch_op.drop_constraint('uq_archetype_format_name', type_='unique')
         batch_op.drop_index(batch_op.f('ix_archetypes_format_id'))
         batch_op.drop_column('format_id')
-        batch_op.create_unique_constraint(None, ['name'])  # Restore old unique constraint on name
+        batch_op.create_unique_constraint('uq_archetype_name', ['name'])  # Restore old unique constraint on name
 
     # ### end Alembic commands ###

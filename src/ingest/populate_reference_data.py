@@ -210,7 +210,7 @@ def main():
         # Show summary
         format_count = session.query(Format).count()
         change_count = session.query(MetaChange).count()
-        print(f"📊 Summary:")
+        print("📊 Summary:")
         print(f"   - Formats: {format_count}")
         print(f"   - Meta changes: {change_count}")
 

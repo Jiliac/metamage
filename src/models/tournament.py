@@ -38,7 +38,12 @@ class Tournament(Base, TimestampMixin):
     id = uuid_pk()
     name = Column(String(200), nullable=False, index=True)
     date = Column(DateTime, nullable=False, index=True)
-    format_id = Column(String(36), ForeignKey("formats.id"), nullable=False, index=True)
+    format_id = Column(
+        String(36),
+        ForeignKey("formats.id", name="fk_tournaments_format"),
+        nullable=False,
+        index=True,
+    )
     source = Column(
         Enum(TournamentSource), nullable=False, default=TournamentSource.OTHER
     )
@@ -57,11 +62,22 @@ class TournamentEntry(Base, TimestampMixin):
 
     id = uuid_pk()
     tournament_id = Column(
-        String(36), ForeignKey("tournaments.id"), nullable=False, index=True
+        String(36),
+        ForeignKey("tournaments.id", name="fk_tournament_entries_tournament"),
+        nullable=False,
+        index=True,
     )
-    player_id = Column(String(36), ForeignKey("players.id"), nullable=False, index=True)
+    player_id = Column(
+        String(36),
+        ForeignKey("players.id", name="fk_tournament_entries_player"),
+        nullable=False,
+        index=True,
+    )
     archetype_id = Column(
-        String(36), ForeignKey("archetypes.id"), nullable=False, index=True
+        String(36),
+        ForeignKey("archetypes.id", name="fk_tournament_entries_archetype"),
+        nullable=False,
+        index=True,
     )
     wins = Column(Integer, nullable=False, default=0)
     losses = Column(Integer, nullable=False, default=0)
@@ -96,9 +112,17 @@ class DeckCard(Base, TimestampMixin):
 
     id = uuid_pk()
     entry_id = Column(
-        String(36), ForeignKey("tournament_entries.id"), nullable=False, index=True
+        String(36),
+        ForeignKey("tournament_entries.id", name="fk_deck_cards_entry"),
+        nullable=False,
+        index=True,
     )
-    card_id = Column(String(36), ForeignKey("cards.id"), nullable=False, index=True)
+    card_id = Column(
+        String(36),
+        ForeignKey("cards.id", name="fk_deck_cards_card"),
+        nullable=False,
+        index=True,
+    )
     count = Column(Integer, nullable=False)
     board = Column(Enum(BoardType), nullable=False, default=BoardType.MAIN)
 
@@ -120,10 +144,16 @@ class Match(Base, TimestampMixin):
 
     id = uuid_pk()
     entry_id = Column(
-        String(36), ForeignKey("tournament_entries.id"), nullable=False, index=True
+        String(36),
+        ForeignKey("tournament_entries.id", name="fk_matches_entry"),
+        nullable=False,
+        index=True,
     )
     opponent_entry_id = Column(
-        String(36), ForeignKey("tournament_entries.id"), nullable=False, index=True
+        String(36),
+        ForeignKey("tournament_entries.id", name="fk_matches_opponent_entry"),
+        nullable=False,
+        index=True,
     )
     result = Column(Enum(MatchResult), nullable=False)
     mirror = Column(Boolean, nullable=False, default=False)  # same archetype matchup

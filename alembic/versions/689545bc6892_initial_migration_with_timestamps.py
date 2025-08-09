@@ -28,7 +28,7 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('name')
+    sa.UniqueConstraint('name', name='uq_archetype_name')
     )
     op.create_table('cards',
     sa.Column('id', sa.String(length=36), nullable=False),
@@ -48,7 +48,7 @@ def upgrade() -> None:
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('name')
+    sa.UniqueConstraint('name', name='uq_format_name')
     )
     op.create_table('players',
     sa.Column('id', sa.String(length=36), nullable=False),
@@ -70,7 +70,7 @@ def upgrade() -> None:
     sa.Column('set_code', sa.String(length=10), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.ForeignKeyConstraint(['format_id'], ['formats.id'], ),
+    sa.ForeignKeyConstraint(['format_id'], ['formats.id'], name='fk_meta_changes_format'),
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('meta_changes', schema=None) as batch_op:
@@ -87,7 +87,7 @@ def upgrade() -> None:
     sa.Column('link', sa.Text(), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.ForeignKeyConstraint(['format_id'], ['formats.id'], ),
+    sa.ForeignKeyConstraint(['format_id'], ['formats.id'], name='fk_tournaments_format'),
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('tournaments', schema=None) as batch_op:
@@ -107,9 +107,9 @@ def upgrade() -> None:
     sa.Column('decklist_url', sa.Text(), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.ForeignKeyConstraint(['archetype_id'], ['archetypes.id'], ),
-    sa.ForeignKeyConstraint(['player_id'], ['players.id'], ),
-    sa.ForeignKeyConstraint(['tournament_id'], ['tournaments.id'], ),
+    sa.ForeignKeyConstraint(['archetype_id'], ['archetypes.id'], name='fk_tournament_entries_archetype'),
+    sa.ForeignKeyConstraint(['player_id'], ['players.id'], name='fk_tournament_entries_player'),
+    sa.ForeignKeyConstraint(['tournament_id'], ['tournaments.id'], name='fk_tournament_entries_tournament'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('tournament_id', 'player_id', name='uq_tournament_player')
     )
@@ -127,8 +127,8 @@ def upgrade() -> None:
     sa.Column('board', sa.Enum('MAIN', 'SIDE', name='boardtype'), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.ForeignKeyConstraint(['card_id'], ['cards.id'], ),
-    sa.ForeignKeyConstraint(['entry_id'], ['tournament_entries.id'], ),
+    sa.ForeignKeyConstraint(['card_id'], ['cards.id'], name='fk_deck_cards_card'),
+    sa.ForeignKeyConstraint(['entry_id'], ['tournament_entries.id'], name='fk_deck_cards_entry'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('entry_id', 'card_id', 'board', name='uq_entry_card_board')
     )
@@ -146,8 +146,8 @@ def upgrade() -> None:
     sa.Column('pair_id', sa.String(length=36), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.ForeignKeyConstraint(['entry_id'], ['tournament_entries.id'], ),
-    sa.ForeignKeyConstraint(['opponent_entry_id'], ['tournament_entries.id'], ),
+    sa.ForeignKeyConstraint(['entry_id'], ['tournament_entries.id'], name='fk_matches_entry'),
+    sa.ForeignKeyConstraint(['opponent_entry_id'], ['tournament_entries.id'], name='fk_matches_opponent_entry'),
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('matches', schema=None) as batch_op:
