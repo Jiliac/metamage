@@ -52,12 +52,13 @@ archetypes (id, name, color, companion)
 tournaments (id, name, date, format_id, source, link) -- source: MTGO|Melee|Other (to update)
 tournament_entries (id, tournament_id, player_id, archetype_id, wins, losses, draws, decklist_url)
 deck_cards (id, entry_id, card_id, count, board) -- board: MAIN|SIDE
-matches (id, entry_id, opponent_entry_id, result, mirror) -- Result: WIN|LOSS|DRAW, mirror true/false
+matches (id, entry_id, opponent_entry_id, result, mirror, pair_id) -- Result: WIN|LOSS|DRAW, mirror true/false
 ```
 
-##### Matches: rounds/stage and symmetry (what this means)
-- Each match row is one side of a pairing; use mirror = true for same-archetype pairings to let queries exclude mirrors.
-- To aggregate head-to-head without double-counting, group by unordered pairs using LEAST(entry_id, opponent_entry_id)/GREATEST(...), or enforce a unique constraint on that unordered pair at the round level.
+##### Matches: symmetry and deduplication (what this means)
+- Each match row is one side of a pairing; mirror = true marks same-archetype pairings so queries can exclude mirrors.
+- Add pair_id (UUID) on matches; both sides of one real pairing share the same pair_id. Each rematch gets a new pair_id.
+- To avoid double-counting, group by pair_id or filter to a canonical side (entry_id < opponent_entry_id). Create an index on pair_id (no uniqueness constraint).
 
 ### MCP Server Design
 

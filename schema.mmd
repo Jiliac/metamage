@@ -76,9 +76,10 @@ erDiagram
         text result 
         %% result: WIN | LOSS | DRAW (from entry_id's perspective)
         boolean mirror 
-        %% mirror: true if same-archetype pairing
-        %% To avoid double-counting in queries, aggregate by
-        %% (stage, round_no, LEAST(entry_id, opponent_entry_id), GREATEST(...))
+        uuid pair_id
+        %% pair_id: UUID shared by both rows of a real pairing
+        %% Index: create an index on pair_id (no uniqueness constraint)
+        %% To avoid double-counting in queries, aggregate by pair_id or filter to entry_id < opponent_entry_id
     }
 
     %% Relationships
