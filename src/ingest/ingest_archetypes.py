@@ -135,6 +135,7 @@ def ingest_archetypes(session: Session, entries: List[Dict[str, Any]], format_id
         "existing_found": 0,
         "skipped_invalid": 0,
         "unique_archetypes": set(),
+        "newly_created_archetypes": set(),
     }
 
     for i, entry in enumerate(entries):
@@ -162,6 +163,7 @@ def ingest_archetypes(session: Session, entries: List[Dict[str, Any]], format_id
             # Track statistics
             if archetype.id in [a.id for a in session.new]:
                 stats["new_created"] += 1
+                stats["newly_created_archetypes"].add(archetype_name)
             else:
                 stats["existing_found"] += 1
 
@@ -181,7 +183,9 @@ def ingest_archetypes(session: Session, entries: List[Dict[str, Any]], format_id
     print(f"  ⚠️ Invalid entries skipped: {stats['skipped_invalid']}")
     print(f"  🎭 Unique archetypes: {len(stats['unique_archetypes'])}")
 
-    if stats["unique_archetypes"]:
-        print("  📋 Archetype names:")
-        for name in sorted(stats["unique_archetypes"]):
+    if stats["newly_created_archetypes"]:
+        print("  🆕 Newly created archetypes:")
+        for name in sorted(stats["newly_created_archetypes"]):
             print(f"    - {name}")
+    elif stats["new_created"] == 0:
+        print("  ℹ️ No new archetypes created (all already existed)")
