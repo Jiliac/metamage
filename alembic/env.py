@@ -69,7 +69,14 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        # Configure SQLite-specific options for better compatibility
+        context.configure(
+            connection=connection, 
+            target_metadata=target_metadata,
+            render_as_batch=True,  # Use batch operations for SQLite
+            compare_type=True,     # Enable type comparison
+            compare_server_default=True  # Enable server default comparison
+        )
 
         with context.begin_transaction():
             context.run_migrations()
