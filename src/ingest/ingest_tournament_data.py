@@ -69,7 +69,7 @@ def main():
     parser = argparse.ArgumentParser(description="Ingest Magic tournament data")
     parser.add_argument("-f", "--file", required=True, help="JSON file to ingest")
     parser.add_argument(
-        "--archetype", action="store_true", help="Ingest only archetypes"
+        "--archetypes", action="store_true", help="Ingest only archetypes"
     )
     parser.add_argument("--players", action="store_true", help="Ingest only players")
     parser.add_argument("--cards", action="store_true", help="Ingest only cards")
@@ -113,7 +113,7 @@ def main():
         print(f"✅ Format ID: {format_id}")
 
         # Determine what to ingest
-        if args.archetype:
+        if args.archetypes:
             print("🎭 Ingesting archetypes only...")
             ingest_archetypes(session, entries, format_id)
         elif args.players:

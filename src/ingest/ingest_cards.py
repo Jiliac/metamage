@@ -90,7 +90,7 @@ def fetch_scryfall_data(card_name: str, cache: CardCache) -> Optional[Dict[str, 
 
     try:
         # Rate limiting - Scryfall recommends 50-100ms between requests
-        time.sleep(0.1)
+        time.sleep(0.05)
 
         response = requests.get(url, params=params, timeout=10)
 
@@ -227,9 +227,6 @@ def ingest_cards(session: Session, entries: List[Dict[str, Any]]):
 
     # Process each unique card name
     for i, card_name in enumerate(sorted(unique_card_names)):
-        if (i + 1) % 20 == 0:
-            print(f"  📊 Processed {i + 1}/{len(unique_card_names)} unique cards...")
-
         normalized_name = normalize_card_name(card_name)
 
         # Skip if already processed this session
@@ -261,6 +258,11 @@ def ingest_cards(session: Session, entries: List[Dict[str, Any]]):
             print(f"  ⚠️ Error processing card '{card_name}': {e}")
             stats["skipped_invalid"] += 1
 
+        # Commit every 20 cards to avoid losing progress
+        if (i + 1) % 20 == 0:
+            session.commit()
+            print(f"  📊 Processed {i+1}/{len(unique_card_names)} unique cards...")
+
     # Print summary
     print("\n📊 Card Ingestion Summary:")
     print(f"  📈 Total cards processed: {stats['processed']}")
@@ -282,3 +284,7 @@ def ingest_cards(session: Session, entries: List[Dict[str, Any]]):
             print(f"    - {name}")
     elif stats["new_created"] == 0:
         print("  ℹ️ No new cards created (all already existed)")
+
+    # Final commit for any remaining cards
+    session.commit()
+    print("  💾 Final commit completed")
