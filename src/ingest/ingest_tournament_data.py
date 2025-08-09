@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from models import Base, get_engine, get_session_factory, Format
 from ingest.ingest_archetypes import ingest_archetypes
 from ingest.ingest_players import ingest_players
+from ingest.ingest_cards import ingest_cards
 
 
 def extract_format_from_filename(filename: str) -> str:
@@ -71,6 +72,7 @@ def main():
         "--archetype", action="store_true", help="Ingest only archetypes"
     )
     parser.add_argument("--players", action="store_true", help="Ingest only players")
+    parser.add_argument("--cards", action="store_true", help="Ingest only cards")
 
     args = parser.parse_args()
 
@@ -117,14 +119,17 @@ def main():
         elif args.players:
             print("👥 Ingesting players only...")
             ingest_players(session, entries)
+        elif args.cards:
+            print("🃏 Ingesting cards only...")
+            ingest_cards(session, entries)
         else:
             print("📦 Ingesting all data types...")
             # Ingest implemented data types
             ingest_archetypes(session, entries, format_id)
             ingest_players(session, entries)
+            ingest_cards(session, entries)
             # TODO: Add other ingest functions
             # ingest_tournaments(session, entries, format_id)
-            # ingest_cards(session, entries, format_id)
 
         # Commit all changes
         session.commit()
