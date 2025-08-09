@@ -11,9 +11,9 @@ erDiagram
 
     meta_changes {
         int id PK
-        int format_id FK NOT NULL
-        timestamptz date NOT NULL
-        text change_type NOT NULL
+        int format_id FK 
+        timestamptz date 
+        text change_type 
         text description
         citext card_name
         text set_code
@@ -21,61 +21,61 @@ erDiagram
 
     players {
         int id PK
-        citext handle NOT NULL
-        citext normalized_handle NOT NULL
+        citext handle 
+        citext normalized_handle 
     }
 
     cards {
         int id PK
-        citext name NOT NULL
+        citext name 
         uuid scryfall_oracle_id
     }
 
     archetypes {
         int id PK
-        citext name NOT NULL
+        citext name 
         text color
         citext companion
     }
 
     tournaments {
         int id PK
-        citext name NOT NULL
-        timestamptz date NOT NULL
-        int format_id FK NOT NULL
-        text source NOT NULL
+        citext name 
+        timestamptz date 
+        int format_id FK 
+        text source 
         text link
     }
 
     tournament_entries {
         int id PK
-        int tournament_id FK NOT NULL
-        int player_id FK NOT NULL
-        int archetype_id FK NOT NULL
-        int wins NOT NULL
-        int losses NOT NULL
-        int draws NOT NULL
+        int tournament_id FK 
+        int player_id FK 
+        int archetype_id FK 
+        int wins 
+        int losses 
+        int draws 
         text decklist_url
         %% UNIQUE (tournament_id, player_id)
     }
 
     deck_cards {
         int id PK
-        int entry_id FK NOT NULL
-        int card_id FK NOT NULL
-        int count NOT NULL
-        text board NOT NULL
+        int entry_id FK 
+        int card_id FK 
+        int count 
+        text board 
         %% board: MAIN | SIDE
         %% UNIQUE (entry_id, card_id, board)
     }
 
     matches {
         int id PK
-        int entry_id FK NOT NULL
-        int opponent_entry_id FK NOT NULL
-        text result NOT NULL
+        int entry_id FK 
+        int opponent_entry_id FK 
+        text result 
         %% result: WIN | LOSS | DRAW (from entry_id's perspective)
-        boolean mirror NOT NULL
+        boolean mirror 
         %% mirror: true if same-archetype pairing
         %% To avoid double-counting in queries, aggregate by
         %% (stage, round_no, LEAST(entry_id, opponent_entry_id), GREATEST(...))
