@@ -1,0 +1,93 @@
+erDiagram
+    %% Enumerations (conceptual):
+    %% - tournaments.source: MTGO | Melee | Other
+    %% - deck_cards.board: MAIN | SIDE
+    %% - matches.result: WIN | LOSS | DRAW
+    %% - matches.stage: SWISS | QF | SF | F (examples)
+
+    formats {
+        int id PK
+        citext name "UNIQUE NOT NULL"
+    }
+
+    meta_changes {
+        int id PK
+        int format_id FK NOT NULL
+        timestamptz date NOT NULL
+        text change_type NOT NULL
+        text description
+        citext card_name
+        text set_code
+    }
+
+    players {
+        int id PK
+        citext handle NOT NULL
+        citext normalized_handle NOT NULL
+    }
+
+    cards {
+        int id PK
+        citext name NOT NULL
+        uuid scryfall_oracle_id "UNIQUE NOT NULL"
+    }
+
+    archetypes {
+        int id PK
+        citext name NOT NULL
+        text color
+        citext companion
+    }
+
+    tournaments {
+        int id PK
+        citext name NOT NULL
+        timestamptz date NOT NULL
+        int format_id FK NOT NULL
+        text source NOT NULL
+        text link
+    }
+
+    tournament_entries {
+        int id PK
+        int tournament_id FK NOT NULL
+        int player_id FK NOT NULL
+        int archetype_id FK NOT NULL
+        int wins NOT NULL
+        int losses NOT NULL
+        int draws NOT NULL
+        text decklist_url
+        %% UNIQUE (tournament_id, player_id)
+    }
+
+    deck_cards {
+        int id PK
+        int entry_id FK NOT NULL
+        int card_id FK NOT NULL
+        int count NOT NULL
+        text board NOT NULL   %% MAIN | SIDE
+        %% UNIQUE (entry_id, card_id, board)
+    }
+
+    matches {
+        int id PK
+        int entry_id FK NOT NULL
+        int opponent_entry_id FK NOT NULL
+        text result NOT NULL        %% WIN | LOSS | DRAW (from entry_id's perspective)
+        boolean mirror NOT NULL     %% true if same-archetype pairing
+        text stage                  %% e.g., SWISS | QF | SF | F
+        int round_no                %% round within stage
+        %% To avoid double-counting in queries, aggregate by
+        %% (stage, round_no, LEAST(entry_id, opponent_entry_id), GREATEST(...))
+    }
+
+    %% Relationships
+    formats ||--o{ tournaments : "format_id"
+    formats ||--o{ meta_changes : "format_id"
+    tournaments ||--o{ tournament_entries : "tournament_id"
+    players ||--o{ tournament_entries : "player_id"
+    archetypes ||--o{ tournament_entries : "archetype_id"
+    tournament_entries ||--o{ deck_cards : "entry_id"
+    cards ||--o{ deck_cards : "card_id"
+    tournament_entries ||--o{ matches : "entry_id"
+    tournament_entries ||--o{ matches : "opponent_entry_id"
