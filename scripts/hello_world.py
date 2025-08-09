@@ -38,7 +38,7 @@ def main():
         formats = session.query(Format).all()
         if formats:
             for fmt in formats:
-                print(f"  - {fmt.name} (ID: {fmt.id})")
+                print(f"  - {fmt.name} (UUID: {fmt.id})")
         else:
             print("  (empty)")
         
@@ -47,7 +47,7 @@ def main():
         new_format = Format(name="ABCD Test Format")
         session.add(new_format)
         session.commit()
-        print(f"✅ Format added with ID: {new_format.id}")
+        print(f"✅ Format added with UUID: {new_format.id}")
         
         # Step 3: Query and display all formats
         print("\n📋 All formats after adding:")
@@ -56,7 +56,7 @@ def main():
             print(f"  - {fmt.name} (ID: {fmt.id})")
         
         # Step 4: Delete the format we just created
-        print(f"\n🗑️  Deleting format with ID: {new_format.id}")
+        print(f"\n🗑️  Deleting format with UUID: {new_format.id}")
         session.delete(new_format)
         session.commit()
         print("✅ Format deleted")
@@ -66,7 +66,7 @@ def main():
         formats = session.query(Format).all()
         if formats:
             for fmt in formats:
-                print(f"  - {fmt.name} (ID: {fmt.id})")
+                print(f"  - {fmt.name} (UUID: {fmt.id})")
         else:
             print("  (empty)")
             

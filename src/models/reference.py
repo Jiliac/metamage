@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import TypeDecorator, VARCHAR
-from .base import Base
+from .base import Base, uuid_pk
 
 
 class CaseInsensitiveText(TypeDecorator):
@@ -22,7 +22,7 @@ class CaseInsensitiveText(TypeDecorator):
 class Format(Base):
     __tablename__ = "formats"
 
-    id = Column(Integer, primary_key=True)
+    id = uuid_pk()
     name = Column(CaseInsensitiveText(100), nullable=False, unique=True)
 
     # Relationships
@@ -36,7 +36,7 @@ class Format(Base):
 class Player(Base):
     __tablename__ = "players"
 
-    id = Column(Integer, primary_key=True)
+    id = uuid_pk()
     handle = Column(String(100), nullable=False)
     normalized_handle = Column(CaseInsensitiveText(100), nullable=False, index=True)
 
@@ -50,7 +50,7 @@ class Player(Base):
 class Card(Base):
     __tablename__ = "cards"
 
-    id = Column(Integer, primary_key=True)
+    id = uuid_pk()
     name = Column(CaseInsensitiveText(200), nullable=False, index=True)
     scryfall_oracle_id = Column(
         String(36), unique=True, nullable=True, index=True
@@ -66,7 +66,7 @@ class Card(Base):
 class Archetype(Base):
     __tablename__ = "archetypes"
 
-    id = Column(Integer, primary_key=True)
+    id = uuid_pk()
     name = Column(CaseInsensitiveText(100), nullable=False, unique=True)
     color = Column(String(10), nullable=True)  # e.g., "BR", "UB", "G"
     companion = Column(String(100), nullable=True)  # companion card name if any
@@ -81,8 +81,8 @@ class Archetype(Base):
 class MetaChange(Base):
     __tablename__ = "meta_changes"
 
-    id = Column(Integer, primary_key=True)
-    format_id = Column(Integer, ForeignKey("formats.id"), nullable=False, index=True)
+    id = uuid_pk()
+    format_id = Column(String(36), ForeignKey("formats.id"), nullable=False, index=True)
     date = Column(DateTime, nullable=False, index=True)
     change_type = Column(String(20), nullable=False)  # BAN, UNBAN, SET_RELEASE, etc.
     description = Column(Text, nullable=False)

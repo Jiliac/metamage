@@ -11,7 +11,7 @@ from sqlalchemy import (
     Enum,
 )
 from sqlalchemy.orm import relationship
-from .base import Base
+from .base import Base, uuid_pk
 import enum
 
 
@@ -35,10 +35,10 @@ class BoardType(enum.Enum):
 class Tournament(Base):
     __tablename__ = "tournaments"
 
-    id = Column(Integer, primary_key=True)
+    id = uuid_pk()
     name = Column(String(200), nullable=False, index=True)
     date = Column(DateTime, nullable=False, index=True)
-    format_id = Column(Integer, ForeignKey("formats.id"), nullable=False, index=True)
+    format_id = Column(String(36), ForeignKey("formats.id"), nullable=False, index=True)
     source = Column(
         Enum(TournamentSource), nullable=False, default=TournamentSource.OTHER
     )
@@ -55,13 +55,13 @@ class Tournament(Base):
 class TournamentEntry(Base):
     __tablename__ = "tournament_entries"
 
-    id = Column(Integer, primary_key=True)
+    id = uuid_pk()
     tournament_id = Column(
-        Integer, ForeignKey("tournaments.id"), nullable=False, index=True
+        String(36), ForeignKey("tournaments.id"), nullable=False, index=True
     )
-    player_id = Column(Integer, ForeignKey("players.id"), nullable=False, index=True)
+    player_id = Column(String(36), ForeignKey("players.id"), nullable=False, index=True)
     archetype_id = Column(
-        Integer, ForeignKey("archetypes.id"), nullable=False, index=True
+        String(36), ForeignKey("archetypes.id"), nullable=False, index=True
     )
     wins = Column(Integer, nullable=False, default=0)
     losses = Column(Integer, nullable=False, default=0)
@@ -94,11 +94,11 @@ class TournamentEntry(Base):
 class DeckCard(Base):
     __tablename__ = "deck_cards"
 
-    id = Column(Integer, primary_key=True)
+    id = uuid_pk()
     entry_id = Column(
-        Integer, ForeignKey("tournament_entries.id"), nullable=False, index=True
+        String(36), ForeignKey("tournament_entries.id"), nullable=False, index=True
     )
-    card_id = Column(Integer, ForeignKey("cards.id"), nullable=False, index=True)
+    card_id = Column(String(36), ForeignKey("cards.id"), nullable=False, index=True)
     count = Column(Integer, nullable=False)
     board = Column(Enum(BoardType), nullable=False, default=BoardType.MAIN)
 
@@ -118,12 +118,12 @@ class DeckCard(Base):
 class Match(Base):
     __tablename__ = "matches"
 
-    id = Column(Integer, primary_key=True)
+    id = uuid_pk()
     entry_id = Column(
-        Integer, ForeignKey("tournament_entries.id"), nullable=False, index=True
+        String(36), ForeignKey("tournament_entries.id"), nullable=False, index=True
     )
     opponent_entry_id = Column(
-        Integer, ForeignKey("tournament_entries.id"), nullable=False, index=True
+        String(36), ForeignKey("tournament_entries.id"), nullable=False, index=True
     )
     result = Column(Enum(MatchResult), nullable=False)
     mirror = Column(Boolean, nullable=False, default=False)  # same archetype matchup

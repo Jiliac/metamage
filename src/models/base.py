@@ -1,11 +1,22 @@
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, Column, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
+import uuid
 
 Base = declarative_base()
 
 DATABASE_URL = "sqlite:///data/tournament.db"
+
+
+def generate_uuid():
+    """Generate a UUID string for primary keys."""
+    return str(uuid.uuid4())
+
+
+def uuid_pk():
+    """Create a UUID primary key column."""
+    return Column(String(36), primary_key=True, default=generate_uuid)
 
 
 def get_engine():
