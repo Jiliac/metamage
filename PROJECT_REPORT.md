@@ -43,16 +43,23 @@ We chose a normalized SQL database structure for several reasons:
 ```sql
 -- Core reference tables
 formats (id, name)
-meta_changes (id, format_id, date, change_type, description, card_name)
-cards (id, name)
+meta_changes (id, format_id, date, change_type, description, card_name, set_code)
+players (id, handle, normalized_handle)
+cards (id, name, scryfall_id, oracle_id)
 archetypes (id, name, color, companion)
 
 -- Tournament data
 tournaments (id, name, date, format_id, source, link)
-tournament_entries (id, tournament_id, player, archetype_id, wins, losses, draws, decklist_url)
-decklists (id, entry_id, card_id, count, board)
-matches (id, entry_id, opponent_entry_id, result)
+rounds (id, tournament_id, number, stage) -- stage: SWISS|TOP8 (or similar)
+tournament_entries (id, tournament_id, player_id, archetype_id, wins, losses, draws, decklist_url)
+deck_cards (id, entry_id, card_id, count, board) -- board: MAIN|SIDE
+matches (id, round_id, entry_id, opponent_entry_id, result, games_won, games_lost, mirror)
 ```
+
+##### Matches: rounds/stage and symmetry (what this means)
+- Rounds table records the pairing context (round number and stage such as SWISS or TOP8) for each match.
+- Each match row is one side of a pairing; use mirror = true for same-archetype pairings to let queries exclude mirrors.
+- To aggregate head-to-head without double-counting, group by unordered pairs using LEAST(entry_id, opponent_entry_id)/GREATEST(...), or enforce a unique constraint on that unordered pair at the round level.
 
 ### MCP Server Design
 
@@ -97,6 +104,11 @@ The MCP server exposes both high-level tools and low-level SQL access:
 - Reduces storage requirements
 - Scryfall's fuzzy search handles typos/variations
 
+**Implementation**:
+- Store cards keyed by oracle_id (UUID, unique) to deduplicate across printings; optionally keep a representative scryfall_id (print UUID).
+- Keep name as CITEXT for case-insensitive display/lookup; normalize input names (trim, NFC).
+- Ingest flow: check DB by name/cache → query Scryfall if missing → upsert by oracle_id → reference cards.id in deck_cards.
+
 #### 4. Hybrid Tool Approach
 
 **Decision**: Provide both specific tools and general SQL access
@@ -130,8 +142,10 @@ The MCP server exposes both high-level tools and low-level SQL access:
 - Preserve all match-level detail
 
 ### Security
-- Read-only database access (SELECT only even)
-- Rate limiting on MCP server
+- Dedicated DB role with SELECT-only on the reporting schema; set default_transaction_read_only = on.
+- Set statement_timeout (e.g., 2s–5s) for the read role; add row limits to ad-hoc SQL paths.
+- Paginate tool outputs and enforce hard caps to keep responses tractable for LLMs.
+- Rate limiting on MCP server and cache hot queries.
 - No sensitive data exposure
 
 ### Future Enhancements
