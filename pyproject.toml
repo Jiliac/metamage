@@ -13,3 +13,6 @@ dependencies = [
 dev = [
     "ruff>=0.12.8",
 ]
+
+[tool.ruff]
+exclude = ["alembic"]

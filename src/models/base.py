@@ -7,6 +7,7 @@ Base = declarative_base()
 
 DATABASE_URL = "sqlite:///data/tournament.db"
 
+
 def get_engine():
     """Create and configure SQLite engine with optimizations."""
     engine = create_engine(
@@ -19,7 +20,7 @@ def get_engine():
         pool_pre_ping=True,
         pool_recycle=300,
     )
-    
+
     # Enable WAL mode and foreign keys for SQLite
     @engine.event.listens_for(engine, "connect")
     def set_sqlite_pragma(dbapi_connection, connection_record):
@@ -30,13 +31,15 @@ def get_engine():
         cursor.execute("PRAGMA cache_size=10000")
         cursor.execute("PRAGMA temp_store=memory")
         cursor.close()
-    
+
     return engine
+
 
 def get_session_factory():
     """Create session factory."""
     engine = get_engine()
     return sessionmaker(bind=engine)
+
 
 def get_database_path():
     """Get the full path to the database file."""

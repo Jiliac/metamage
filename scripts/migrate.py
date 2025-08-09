@@ -10,7 +10,7 @@ import sys
 import subprocess
 from pathlib import Path
 
-# Add the src directory to the path  
+# Add the src directory to the path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 
@@ -19,7 +19,7 @@ def run_alembic_command(cmd_args):
     # Change to project root for alembic
     project_root = Path(__file__).parent.parent
     original_cwd = os.getcwd()
-    
+
     try:
         os.chdir(project_root)
         cmd = ["uv", "run", "alembic"] + cmd_args
@@ -54,7 +54,7 @@ def show_current():
 
 
 def show_history():
-    """Show migration history.""" 
+    """Show migration history."""
     return run_alembic_command(["history", "--verbose"])
 
 
@@ -65,34 +65,35 @@ def show_heads():
 
 if __name__ == "__main__":
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="Database migration runner")
     subparsers = parser.add_subparsers(dest="command", help="Migration commands")
-    
+
     # Create migration
     create_parser = subparsers.add_parser("create", help="Create new migration")
     create_parser.add_argument("message", help="Migration message")
-    
+
     # Upgrade
     upgrade_parser = subparsers.add_parser("upgrade", help="Upgrade database")
-    upgrade_parser.add_argument("revision", nargs="?", default="head", 
-                               help="Target revision (default: head)")
-    
+    upgrade_parser.add_argument(
+        "revision", nargs="?", default="head", help="Target revision (default: head)"
+    )
+
     # Downgrade
-    downgrade_parser = subparsers.add_parser("downgrade", help="Downgrade database") 
+    downgrade_parser = subparsers.add_parser("downgrade", help="Downgrade database")
     downgrade_parser.add_argument("revision", help="Target revision")
-    
+
     # Status commands
     subparsers.add_parser("current", help="Show current revision")
     subparsers.add_parser("history", help="Show migration history")
     subparsers.add_parser("heads", help="Show head revisions")
-    
+
     args = parser.parse_args()
-    
+
     if not args.command:
         parser.print_help()
         sys.exit(1)
-    
+
     if args.command == "create":
         sys.exit(create_migration(args.message))
     elif args.command == "upgrade":
