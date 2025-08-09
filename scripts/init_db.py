@@ -6,7 +6,6 @@ This script creates the database schema and can optionally populate
 it with initial data.
 """
 
-import os
 import sys
 from pathlib import Path
 
@@ -14,7 +13,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from models import Base, get_engine, get_database_path
-from sqlalchemy import create_engine
 
 
 def init_database(create_schema=True):
