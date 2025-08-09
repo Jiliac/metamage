@@ -162,37 +162,44 @@ def get_or_create_card(
     """
     normalized_name = normalize_card_name(name)
 
-    # Check cache first
+    # 1) Check cache first
     card = cache.get(normalized_name)
     if card:
         return card, False
 
-    # Check database
+    # 2) Check database by stored (canonical) name
     card = session.query(Card).filter(Card.name == normalized_name).first()
-
     if card:
-        # Add to cache
         cache.add(normalized_name, card)
         return card, False
 
-    # Card doesn't exist - try to get data from Scryfall
+    # 3) Resolve via Scryfall (cached per-run), then dedupe by oracle_id
     scryfall_data = fetch_scryfall_data(name, cache)
+    if not scryfall_data:
+        print(f"  ⚠️ Scryfall lookup failed for '{name}'; skipping without DB insert")
+        raise ValueError(f"Scryfall lookup failed for '{name}'")
 
-    if scryfall_data:
-        # Use Scryfall's canonical name and oracle ID
-        canonical_name = scryfall_data.get("name", name)
-        oracle_id = scryfall_data.get("oracle_id")
+    canonical_name = scryfall_data.get("name", name)
+    oracle_id = scryfall_data.get("oracle_id")
 
-        # Create new card with Scryfall data
-        card = Card(name=canonical_name, scryfall_oracle_id=oracle_id)
-    else:
-        # Fallback: create card with just the name
-        card = Card(name=name, scryfall_oracle_id=None)
+    if not oracle_id:
+        print(
+            f"  ⚠️ Missing oracle_id for '{name}' (canonical '{canonical_name}'); skipping without DB insert"
+        )
+        raise ValueError(f"Missing oracle_id for '{name}'")
 
+    # Try to reuse existing card by oracle_id
+    existing = session.query(Card).filter(Card.scryfall_oracle_id == oracle_id).first()
+    if existing:
+        cache.add(normalized_name, existing)  # map querying name to existing Card
+        return existing, False
+
+    # 4) Create new card with canonical name and oracle_id
+    card = Card(name=canonical_name, scryfall_oracle_id=oracle_id)
     session.add(card)
     session.flush()  # Get the ID
 
-    # Add to cache using the normalized name for consistency
+    # Cache only the querying name -> card mapping
     cache.add(normalized_name, card)
 
     return card, True
@@ -256,12 +263,14 @@ def ingest_cards(session: Session, entries: List[Dict[str, Any]]):
 
         except Exception as e:
             print(f"  ⚠️ Error processing card '{card_name}': {e}")
+            session.rollback()
             stats["skipped_invalid"] += 1
+            stats["scryfall_failed"] += 1
 
         # Commit every 20 cards to avoid losing progress
         if (i + 1) % 20 == 0:
             session.commit()
-            print(f"  📊 Processed {i+1}/{len(unique_card_names)} unique cards...")
+            print(f"  📊 Processed {i + 1}/{len(unique_card_names)} unique cards...")
 
     # Print summary
     print("\n📊 Card Ingestion Summary:")
