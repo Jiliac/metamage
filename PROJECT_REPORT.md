@@ -188,3 +188,19 @@ If desired, expose a simple public “open DB” read API over curated views onl
   - Optional read replica for isolation; monitor with pg_stat_statements
 
 This keeps the API simple and cheap while preventing accidental heavy queries and ensuring the database cannot be mutated.
+
+## Sideboard Helper Tool (Idea)
+
+Private/experimental helper; not a public API to avoid overpromising "AI magic."
+
+- Value
+  - Formatting and card text checking via Scryfall lookup; output MU: +X, -X as readable Markdown.
+  - Coverage analysis to ensure main matchups are addressed; flag missing or thin plans vs current meta.
+- Minimal v1 (no new MCP tool required)
+  - Handle in normal chat using existing data (deck_cards, archetypes, Scryfall) and produce a Markdown sideboard plan.
+- Optional MCP endpoints (future)
+  - sideboard_format(entry_id|list): returns normalized Markdown section with checked card names.
+  - sideboard_coverage(archetype, start_date, end_date): returns top-N opposing archetypes and detected coverage gaps.
+- Guardrails
+  - Clearly label outputs as suggestions, not authoritative; require user confirmation.
+  - No automatic edits; text-only results.
