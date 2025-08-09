@@ -8,7 +8,7 @@ from .base import (
     uuid_pk,
     generate_uuid,
 )
-from .reference import Format, Player, Card, Archetype, MetaChange
+from .reference import Format, Player, Card, Archetype, MetaChange, ChangeType
 from .tournament import Tournament, TournamentEntry, DeckCard, Match
 from .tournament import TournamentSource, MatchResult, BoardType
 
@@ -32,6 +32,7 @@ __all__ = [
     "DeckCard",
     "Match",
     # Enums
+    "ChangeType",
     "TournamentSource",
     "MatchResult",
     "BoardType",
