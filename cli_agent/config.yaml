@@ -1,0 +1,20 @@
+model_list:
+  - model_name: claude-3-5-sonnet-20241022
+    litellm_params:
+      model: claude-3-5-sonnet-20241022
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+mcp_servers:
+  mtg_tournament:
+    transport: stdio
+    command: python
+    args: ["-m", "src.mcp_server.server", "--stdio"]
+    env:
+      TOURNAMENT_DB_PATH: os.environ/TOURNAMENT_DB_PATH
+    description: "MTG Tournament database with read-only queries and archetype winrate analysis"
+
+litellm_settings:
+  set_verbose: false
+  
+general_settings:
+  completion_model: claude-3-5-sonnet-20241022
