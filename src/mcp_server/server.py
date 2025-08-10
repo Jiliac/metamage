@@ -180,7 +180,7 @@ def get_meta_report(
         format_id: Format UUID (e.g., '402d2a82-3ba6-4369-badf-a51f3eff4375' for Modern)
         start_date: ISO 8601 date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)
         end_date: ISO 8601 date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)
-        limit: Maximum archetypes to return (default: 15)
+        limit: Maximum archetypes to return (default: 15, max: 20)
 
     Returns:
         Dict with archetype stats: presence %, winrate (excl. draws), total matches, entries
@@ -194,6 +194,10 @@ def get_meta_report(
         )
     if end < start:
         raise ValueError("end_date must be >= start_date")
+
+    # Cap limit at 20
+    if limit > 20:
+        limit = 20
 
     sql = """
         WITH total_matches AS (
