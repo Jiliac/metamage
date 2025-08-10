@@ -23,12 +23,14 @@ from models import (
     Card,
     Player,
     Archetype,
+    Format,
     BoardType,
     TournamentSource,
 )
 from ingest.ingest_players import normalize_player_handle
 from ingest.ingest_archetypes import normalize_archetype_name
 from ingest.ingest_cards import normalize_card_name
+from ingest.rounds_finder import find_rounds_file
 
 
 def parse_iso_datetime(dt_str: str) -> datetime:
@@ -216,7 +218,14 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
         "deck_cards_missing_cards": 0,
         "skipped_missing_player": 0,
         "skipped_missing_archetype": 0,
+        "tournaments_missing_rounds": 0,
     }
+
+    # Resolve format name for file matching
+    format_obj = session.query(Format).filter(Format.id == format_id).first()
+    if not format_obj:
+        raise ValueError(f"Format id not found: {format_id}")
+    format_name = str(format_obj.name).strip().lower()
 
     for i, e in enumerate(entries, start=1):
         stats["entries_seen"] += 1
@@ -239,15 +248,40 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
 
         # Tournament
         source = detect_source(anchor)
-        tournament, is_new_tournament = get_or_create_tournament(
-            session=session,
-            cache=t_cache,
-            name=t_name,
-            date=t_date,
-            format_id=format_id,
-            link=anchor,
-            source=source,
-        )
+        # 1) Check cache/DB for existing tournament
+        cache_key = f"{t_name}|{t_date.isoformat()}|{format_id}"
+        tournament = t_cache.get(cache_key)
+        is_new_tournament = False
+        if not tournament:
+            tournament = (
+                session.query(Tournament)
+                .filter(
+                    Tournament.name == t_name,
+                    Tournament.date == t_date,
+                    Tournament.format_id == format_id,
+                )
+                .first()
+            )
+            if tournament:
+                t_cache[cache_key] = tournament
+            else:
+                # 2) Only create if rounds file can be located
+                rounds_path = find_rounds_file(t_date, format_name, source)
+                if not rounds_path:
+                    print(
+                        f"  ⚠️ Rounds file NOT found for '{t_name}' on {t_date.date()} [{source.name}] (format '{format_name}'); skipping entry"
+                    )
+                    stats["tournaments_missing_rounds"] += 1
+                    continue
+                tournament, is_new_tournament = get_or_create_tournament(
+                    session=session,
+                    cache=t_cache,
+                    name=t_name,
+                    date=t_date,
+                    format_id=format_id,
+                    link=anchor,
+                    source=source,
+                )
         if is_new_tournament:
             stats["tournaments_created"] += 1
         else:
@@ -322,6 +356,9 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
     print(f"  🧾 Entries seen: {stats['entries_seen']}")
     print(
         f"  🏟️ Tournaments created: {stats['tournaments_created']}, existing: {stats['tournaments_existing']}"
+    )
+    print(
+        f"  📁 Tournaments skipped (no rounds file found): {stats['tournaments_missing_rounds']}"
     )
     print(
         f"  👤 Entries created: {stats['entries_created']}, existing: {stats['entries_existing']}"
