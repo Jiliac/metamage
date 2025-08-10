@@ -32,7 +32,7 @@ class TimestampMixin:
 def get_engine():
     """Create and configure SQLite engine with optimizations."""
     engine = create_engine(
-        DATABASE_URL,
+        _build_database_url(),
         echo=False,
         connect_args={
             "check_same_thread": False,  # Allow multi-threading
@@ -69,3 +69,15 @@ def get_database_path():
     # Go up two levels to project root, then to data/tournament.db
     project_root = os.path.dirname(os.path.dirname(current_dir))
     return os.path.join(project_root, "data", "tournament.db")
+
+
+def _build_database_url():
+    """
+    Build an absolute SQLite URL. Honors TOURNAMENT_DB_PATH if set,
+    otherwise uses the repository's data/tournament.db.
+    """
+    env_path = os.getenv("TOURNAMENT_DB_PATH")
+    db_path = (
+        os.path.abspath(env_path) if env_path else os.path.abspath(get_database_path())
+    )
+    return f"sqlite:///{db_path}"

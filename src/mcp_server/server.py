@@ -31,7 +31,16 @@ def create_readonly_engine() -> Engine:
     """
     Open SQLite in read-only mode and enforce query_only=ON.
     """
-    db_path = Path(get_database_path()).resolve()
+    # Allow override via TOURNAMENT_DB_PATH for flexibility in different environments
+    db_path_str = os.getenv("TOURNAMENT_DB_PATH") or get_database_path()
+    db_path = Path(db_path_str).resolve()
+
+    if not db_path.exists():
+        raise RuntimeError(
+            f"Database file not found at: {db_path}\n"
+            "Ensure the DB exists (ingest data first) or set TOURNAMENT_DB_PATH to the correct file."
+        )
+
     # SQLite URI with mode=ro; SQLAlchemy needs uri=True in connect args
     uri = f"file:{db_path.as_posix()}?mode=ro&cache=shared"
     engine = create_engine(
@@ -56,19 +65,22 @@ engine = create_readonly_engine()
 def _mcp_client_config() -> Dict[str, Any]:
     """
     Configuration for mcp_use to spawn this server in stdio mode as a subprocess.
+    Inherit the environment; if TOURNAMENT_DB_PATH is set, pass it explicitly.
     """
-    return {
-        "mcpServers": {
-            "mtg_tournament_mcp": {
-                "command": "python",
-                "args": ["-m", "src.mcp_server.server", "--stdio"],
-                "env": {},
-            }
-        }
+    server_cfg: Dict[str, Any] = {
+        "command": "python",
+        "args": ["-m", "src.mcp_server.server", "--stdio"],
     }
+    db_override = os.getenv("TOURNAMENT_DB_PATH")
+    if db_override:
+        server_cfg["env"] = {"TOURNAMENT_DB_PATH": db_override}
+
+    return {"mcpServers": {"mtg_tournament_mcp": server_cfg}}
 
 
-async def run_claude_agent(query: str, max_steps: int = 30, stream: bool = False) -> str:
+async def run_claude_agent(
+    query: str, max_steps: int = 30, stream: bool = False
+) -> str:
     """
     Run a Claude Sonnet agent against this MCP server using mcp_use.
     Requires ANTHROPIC_API_KEY in the environment.
@@ -88,13 +100,8 @@ async def run_claude_agent(query: str, max_steps: int = 30, stream: bool = False
     agent = MCPAgent(llm=llm, client=client, max_steps=max_steps)
 
     if stream:
-        async for chunk in agent.stream(query):
-            if hasattr(chunk, 'content') and chunk.content:
-                print(chunk.content, end="", flush=True)
-            elif isinstance(chunk, str):
-                print(chunk, end="", flush=True)
-            else:
-                print(str(chunk), end="", flush=True)
+        async for chunk in agent.astream(query):
+            print(chunk, end="", flush=True)
         print()
         return ""
     else:
@@ -238,7 +245,9 @@ def get_archetype_winrate(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="MTG Tournament MCP server and Claude agent runner")
+    parser = argparse.ArgumentParser(
+        description="MTG Tournament MCP server and Claude agent runner"
+    )
     parser.add_argument(
         "--stdio",
         action="store_true",
@@ -263,7 +272,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.agent is not None:
-        asyncio.run(run_claude_agent(args.agent, max_steps=args.max_steps, stream=args.stream))
+        asyncio.run(
+            run_claude_agent(args.agent, max_steps=args.max_steps, stream=args.stream)
+        )
     elif args.stdio:
         mcp.run(transport="stdio")
     else:
