@@ -12,7 +12,6 @@ Creates/links:
 
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple
-from pathlib import Path
 import json
 
 from sqlalchemy.orm import Session
@@ -188,9 +187,9 @@ def _parse_result(result_str: str) -> Tuple[int, int, int]:
         return (0, 0, 0)
     try:
         w = int(parts[0])
-        l = int(parts[1])
+        losses = int(parts[1])
         d = int(parts[2])
-        return (w, l, d)
+        return (w, losses, d)
     except Exception:
         return (0, 0, 0)
 
@@ -358,13 +357,13 @@ def _process_rounds_for_tournament(
                 stats["pairings_skipped_existing"] += 1
                 continue
 
-            w, l, d = _parse_result(res)
+            w, losses, d = _parse_result(res)
             pair_uuid = str(uuid4())
             mirror = e1.archetype_id == e2.archetype_id
 
             # P1 perspective
-            r1 = _result_for_side(w, l, d, is_p1=True)
-            r2 = _result_for_side(w, l, d, is_p1=False)
+            r1 = _result_for_side(w, losses, d, is_p1=True)
+            r2 = _result_for_side(w, losses, d, is_p1=False)
 
             m1 = Match(
                 entry_id=e1.id,
@@ -475,7 +474,6 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
     t_cache: Dict[str, Tournament] = {}
     p_cache: Dict[str, Player] = {}
     a_cache: Dict[str, Archetype] = {}
-    c_cache: Dict[str, Card] = {}
     card_cache = CardCache()  # For Scryfall-powered lookups
 
     stats = {
