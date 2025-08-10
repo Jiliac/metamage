@@ -102,16 +102,15 @@ async def mage(interaction: discord.Interaction, query: str):
         result = await agent.ainvoke({"messages": [("user", query)]})
         answer = result["messages"][-1].content
 
+        # Echo the query + response (like ChatGPT/Claude)
+        full_response = f"**Question:** {query}\n\n{answer}"
+
         # Discord message length safety
         max_len = 1900
-        if isinstance(answer, str):
-            text = answer
-        else:
-            text = str(answer)
-        if len(text) > max_len:
-            text = text[:max_len] + "\n… (truncated)"
+        if len(full_response) > max_len:
+            full_response = full_response[:max_len] + "\n… (truncated)"
 
-        await interaction.followup.send(text)
+        await interaction.followup.send(full_response)
     except Exception as e:
         logger.exception("Error handling /mtg query")
         await interaction.followup.send(
