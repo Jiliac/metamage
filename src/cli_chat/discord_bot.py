@@ -15,11 +15,11 @@ import discord
 from discord import app_commands
 from dotenv import load_dotenv
 
-from datetime import datetime
 from langchain_anthropic import ChatAnthropic
 from langgraph.prebuilt import create_react_agent
 
 from .mcp_client import create_mcp_client
+from .system_prompt import get_metamage_system_prompt
 
 # Load environment variables from .env file
 load_dotenv()

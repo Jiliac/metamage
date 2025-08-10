@@ -317,7 +317,8 @@ def get_archetype_winrate(
     losses = int(res["losses"]) if res and res["losses"] is not None else 0
     draws = int(res["draws"]) if res and res["draws"] is not None else 0
     total = wins + losses + draws
-    winrate = (wins / total) if total > 0 else None
+    decisive_games = wins + losses
+    winrate = (wins / decisive_games) if decisive_games > 0 else None
 
     return {
         "archetype_id": archetype_id,
