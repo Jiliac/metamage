@@ -50,28 +50,11 @@ class AgentContainer:
                         max_tokens=4096,
                     )
 
-                    # Create system prompt with current date and context
-                    current_date = datetime.now().strftime("%Y-%m-%d")
-                    system_prompt = f"""You are MetaMage, a Magic: The Gathering tournament analysis bot for a Modern format Discord server.
-
-Current date: {current_date}
-
-You have access to comprehensive MTG tournament data and can answer questions about:
-- Modern format meta analysis and trends
-- Archetype performance and win rates
-- Head-to-head matchup statistics
-- Card usage and popularity
-- Tournament results and standings
-- Deck composition analysis
-
-When users ask about recent data or "current meta", interpret this relative to {current_date}. 
-For time-sensitive queries without specific dates, default to recent data (last 30-60 days).
-
-Keep responses concise but informative. Use Discord-friendly formatting with **bold** for emphasis and bullet points for lists.
-Focus on actionable insights that help players improve their Modern gameplay."""
+                    # Get system prompt with current date
+                    system_prompt = get_metamage_system_prompt()
 
                     logger.info("Creating ReAct agent...")
-                    self._agent = create_react_agent(llm, tools, prompt=system_prompt)
+                    self._agent = create_react_agent(llm, tools, state_modifier=system_prompt)
                     logger.info("Agent ready.")
         return self._agent
 
