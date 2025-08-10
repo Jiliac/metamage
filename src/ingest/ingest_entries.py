@@ -34,7 +34,7 @@ from models import (
 )
 from ingest.ingest_players import normalize_player_handle
 from ingest.ingest_archetypes import normalize_archetype_name
-from ingest.ingest_cards import normalize_card_name
+from ingest.ingest_cards import normalize_card_name, CardCache, fetch_scryfall_data
 from ingest.rounds_finder import find_rounds_file
 
 
@@ -136,14 +136,43 @@ def get_archetype(
     return a
 
 
-def get_card(session: Session, cache: Dict[str, Card], name: str) -> Optional[Card]:
+def get_card(session: Session, card_cache: CardCache, name: str) -> Optional[Card]:
+    """
+    Get card from database using Scryfall-powered lookup.
+    First checks simple name match, then uses Scryfall API if needed.
+    """
     norm = normalize_card_name(name)
-    if norm in cache:
-        return cache[norm]
-    c = session.query(Card).filter(Card.name == norm).first()
-    if c:
-        cache[norm] = c
-    return c
+
+    # 1) Check CardCache (from ingest_cards.py logic)
+    card = card_cache.get(norm)
+    if card:
+        return card
+
+    # 2) Check database by stored (canonical) name
+    card = session.query(Card).filter(Card.name == norm).first()
+    if card:
+        card_cache.add(norm, card)
+        return card
+
+    # 3) Resolve via Scryfall, then lookup by oracle_id
+    scryfall_data = fetch_scryfall_data(name, card_cache)
+    if not scryfall_data:
+        print(f"  ⚠️ Card not found in DB and Scryfall lookup failed: {name}")
+        return None
+
+    oracle_id = scryfall_data.get("oracle_id")
+    if not oracle_id:
+        print(f"  ⚠️ Missing oracle_id from Scryfall for: {name}")
+        return None
+
+    # Try to find existing card by oracle_id
+    existing = session.query(Card).filter(Card.scryfall_oracle_id == oracle_id).first()
+    if existing:
+        card_cache.add(norm, existing)
+        return existing
+
+    print(f"  ⚠️ Card not found in DB (skipping): {name}")
+    return None
 
 
 def _parse_result(result_str: str) -> Tuple[int, int, int]:
@@ -368,7 +397,7 @@ def upsert_deck_cards_for_entry(
     entry: TournamentEntry,
     mainboard: List[Dict[str, Any]],
     sideboard: List[Dict[str, Any]],
-    card_cache: Dict[str, Card],
+    card_cache: CardCache,
 ) -> Tuple[int, int, int]:
     """
     Create deck_cards for the entry from mainboard/sideboard lists if none exist yet.
@@ -429,6 +458,7 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
     p_cache: Dict[str, Player] = {}
     a_cache: Dict[str, Archetype] = {}
     c_cache: Dict[str, Card] = {}
+    card_cache = CardCache()  # For Scryfall-powered lookups
 
     stats = {
         "entries_seen": 0,
@@ -499,9 +529,17 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
                 # 2) Only create if rounds file can be located
                 rounds_path = find_rounds_file(t_date, format_name, source)
                 if not rounds_path:
-                    print(
-                        f"  ⚠️ Rounds file NOT found for '{t_name}' on {t_date.date()} [{source.name}] (format '{format_name}'); skipping entry"
-                    )
+                    # Only warn once per tournament and only for dates after Nov 1, 2024
+                    warn_key = f"{t_name}|{t_date.date()}"
+                    nov_1_2024 = datetime(2024, 11, 1).date()
+                    if (
+                        warn_key not in warned_missing_rounds
+                        and t_date.date() > nov_1_2024
+                    ):
+                        print(
+                            f"  ⚠️ Rounds file NOT found for '{t_name}' on {t_date.date()} [{source.name}] (format '{format_name}'); skipping entry"
+                        )
+                        warned_missing_rounds.add(warn_key)
                     stats["tournaments_missing_rounds"] += 1
                     continue
                 tournament, is_new_tournament = get_or_create_tournament(
@@ -577,7 +615,7 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
         mb = e.get("Mainboard", [])
         sb = e.get("Sideboard", [])
         inserted, skipped_missing, _ = upsert_deck_cards_for_entry(
-            session, entry, mb, sb, c_cache
+            session, entry, mb, sb, card_cache
         )
         stats["deck_card_rows_written"] += inserted
         stats["deck_cards_missing_cards"] += skipped_missing
