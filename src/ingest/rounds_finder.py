@@ -95,7 +95,10 @@ def _list_candidate_files(day_dir: Path, format_slug: str) -> List[Path]:
 
 
 def find_rounds_file(
-    date: datetime, format_name: str, source: TournamentSource
+    date: datetime,
+    format_name: str,
+    source: TournamentSource,
+    warned_multiple: set = None,
 ) -> Optional[Path]:
     """
     Attempt to locate the rounds JSON file for a tournament.
@@ -120,10 +123,13 @@ def find_rounds_file(
         # print(f"TOURNAMENT FILE: {candidates[0]}")
         return candidates[0]
     elif len(candidates) > 1:
-        # Ambiguous for now; future improvement could disambiguate by tournament name or players
-        print(
-            f"  ⚠️ Multiple rounds files match {fmt_slug} on {yyyy}-{mm}-{dd}: {len(candidates)} candidates; skipping for now"
-        )
+        # Only warn once per day/format combination
+        warn_key = f"{fmt_slug}|{yyyy}-{mm}-{dd}"
+        if warned_multiple is not None and warn_key not in warned_multiple:
+            print(
+                f"  ⚠️ Multiple rounds files match {fmt_slug} on {yyyy}-{mm}-{dd}: {len(candidates)} candidates; skipping for now"
+            )
+            warned_multiple.add(warn_key)
         return None
     else:
         return None

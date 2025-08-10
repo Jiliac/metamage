@@ -319,7 +319,9 @@ def _process_rounds_for_tournament(
         "file_ambiguous": 0,
     }
 
-    rounds_path = find_rounds_file(tournament.date, format_name, tournament.source)
+    rounds_path = find_rounds_file(
+        tournament.date, format_name, tournament.source, None
+    )
     if not rounds_path:
         stats["file_missing"] += 1
         return stats
@@ -488,8 +490,19 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
     # Track tournaments we touched to finalize matches/standings after entries
     touched_tournaments: Dict[str, Tournament] = {}
 
+    # Track tournaments already warned about missing rounds files
+    warned_missing_rounds: set = set()
+
+    # Track multiple rounds files warnings
+    warned_multiple_rounds: set = set()
+
     for i, e in enumerate(entries, start=1):
         stats["entries_seen"] += 1
+
+        # Testing guard: only process specific tournament file
+        # tournament_file = e.get("TournamentFile", "")
+        # if tournament_file != "pauper-challenge-32-2025-08-0312806324":
+        #     continue
 
         t_name = e.get("Tournament")
         date_str = e.get("Date")
@@ -527,7 +540,9 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
                 t_cache[cache_key] = tournament
             else:
                 # 2) Only create if rounds file can be located
-                rounds_path = find_rounds_file(t_date, format_name, source)
+                rounds_path = find_rounds_file(
+                    t_date, format_name, source, warned_multiple_rounds
+                )
                 if not rounds_path:
                     # Only warn once per tournament and only for dates after Nov 1, 2024
                     warn_key = f"{t_name}|{t_date.date()}"
