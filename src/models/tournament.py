@@ -88,6 +88,7 @@ class TournamentEntry(Base, TimestampMixin):
     wins = Column(Integer, nullable=False, default=0)
     losses = Column(Integer, nullable=False, default=0)
     draws = Column(Integer, nullable=False, default=0)
+    rank = Column(Integer, nullable=False, default=0)
     decklist_url = Column(Text, nullable=True)
 
     # Relationships
