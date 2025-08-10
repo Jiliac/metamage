@@ -119,19 +119,22 @@ def main():
         print(f"✅ Format ID: {format_id}")
 
         # Determine what to ingest
+        any_flag_set = any([args.archetypes, args.players, args.cards, args.entries])
+
         if args.archetypes:
-            print("🎭 Ingesting archetypes only...")
+            print("🎭 Ingesting archetypes...")
             ingest_archetypes(session, entries, format_id)
-        elif args.players:
-            print("👥 Ingesting players only...")
+        if args.players:
+            print("👥 Ingesting players...")
             ingest_players(session, entries)
-        elif args.cards:
-            print("🃏 Ingesting cards only...")
+        if args.cards:
+            print("🃏 Ingesting cards...")
             ingest_cards(session, entries)
-        elif args.entries:
+        if args.entries:
             print("🧾 Ingesting tournaments, entries and deck cards (no matches)...")
             ingest_entries(session, entries, format_id)
-        else:
+
+        if not any_flag_set:
             print("📦 Ingesting all data types...")
             # Ingest implemented data types
             ingest_archetypes(session, entries, format_id)
