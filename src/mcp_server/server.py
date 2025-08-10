@@ -7,7 +7,7 @@ from fastmcp import FastMCP
 from sqlalchemy import create_engine, text, event
 from sqlalchemy.engine import Engine
 
-from models import get_database_path
+from ..models import get_database_path
 
 mcp = FastMCP(
     name="MTG Tournament MCP",
