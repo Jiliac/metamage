@@ -3,7 +3,7 @@ import asyncio
 import argparse
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from fastmcp import FastMCP
 from sqlalchemy import create_engine, text, event
@@ -80,7 +80,7 @@ async def run_claude_agent(query: str, max_steps: int = 30, stream: bool = False
     if not os.getenv("ANTHROPIC_API_KEY"):
         raise RuntimeError("ANTHROPIC_API_KEY is not set in the environment")
 
-    model = os.getenv("CLAUDE_MODEL", "claude-3-7-sonnet-2025-05-21")
+    model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
 
     client = MCPClient.from_dict(_mcp_client_config())
     llm = ChatAnthropic(model=model)
@@ -88,8 +88,13 @@ async def run_claude_agent(query: str, max_steps: int = 30, stream: bool = False
     agent = MCPAgent(llm=llm, client=client, max_steps=max_steps)
 
     if stream:
-        async for chunk in agent.astream(query):
-            print(chunk, end="", flush=True)
+        async for chunk in agent.stream(query):
+            if hasattr(chunk, 'content') and chunk.content:
+                print(chunk.content, end="", flush=True)
+            elif isinstance(chunk, str):
+                print(chunk, end="", flush=True)
+            else:
+                print(str(chunk), end="", flush=True)
         print()
         return ""
     else:
@@ -257,11 +262,10 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    if args.stdio:
-        mcp.run(transport="stdio")
-    elif args.agent is not None:
+    if args.agent is not None:
         asyncio.run(run_claude_agent(args.agent, max_steps=args.max_steps, stream=args.stream))
+    elif args.stdio:
+        mcp.run(transport="stdio")
     else:
-        host = os.getenv("MCP_HOST", "127.0.0.1")
-        port = int(os.getenv("MCP_PORT", "9000"))
-        mcp.run(transport="http", host=host, port=port)
+        # Default to stdio for Claude Desktop compatibility
+        mcp.run(transport="stdio")

@@ -64,4 +64,8 @@ def get_session_factory():
 
 def get_database_path():
     """Get the full path to the database file."""
-    return os.path.abspath("data/tournament.db")
+    # Get the directory containing this file (src/models/)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    # Go up two levels to project root, then to data/tournament.db
+    project_root = os.path.dirname(os.path.dirname(current_dir))
+    return os.path.join(project_root, "data", "tournament.db")
