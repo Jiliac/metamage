@@ -11,6 +11,8 @@ dependencies = [
     "fastmcp",
     "mcp-use>=0.3.0",
     "langchain-anthropic>=0.3.0",
+    "langchain-mcp-adapters",
+    "langgraph",
     "litellm>=1.75.4",
 ]
 
