@@ -254,6 +254,7 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
 
     stats = {
         "entries_seen": 0,
+        "entries_filtered": 0,
         "tournaments_created": 0,
         "tournaments_existing": 0,
         "entries_created": 0,
@@ -277,6 +278,43 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
         raise ValueError(f"Format id not found: {format_id}")
     format_name = str(format_obj.name).strip().lower()
 
+    # Pre-load existing tournaments for this format to enable filtering
+    print("🔍 Pre-loading existing tournaments for filtering...")
+    existing_tournaments = (
+        session.query(Tournament).filter(Tournament.format_id == format_id).all()
+    )
+    existing_tournament_keys = {
+        f"{t.name}|{t.date.isoformat()}|{format_id}" for t in existing_tournaments
+    }
+    for t in existing_tournaments:
+        cache_key = f"{t.name}|{t.date.isoformat()}|{format_id}"
+        t_cache[cache_key] = t
+    print(f"  📊 Found {len(existing_tournaments)} existing tournaments")
+
+    # Pre-filter entries to skip those from tournaments already in DB
+    filtered_entries = []
+    for e in entries:
+        t_name = e.get("Tournament")
+        date_str = e.get("Date")
+        if not t_name or not date_str:
+            filtered_entries.append(e)
+            continue
+
+        try:
+            t_date = parse_iso_datetime(date_str)
+            cache_key = f"{t_name}|{t_date.isoformat()}|{format_id}"
+            if cache_key not in existing_tournament_keys:
+                filtered_entries.append(e)
+            else:
+                stats["entries_filtered"] += 1
+        except Exception:
+            filtered_entries.append(e)
+
+    print(
+        f"  🚮 Filtered out {stats['entries_filtered']} entries from existing tournaments"
+    )
+    print(f"  📝 Processing {len(filtered_entries)} new entries")
+
     # Track tournaments we touched to finalize matches/standings after entries
     touched_tournaments: Dict[str, Tournament] = {}
 
@@ -286,12 +324,12 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
     # Track multiple rounds files warnings
     warned_multiple_rounds: set = set()
 
-    for i, e in enumerate(entries, start=1):
+    for i, e in enumerate(filtered_entries, start=1):
         stats["entries_seen"] += 1
 
         # Testing guard: only process specific tournament file
         # tournament_file = e.get("TournamentFile", "")
-        # if tournament_file != "pauper-challenge-32-2025-08-0312806324":
+        # if tournament_file != "modern-challenge-32-2025-08-0412806330":
         #     continue
 
         t_name = e.get("Tournament")
@@ -429,9 +467,9 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
         stats["deck_card_rows_written"] += inserted
         stats["deck_cards_missing_cards"] += skipped_missing
 
-        if (i % 50) == 0:
+        if (i % 500) == 0:
             session.flush()
-            print(f"  📊 Processed {i}/{len(entries)} entries...")
+            print(f"  📊 Processed {i}/{len(filtered_entries)} entries...")
 
     # After processing all entries, finalize matches + standings per tournament
     for t in touched_tournaments.values():
@@ -450,6 +488,7 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
 
     print("\n📊 Entries Ingestion Summary:")
     print(f"  🧾 Entries seen: {stats['entries_seen']}")
+    print(f"  🚮 Entries filtered (existing tournaments): {stats['entries_filtered']}")
     print(
         f"  🏟️ Tournaments created: {stats['tournaments_created']}, existing: {stats['tournaments_existing']}"
     )
