@@ -132,17 +132,20 @@ def upsert_deck_cards_for_entry(
     card_cache: Dict[str, Card],
 ) -> Tuple[int, int, int]:
     """
-    Rebuild deck_cards for the entry from mainboard/sideboard lists.
+    Create deck_cards for the entry from mainboard/sideboard lists if none exist yet.
+    If deck_cards already exist for the entry, skip and return (0, 0, 0).
     Returns tuple: (inserted, skipped_missing_cards, total_expected)
     """
     inserted = 0
     skipped = 0
     total_expected = 0
 
-    # Clear existing deck cards for idempotency
-    session.query(DeckCard).filter(DeckCard.entry_id == entry.id).delete(
-        synchronize_session=False
+    # If this entry already has deck cards, skip rebuilding to keep ingest idempotent
+    existing_count = (
+        session.query(DeckCard).filter(DeckCard.entry_id == entry.id).count()
     )
+    if existing_count > 0:
+        return 0, 0, 0
 
     def handle_section(items: List[Dict[str, Any]], board: BoardType):
         nonlocal inserted, skipped, total_expected
