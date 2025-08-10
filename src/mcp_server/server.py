@@ -24,6 +24,7 @@ mcp = FastMCP(
     """,
 )
 
+
 def create_readonly_engine() -> Engine:
     """
     Open SQLite in read-only mode and enforce query_only=ON.
@@ -46,7 +47,9 @@ def create_readonly_engine() -> Engine:
 
     return engine
 
+
 engine = create_readonly_engine()
+
 
 def _validate_select_only(sql: str) -> str:
     """
@@ -62,15 +65,30 @@ def _validate_select_only(sql: str) -> str:
     if not (lowered.startswith("select") or lowered.startswith("with")):
         raise ValueError("Only SELECT queries are allowed (including WITH ... SELECT).")
     forbidden = [
-        "insert", "update", "delete", "alter", "drop", "create",
-        "attach", "detach", "pragma", "begin", "commit", "rollback",
-        "vacuum", "reindex", "replace",
+        "insert",
+        "update",
+        "delete",
+        "alter",
+        "drop",
+        "create",
+        "attach",
+        "detach",
+        "pragma",
+        "begin",
+        "commit",
+        "rollback",
+        "vacuum",
+        "reindex",
+        "replace",
     ]
     if any(f in lowered for f in forbidden):
-        raise ValueError("Query contains forbidden keywords; only read-only SELECT is allowed.")
+        raise ValueError(
+            "Query contains forbidden keywords; only read-only SELECT is allowed."
+        )
     if ";" in s:
         raise ValueError("Multiple statements are not allowed.")
     return s
+
 
 @mcp.tool
 def query_database(sql: str, limit: int = 1000) -> Dict[str, Any]:
@@ -101,6 +119,7 @@ def query_database(sql: str, limit: int = 1000) -> Dict[str, Any]:
         ],
     }
 
+
 @mcp.tool
 def get_archetype_winrate(
     archetype_id: str,
@@ -116,7 +135,9 @@ def get_archetype_winrate(
         start = datetime.fromisoformat(start_date)
         end = datetime.fromisoformat(end_date)
     except Exception:
-        raise ValueError("Dates must be ISO format (e.g., 2025-01-01 or 2025-01-01T00:00:00)")
+        raise ValueError(
+            "Dates must be ISO format (e.g., 2025-01-01 or 2025-01-01T00:00:00)"
+        )
     if end < start:
         raise ValueError("end_date must be >= start_date")
 
@@ -136,10 +157,14 @@ def get_archetype_winrate(
         sql += " AND m.mirror = 0"
 
     with engine.connect() as conn:
-        res = conn.execute(
-            text(sql),
-            {"arch_id": archetype_id, "start": start, "end": end},
-        ).mappings().first()
+        res = (
+            conn.execute(
+                text(sql),
+                {"arch_id": archetype_id, "start": start, "end": end},
+            )
+            .mappings()
+            .first()
+        )
 
     wins = int(res["wins"]) if res and res["wins"] is not None else 0
     losses = int(res["losses"]) if res and res["losses"] is not None else 0
@@ -158,6 +183,7 @@ def get_archetype_winrate(
         "matches": total,
         "winrate": winrate,
     }
+
 
 if __name__ == "__main__":
     host = os.getenv("MCP_HOST", "127.0.0.1")
