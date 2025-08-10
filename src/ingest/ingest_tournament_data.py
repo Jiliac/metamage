@@ -23,6 +23,7 @@ from models import Base, get_engine, get_session_factory, Format
 from ingest.ingest_archetypes import ingest_archetypes
 from ingest.ingest_players import ingest_players
 from ingest.ingest_cards import ingest_cards
+from ingest.ingest_entries import ingest_entries
 
 
 def extract_format_from_filename(filename: str) -> str:
@@ -73,6 +74,11 @@ def main():
     )
     parser.add_argument("--players", action="store_true", help="Ingest only players")
     parser.add_argument("--cards", action="store_true", help="Ingest only cards")
+    parser.add_argument(
+        "--entries",
+        action="store_true",
+        help="Ingest tournaments, entries and deck cards (no matches)",
+    )
 
     args = parser.parse_args()
 
@@ -122,14 +128,17 @@ def main():
         elif args.cards:
             print("🃏 Ingesting cards only...")
             ingest_cards(session, entries)
+        elif args.entries:
+            print("🧾 Ingesting tournaments, entries and deck cards (no matches)...")
+            ingest_entries(session, entries, format_id)
         else:
             print("📦 Ingesting all data types...")
             # Ingest implemented data types
             ingest_archetypes(session, entries, format_id)
             ingest_players(session, entries)
             ingest_cards(session, entries)
-            # TODO: Add other ingest functions
-            # ingest_tournaments(session, entries, format_id)
+            # Now ingest tournaments, entries and deck cards last
+            ingest_entries(session, entries, format_id)
 
         # Commit all changes
         session.commit()
