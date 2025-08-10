@@ -72,7 +72,7 @@ class Card(Base, TimestampMixin):
     id = uuid_pk()
     name = Column(CaseInsensitiveText(200), nullable=False, index=True)
     scryfall_oracle_id = Column(
-        String(36), unique=True, nullable=True, index=True
+        String(36), unique=True, nullable=False, index=True
     )  # UUID
 
     # Relationships
