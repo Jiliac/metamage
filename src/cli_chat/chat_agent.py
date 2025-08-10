@@ -3,7 +3,6 @@
 
 import asyncio
 import os
-from typing import Optional
 
 from langchain_anthropic import ChatAnthropic
 from langgraph.prebuilt import create_react_agent
@@ -37,7 +36,7 @@ class MTGChatAgent:
             # Create Claude Sonnet LLM
             print("🧠 Initializing Claude Sonnet...")
             llm = ChatAnthropic(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-sonnet-4-20250514",
                 temperature=0.1,  # Low temperature for consistent analysis
                 max_tokens=4096,
             )
