@@ -215,19 +215,34 @@ def find_rounds_file(
         # print(f"TOURNAMENT FILE: {candidates[0]}")
         return candidates[0]
     elif len(candidates) > 1:
-        # Only warn once per day/format combination
-        warn_key = f"{fmt_slug}|{yyyy}-{mm}-{dd}"
-        if warned_multiple is not None and warn_key not in warned_multiple:
-            print(
-                f"  ⚠️ Multiple rounds files match {fmt_slug} on {yyyy}-{mm}-{dd}: {len(candidates)} candidates; skipping for now"
-            )
-            warned_multiple.add(warn_key)
-        return None
+        # If we have a specific tournament name, proceed to content-based matching
+        # to disambiguate; otherwise warn and return None
+        if not tournament_name:
+            # Only warn once per day/format combination
+            warn_key = f"{fmt_slug}|{yyyy}-{mm}-{dd}"
+            if warned_multiple is not None and warn_key not in warned_multiple:
+                print(
+                    f"  ⚠️ Multiple rounds files match {fmt_slug} on {yyyy}-{mm}-{dd}: {len(candidates)} candidates; skipping for now"
+                )
+                warned_multiple.add(warn_key)
+            return None
+        # Continue to content-based matching with the filename candidates
 
     # Try 2: Fallback to content-based matching
-    content_candidates = _list_candidate_files_by_content(
-        day_dir, format_name, tournament_name, expected_winner
-    )
+    # If we have filename candidates from step 1, check only those; otherwise scan all files
+    if len(candidates) > 1:
+        # We have multiple filename candidates, check their content for exact tournament name match
+        content_candidates = []
+        for candidate in candidates:
+            if _check_tournament_match(
+                candidate, format_name, tournament_name, expected_winner
+            ):
+                content_candidates.append(candidate)
+    else:
+        # No filename candidates, scan all files by content
+        content_candidates = _list_candidate_files_by_content(
+            day_dir, format_name, tournament_name, expected_winner
+        )
     if len(content_candidates) == 1:
         # print(f"TOURNAMENT FILE (by content): {content_candidates[0]}")
         return content_candidates[0]

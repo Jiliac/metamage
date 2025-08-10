@@ -320,7 +320,7 @@ def _process_rounds_for_tournament(
     }
 
     rounds_path = find_rounds_file(
-        tournament.date, format_name, tournament.source, None
+        tournament.date, format_name, tournament.source, None, tournament.name
     )
     if not rounds_path:
         stats["file_missing"] += 1
@@ -541,7 +541,7 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
             else:
                 # 2) Only create if rounds file can be located
                 rounds_path = find_rounds_file(
-                    t_date, format_name, source, warned_multiple_rounds
+                    t_date, format_name, source, warned_multiple_rounds, t_name
                 )
                 if not rounds_path:
                     # Only warn once per tournament and only for dates after Nov 1, 2024
