@@ -1,0 +1,1 @@
+MTG Tournament Analysis Bot - Ask questions about Magic: The Gathering competitive data! Get archetype winrates, matchup statistics, card popularity trends, and meta analysis from thousands of tournament results. Powered by AI and comprehensive tournament databases.

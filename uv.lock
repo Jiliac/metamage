@@ -200,6 +200,7 @@ dependencies = [
     { name = "langchain-anthropic" },
     { name = "langchain-mcp-adapters" },
     { name = "langgraph" },
+    { name = "python-dotenv" },
     { name = "requests" },
     { name = "sqlalchemy" },
 ]
@@ -218,6 +219,7 @@ requires-dist = [
     { name = "langchain-anthropic", specifier = ">=0.3.0" },
     { name = "langchain-mcp-adapters" },
     { name = "langgraph" },
+    { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "requests", specifier = ">=2.32.4" },
     { name = "sqlalchemy", specifier = ">=2.0.0" },
 ]

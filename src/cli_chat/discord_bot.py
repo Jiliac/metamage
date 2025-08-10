@@ -13,11 +13,15 @@ import logging
 
 import discord
 from discord import app_commands
+from dotenv import load_dotenv
 
 from langchain_anthropic import ChatAnthropic
 from langgraph.prebuilt import create_react_agent
 
 from .mcp_client import create_mcp_client
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configure basic logging
 logging.basicConfig(level=logging.INFO)
