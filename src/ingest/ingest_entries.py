@@ -12,11 +12,12 @@ Creates/links:
 
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple
+from pathlib import Path
+import json
 
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
 from uuid import uuid4
-import json
 
 # Local imports (path manipulation handled by caller script)
 from models import (
@@ -566,8 +567,12 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
                         warn_key not in warned_missing_rounds
                         and t_date.date() > nov_1_2024
                     ):
+                        # Add tournament entry details for debugging
+                        tournament_file = e.get("TournamentFile", "unknown")
+                        entry_player = e.get("Player", "unknown")
+
                         print(
-                            f"  ⚠️ Rounds file NOT found for '{t_name}' on {t_date.date()} [{source.name}] (format '{format_name}'); skipping entry"
+                            f"  ⚠️ Rounds file NOT found for tournament '{t_name}' on {t_date.date()} [{source.name}] (format '{format_name}') | Entry: player='{entry_player}' file='{tournament_file}'; skipping entry"
                         )
                         warned_missing_rounds.add(warn_key)
                     stats["tournaments_missing_rounds"] += 1
