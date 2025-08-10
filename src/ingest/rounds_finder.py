@@ -79,37 +79,64 @@ def _format_slug(format_name: str) -> str:
     return "-".join(format_name.strip().lower().split())
 
 
-def _check_tournament_format_in_json(file_path: Path, expected_format: str) -> bool:
+def _check_tournament_match(
+    file_path: Path,
+    expected_format: str,
+    expected_tournament_name: str = None,
+    expected_winner: str = None,
+) -> bool:
     """
-    Read a JSON file and check if it matches the expected tournament format.
+    Read a JSON file and check if it matches the expected tournament criteria.
 
     Args:
         file_path: Path to the JSON file
         expected_format: Expected format name (e.g., 'pauper', 'modern')
+        expected_tournament_name: Expected tournament name for exact matching
+        expected_winner: Expected 1st place player name for disambiguation
 
     Returns:
-        True if the file appears to be for the expected format
+        True if the file matches the criteria
     """
     try:
         import json
 
         data = json.loads(file_path.read_text(encoding="utf-8"))
 
-        # Check tournament name for format keywords
+        # Get tournament name
         tournament_info = data.get("Tournament", {})
         if isinstance(tournament_info, dict):
-            tournament_name = tournament_info.get("Name", "").lower()
+            tournament_name = tournament_info.get("Name", "")
         else:
-            # Sometimes Tournament is just a string name
-            tournament_name = str(tournament_info).lower()
+            tournament_name = str(tournament_info)
 
-        # Check if the expected format appears in the tournament name
-        expected_lower = expected_format.lower()
-        if expected_lower in tournament_name:
-            return True
+        # 1. Check exact tournament name match first (most specific)
+        if expected_tournament_name:
+            if tournament_name.strip() == expected_tournament_name.strip():
+                return True
 
-        # Could add more sophisticated checks here (e.g., check deck formats, etc.)
-        return False
+        # 2. Check format in tournament name
+        expected_format_lower = expected_format.lower()
+        if expected_format_lower not in tournament_name.lower():
+            return False
+
+        # 3. If we have an expected winner, check standings
+        if expected_winner:
+            standings = data.get("Standings", [])
+            if standings:
+                # Find the 1st place player (lowest rank)
+                first_place = min(
+                    standings, key=lambda s: s.get("Rank", float("inf")), default=None
+                )
+                if first_place:
+                    actual_winner = first_place.get("Player", "").strip()
+                    expected_winner_clean = expected_winner.strip()
+                    if actual_winner == expected_winner_clean:
+                        return True
+                    # If winner doesn't match, this is probably not the right tournament
+                    return False
+
+        # 4. Default: format matches, so it's a candidate
+        return True
 
     except Exception:
         # If we can't read/parse the file, assume it's not a match
@@ -131,10 +158,15 @@ def _list_candidate_files(day_dir: Path, format_slug: str) -> List[Path]:
     return sorted(candidates)
 
 
-def _list_candidate_files_by_content(day_dir: Path, format_name: str) -> List[Path]:
+def _list_candidate_files_by_content(
+    day_dir: Path,
+    format_name: str,
+    tournament_name: str = None,
+    expected_winner: str = None,
+) -> List[Path]:
     """
     Fallback: List files in the day directory by reading their JSON content
-    and checking if they match the expected format.
+    and checking if they match the expected criteria.
     """
     if not day_dir.exists() or not day_dir.is_dir():
         return []
@@ -143,7 +175,9 @@ def _list_candidate_files_by_content(day_dir: Path, format_name: str) -> List[Pa
         if (
             p.is_file()
             and p.suffix.lower() == ".json"
-            and _check_tournament_format_in_json(p, format_name)
+            and _check_tournament_match(
+                p, format_name, tournament_name, expected_winner
+            )
         ):
             candidates.append(p)
     return sorted(candidates)
@@ -154,6 +188,8 @@ def find_rounds_file(
     format_name: str,
     source: TournamentSource,
     warned_multiple: set = None,
+    tournament_name: str = None,
+    expected_winner: str = None,
 ) -> Optional[Path]:
     """
     Attempt to locate the rounds JSON file for a tournament.
@@ -189,12 +225,37 @@ def find_rounds_file(
         return None
 
     # Try 2: Fallback to content-based matching
-    content_candidates = _list_candidate_files_by_content(day_dir, format_name)
+    content_candidates = _list_candidate_files_by_content(
+        day_dir, format_name, tournament_name, expected_winner
+    )
     if len(content_candidates) == 1:
         # print(f"TOURNAMENT FILE (by content): {content_candidates[0]}")
         return content_candidates[0]
     elif len(content_candidates) > 1:
-        # Only warn once per day/format combination
+        # If we have multiple candidates but provided a tournament name, try exact match priority
+        if tournament_name:
+            exact_matches = []
+            for candidate in content_candidates:
+                try:
+                    import json
+
+                    data = json.loads(candidate.read_text(encoding="utf-8"))
+                    tournament_info = data.get("Tournament", {})
+                    actual_name = (
+                        tournament_info.get("Name", "")
+                        if isinstance(tournament_info, dict)
+                        else str(tournament_info)
+                    )
+                    if actual_name.strip() == tournament_name.strip():
+                        exact_matches.append(candidate)
+                except Exception:
+                    continue
+
+            if len(exact_matches) == 1:
+                # Found exactly one exact tournament name match
+                return exact_matches[0]
+
+        # Still multiple candidates, show warning
         warn_key = f"content-{format_name}|{yyyy}-{mm}-{dd}"
         if warned_multiple is not None and warn_key not in warned_multiple:
             print(
