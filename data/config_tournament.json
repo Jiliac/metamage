@@ -1,0 +1,10 @@
+[
+  {
+    "source": "MELEE",
+    "data_folder": "/Users/valentin/Development/dev-win/MTG_decklistcache/Tournaments/MTGmelee"
+  },
+  {
+    "source": "MTGO",
+    "data_folder": "/Users/valentin/Development/dev-win/MTGORecorder/Data"
+  }
+]

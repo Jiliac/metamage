@@ -1,0 +1,105 @@
+{
+  "Tournament": {
+    "Id": 12724448,
+    "Date": "2025-01-01T18:00:00",
+    "Name": "Modern Challenge 32",
+    "Uri": null,
+    "JsonFile": null,
+    "ForceRedownload": false
+  },
+  "Rounds": [
+    {
+      "RoundName": "Round 10",
+      "Matches": [
+        {
+          "Player1": "Videgain",
+          "Player2": "Callenutg1",
+          "Result": "0-2-0"
+        },
+        {
+          "Player1": "kanister",
+          "Player2": "AlexanderRosdahl",
+          "Result": "0-2-0"
+        }
+      ]
+    },
+    {
+      "RoundName": "Round 11",
+      "Matches": [
+        {
+          "Player1": "AlexanderRosdahl",
+          "Player2": "Callenutg1",
+          "Result": "0-2-0"
+        }
+      ]
+    }
+  ],
+  "Standings": [
+    {
+      "Rank": 6,
+      "Player": "F4SE",
+      "Points": 21,
+      "Wins": 0,
+      "Losses": 0,
+      "Draws": 0,
+      "OMWP": 0.6406000000000001,
+      "GWP": 0.7143,
+      "OGWP": 0.5913
+    },
+    {
+      "Rank": 5,
+      "Player": "Terminus0",
+      "Points": 24,
+      "Wins": 0,
+      "Losses": 0,
+      "Draws": 0,
+      "OMWP": 0.7045999999999999,
+      "GWP": 0.7368000000000001,
+      "OGWP": 0.6279
+    },
+    {
+      "Rank": 4,
+      "Player": "Videgain",
+      "Points": 21,
+      "Wins": 0,
+      "Losses": 0,
+      "Draws": 0,
+      "OMWP": 0.625,
+      "GWP": 0.6,
+      "OGWP": 0.6143
+    },
+    {
+      "Rank": 3,
+      "Player": "kanister",
+      "Points": 24,
+      "Wins": 0,
+      "Losses": 0,
+      "Draws": 0,
+      "OMWP": 0.6667000000000001,
+      "GWP": 0.7895,
+      "OGWP": 0.5792
+    },
+    {
+      "Rank": 2,
+      "Player": "AlexanderRosdahl",
+      "Points": 27,
+      "Wins": 0,
+      "Losses": 0,
+      "Draws": 0,
+      "OMWP": 0.5796,
+      "GWP": 0.7143,
+      "OGWP": 0.5224
+    },
+    {
+      "Rank": 1,
+      "Player": "Callenutg1",
+      "Points": 30,
+      "Wins": 0,
+      "Losses": 0,
+      "Draws": 0,
+      "OMWP": 0.6213000000000001,
+      "GWP": 0.75,
+      "OGWP": 0.5732
+    }
+  ]
+}

@@ -48,6 +48,15 @@ def detect_source(anchor_uri: Optional[str]) -> TournamentSource:
     return TournamentSource.OTHER
 
 
+def clean_mtgo_url(url: Optional[str]) -> Optional[str]:
+    """Remove fragment (hash) from mtgo.com URLs."""
+    if not url:
+        return url
+    if "mtgo.com" in url.lower() and "#" in url:
+        return url.split("#")[0]
+    return url
+
+
 def get_or_create_tournament(
     session: Session,
     cache: Dict[str, Tournament],
@@ -78,7 +87,13 @@ def get_or_create_tournament(
         cache[key] = existing
         return existing, False
 
-    t = Tournament(name=name, date=date, format_id=format_id, source=source, link=link)
+    t = Tournament(
+        name=name,
+        date=date,
+        format_id=format_id,
+        source=source,
+        link=clean_mtgo_url(link),
+    )
     session.add(t)
     session.flush()
     cache[key] = t
