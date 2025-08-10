@@ -115,7 +115,7 @@ async def mtgquery(interaction: discord.Interaction, query: str):
 
 @bot.tree.command(name="mtgping", description="Health check for MTG bot")
 async def mtgping(interaction: discord.Interaction):
-    await interaction.response.send_message("MTG Bot is alive! 🏓", ephemeral=True)
+    await interaction.response.send_message("MetaMage is alive! 🏓", ephemeral=True)
 
 
 def main():
