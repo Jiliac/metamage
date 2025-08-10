@@ -261,15 +261,17 @@ def ingest_cards(session: Session, entries: List[Dict[str, Any]]):
             cache.mark_processed(normalized_name)
             stats["processed"] += 1
 
+            # Commit immediately to avoid losing this card if next one fails
+            session.commit()
+
         except Exception as e:
             print(f"  ⚠️ Error processing card '{card_name}': {e}")
             session.rollback()
             stats["skipped_invalid"] += 1
             stats["scryfall_failed"] += 1
 
-        # Commit every 20 cards to avoid losing progress
-        if (i + 1) % 20 == 0:
-            session.commit()
+        # Progress update every 50 cards
+        if (i + 1) % 50 == 0:
             print(f"  📊 Processed {i + 1}/{len(unique_card_names)} unique cards...")
 
     # Print summary
@@ -293,7 +295,3 @@ def ingest_cards(session: Session, entries: List[Dict[str, Any]]):
             print(f"    - {name}")
     elif stats["new_created"] == 0:
         print("  ℹ️ No new cards created (all already existed)")
-
-    # Final commit for any remaining cards
-    session.commit()
-    print("  💾 Final commit completed")
