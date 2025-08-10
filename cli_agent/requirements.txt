@@ -2,7 +2,7 @@
 litellm>=1.65.0
 pyyaml>=6.0.0
 
-# MCP support (if needed for direct client access)
+# MCP support for direct client access
 mcp>=1.0.0
 
 # Optional: Enhanced CLI experience
