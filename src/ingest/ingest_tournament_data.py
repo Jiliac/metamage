@@ -77,7 +77,7 @@ def main():
     parser.add_argument(
         "--entries",
         action="store_true",
-        help="Ingest tournaments, entries and deck cards (no matches)",
+        help="Ingest tournaments, entries, deck cards and matches",
     )
 
     args = parser.parse_args()
@@ -131,7 +131,7 @@ def main():
             print("🃏 Ingesting cards...")
             ingest_cards(session, entries)
         if args.entries:
-            print("🧾 Ingesting tournaments, entries and deck cards (no matches)...")
+            print("🧾 Ingesting tournaments, entries, deck cards and matches...")
             ingest_entries(session, entries, format_id)
 
         if not any_flag_set:
@@ -140,7 +140,7 @@ def main():
             ingest_archetypes(session, entries, format_id)
             ingest_players(session, entries)
             ingest_cards(session, entries)
-            # Now ingest tournaments, entries and deck cards last
+            # Now ingest tournaments, entries, deck cards and matches last
             ingest_entries(session, entries, format_id)
 
         # Commit all changes
