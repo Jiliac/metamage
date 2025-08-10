@@ -51,7 +51,9 @@ class Tournament(Base, TimestampMixin):
 
     # Relationships
     format = relationship("Format", back_populates="tournaments")
-    entries = relationship("TournamentEntry", back_populates="tournament")
+    entries = relationship(
+        "TournamentEntry", back_populates="tournament", passive_deletes=True
+    )
 
     def __repr__(self):
         return f"<Tournament(id={self.id}, name='{self.name}', date='{self.date}')>"
@@ -63,7 +65,11 @@ class TournamentEntry(Base, TimestampMixin):
     id = uuid_pk()
     tournament_id = Column(
         String(36),
-        ForeignKey("tournaments.id", name="fk_tournament_entries_tournament"),
+        ForeignKey(
+            "tournaments.id",
+            name="fk_tournament_entries_tournament",
+            ondelete="CASCADE",
+        ),
         nullable=False,
         index=True,
     )
@@ -88,14 +94,18 @@ class TournamentEntry(Base, TimestampMixin):
     tournament = relationship("Tournament", back_populates="entries")
     player = relationship("Player", back_populates="tournament_entries")
     archetype = relationship("Archetype", back_populates="tournament_entries")
-    deck_cards = relationship("DeckCard", back_populates="entry")
+    deck_cards = relationship("DeckCard", back_populates="entry", passive_deletes=True)
     matches = relationship(
-        "Match", foreign_keys="[Match.entry_id]", back_populates="entry"
+        "Match",
+        foreign_keys="[Match.entry_id]",
+        back_populates="entry",
+        passive_deletes=True,
     )
     opponent_matches = relationship(
         "Match",
         foreign_keys="[Match.opponent_entry_id]",
         back_populates="opponent_entry",
+        passive_deletes=True,
     )
 
     # Constraints
@@ -113,7 +123,9 @@ class DeckCard(Base, TimestampMixin):
     id = uuid_pk()
     entry_id = Column(
         String(36),
-        ForeignKey("tournament_entries.id", name="fk_deck_cards_entry"),
+        ForeignKey(
+            "tournament_entries.id", name="fk_deck_cards_entry", ondelete="CASCADE"
+        ),
         nullable=False,
         index=True,
     )
@@ -145,13 +157,19 @@ class Match(Base, TimestampMixin):
     id = uuid_pk()
     entry_id = Column(
         String(36),
-        ForeignKey("tournament_entries.id", name="fk_matches_entry"),
+        ForeignKey(
+            "tournament_entries.id", name="fk_matches_entry", ondelete="CASCADE"
+        ),
         nullable=False,
         index=True,
     )
     opponent_entry_id = Column(
         String(36),
-        ForeignKey("tournament_entries.id", name="fk_matches_opponent_entry"),
+        ForeignKey(
+            "tournament_entries.id",
+            name="fk_matches_opponent_entry",
+            ondelete="CASCADE",
+        ),
         nullable=False,
         index=True,
     )
