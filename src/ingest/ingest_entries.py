@@ -56,10 +56,14 @@ def get_or_create_tournament(
     format_id: str,
     link: Optional[str],
     source: TournamentSource,
-) -> Tournament:
+) -> Tuple[Tournament, bool]:
+    """
+    Returns: (tournament, created)
+    created=True if a new Tournament was inserted this run.
+    """
     key = f"{name}|{date.isoformat()}|{format_id}"
     if key in cache:
-        return cache[key]
+        return cache[key], False
 
     existing = (
         session.query(Tournament)
@@ -72,13 +76,13 @@ def get_or_create_tournament(
     )
     if existing:
         cache[key] = existing
-        return existing
+        return existing, False
 
     t = Tournament(name=name, date=date, format_id=format_id, source=source, link=link)
     session.add(t)
     session.flush()
     cache[key] = t
-    return t
+    return t, True
 
 
 def get_player(
@@ -190,7 +194,7 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
         "tournaments_existing": 0,
         "entries_created": 0,
         "entries_existing": 0,
-        "deck_cards_inserted": 0,
+        "deck_card_rows_written": 0,
         "deck_cards_missing_cards": 0,
         "skipped_missing_player": 0,
         "skipped_missing_archetype": 0,
@@ -217,8 +221,7 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
 
         # Tournament
         source = detect_source(anchor)
-        t_before = len(t_cache)
-        tournament = get_or_create_tournament(
+        tournament, is_new_tournament = get_or_create_tournament(
             session=session,
             cache=t_cache,
             name=t_name,
@@ -227,7 +230,7 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
             link=anchor,
             source=source,
         )
-        if len(t_cache) > t_before:
+        if is_new_tournament:
             stats["tournaments_created"] += 1
         else:
             stats["tournaments_existing"] += 1
@@ -290,7 +293,7 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
         inserted, skipped_missing, _ = upsert_deck_cards_for_entry(
             session, entry, mb, sb, c_cache
         )
-        stats["deck_cards_inserted"] += inserted
+        stats["deck_card_rows_written"] += inserted
         stats["deck_cards_missing_cards"] += skipped_missing
 
         if (i % 50) == 0:
@@ -305,5 +308,5 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
     print(
         f"  👤 Entries created: {stats['entries_created']}, existing: {stats['entries_existing']}"
     )
-    print(f"  🧩 Deck cards inserted: {stats['deck_cards_inserted']}")
+    print(f"  🧩 Deck card rows written (rebuilt): {stats['deck_card_rows_written']}")
     print(f"  ⚠️ Deck cards skipped (missing card): {stats['deck_cards_missing_cards']}")
