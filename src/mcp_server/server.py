@@ -1,7 +1,9 @@
 import os
+import asyncio
+import argparse
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from fastmcp import FastMCP
 from sqlalchemy import create_engine, text, event
@@ -49,6 +51,51 @@ def create_readonly_engine() -> Engine:
 
 
 engine = create_readonly_engine()
+
+
+def _mcp_client_config() -> Dict[str, Any]:
+    """
+    Configuration for mcp_use to spawn this server in stdio mode as a subprocess.
+    """
+    return {
+        "mcpServers": {
+            "mtg_tournament_mcp": {
+                "command": "python",
+                "args": ["-m", "src.mcp_server.server", "--stdio"],
+                "env": {},
+            }
+        }
+    }
+
+
+async def run_claude_agent(query: str, max_steps: int = 30, stream: bool = False) -> str:
+    """
+    Run a Claude Sonnet agent against this MCP server using mcp_use.
+    Requires ANTHROPIC_API_KEY in the environment.
+    """
+    # Lazy imports so normal server mode doesn't require these deps
+    from mcp_use import MCPAgent, MCPClient
+    from langchain_anthropic import ChatAnthropic
+
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        raise RuntimeError("ANTHROPIC_API_KEY is not set in the environment")
+
+    model = os.getenv("CLAUDE_MODEL", "claude-3-7-sonnet-2025-05-21")
+
+    client = MCPClient.from_dict(_mcp_client_config())
+    llm = ChatAnthropic(model=model)
+
+    agent = MCPAgent(llm=llm, client=client, max_steps=max_steps)
+
+    if stream:
+        async for chunk in agent.astream(query):
+            print(chunk, end="", flush=True)
+        print()
+        return ""
+    else:
+        result = await agent.run(query)
+        print(f"\nResult: {result}")
+        return str(result)
 
 
 def _validate_select_only(sql: str) -> str:
@@ -186,6 +233,35 @@ def get_archetype_winrate(
 
 
 if __name__ == "__main__":
-    host = os.getenv("MCP_HOST", "127.0.0.1")
-    port = int(os.getenv("MCP_PORT", "9000"))
-    mcp.run(transport="http", host=host, port=port)
+    parser = argparse.ArgumentParser(description="MTG Tournament MCP server and Claude agent runner")
+    parser.add_argument(
+        "--stdio",
+        action="store_true",
+        help="Run the MCP server over stdio transport (for MCP clients like mcp_use).",
+    )
+    parser.add_argument(
+        "--agent",
+        metavar="QUERY",
+        help="Run a Claude Sonnet agent against this MCP server using mcp_use with the provided query.",
+    )
+    parser.add_argument(
+        "--max-steps",
+        type=int,
+        default=int(os.getenv("MCP_AGENT_MAX_STEPS", "30")),
+        help="Maximum number of tool steps for the agent (default from MCP_AGENT_MAX_STEPS or 30).",
+    )
+    parser.add_argument(
+        "--stream",
+        action="store_true",
+        help="Stream agent output tokens instead of waiting for the final result.",
+    )
+    args = parser.parse_args()
+
+    if args.stdio:
+        mcp.run(transport="stdio")
+    elif args.agent is not None:
+        asyncio.run(run_claude_agent(args.agent, max_steps=args.max_steps, stream=args.stream))
+    else:
+        host = os.getenv("MCP_HOST", "127.0.0.1")
+        port = int(os.getenv("MCP_PORT", "9000"))
+        mcp.run(transport="http", host=host, port=port)

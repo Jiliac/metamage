@@ -9,6 +9,8 @@ dependencies = [
     "alembic>=1.13.0",
     "requests>=2.32.4",
     "fastmcp",
+    "mcp-use>=0.3.0",
+    "langchain-anthropic>=0.3.0",
 ]
 
 [dependency-groups]
