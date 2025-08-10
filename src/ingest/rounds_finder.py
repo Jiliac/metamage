@@ -79,6 +79,43 @@ def _format_slug(format_name: str) -> str:
     return "-".join(format_name.strip().lower().split())
 
 
+def _check_tournament_format_in_json(file_path: Path, expected_format: str) -> bool:
+    """
+    Read a JSON file and check if it matches the expected tournament format.
+
+    Args:
+        file_path: Path to the JSON file
+        expected_format: Expected format name (e.g., 'pauper', 'modern')
+
+    Returns:
+        True if the file appears to be for the expected format
+    """
+    try:
+        import json
+
+        data = json.loads(file_path.read_text(encoding="utf-8"))
+
+        # Check tournament name for format keywords
+        tournament_info = data.get("Tournament", {})
+        if isinstance(tournament_info, dict):
+            tournament_name = tournament_info.get("Name", "").lower()
+        else:
+            # Sometimes Tournament is just a string name
+            tournament_name = str(tournament_info).lower()
+
+        # Check if the expected format appears in the tournament name
+        expected_lower = expected_format.lower()
+        if expected_lower in tournament_name:
+            return True
+
+        # Could add more sophisticated checks here (e.g., check deck formats, etc.)
+        return False
+
+    except Exception:
+        # If we can't read/parse the file, assume it's not a match
+        return False
+
+
 def _list_candidate_files(day_dir: Path, format_slug: str) -> List[Path]:
     """List files in the day directory that start with the format slug."""
     if not day_dir.exists() or not day_dir.is_dir():
@@ -89,6 +126,24 @@ def _list_candidate_files(day_dir: Path, format_slug: str) -> List[Path]:
             p.is_file()
             and p.suffix.lower() == ".json"
             and p.name.lower().startswith(f"{format_slug}-")
+        ):
+            candidates.append(p)
+    return sorted(candidates)
+
+
+def _list_candidate_files_by_content(day_dir: Path, format_name: str) -> List[Path]:
+    """
+    Fallback: List files in the day directory by reading their JSON content
+    and checking if they match the expected format.
+    """
+    if not day_dir.exists() or not day_dir.is_dir():
+        return []
+    candidates: List[Path] = []
+    for p in day_dir.iterdir():
+        if (
+            p.is_file()
+            and p.suffix.lower() == ".json"
+            and _check_tournament_format_in_json(p, format_name)
         ):
             candidates.append(p)
     return sorted(candidates)
@@ -118,6 +173,7 @@ def find_rounds_file(
     day_dir = base / yyyy / mm / dd
     fmt_slug = _format_slug(format_name)
 
+    # Try 1: Use filename-based matching (current approach)
     candidates = _list_candidate_files(day_dir, fmt_slug)
     if len(candidates) == 1:
         # print(f"TOURNAMENT FILE: {candidates[0]}")
@@ -131,5 +187,21 @@ def find_rounds_file(
             )
             warned_multiple.add(warn_key)
         return None
-    else:
+
+    # Try 2: Fallback to content-based matching
+    content_candidates = _list_candidate_files_by_content(day_dir, format_name)
+    if len(content_candidates) == 1:
+        # print(f"TOURNAMENT FILE (by content): {content_candidates[0]}")
+        return content_candidates[0]
+    elif len(content_candidates) > 1:
+        # Only warn once per day/format combination
+        warn_key = f"content-{format_name}|{yyyy}-{mm}-{dd}"
+        if warned_multiple is not None and warn_key not in warned_multiple:
+            print(
+                f"  ⚠️ Multiple rounds files match format '{format_name}' by content on {yyyy}-{mm}-{dd}: {len(content_candidates)} candidates; skipping for now"
+            )
+            warned_multiple.add(warn_key)
         return None
+
+    # No matches found
+    return None
