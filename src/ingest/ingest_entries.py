@@ -417,8 +417,11 @@ def upsert_deck_cards_for_entry(
     if existing_count > 0:
         return 0, 0, 0
 
+    # Aggregate cards by (card_id, board) to handle duplicates
+    card_aggregates = {}  # key: (card_id, board), value: total_count
+
     def handle_section(items: List[Dict[str, Any]], board: BoardType):
-        nonlocal inserted, skipped, total_expected
+        nonlocal skipped, total_expected
         if not isinstance(items, list):
             return
         for itm in items:
@@ -438,12 +441,24 @@ def upsert_deck_cards_for_entry(
                 print(f"  ⚠️ Card not found in DB (skipping): {name}")
                 skipped += 1
                 continue
-            dc = DeckCard(entry_id=entry.id, card_id=card.id, count=count, board=board)
-            session.add(dc)
-            inserted += 1
+
+            # Aggregate duplicate cards
+            key = (card.id, board)
+            if key in card_aggregates:
+                card_aggregates[key] += count
+            else:
+                card_aggregates[key] = count
 
     handle_section(mainboard, BoardType.MAIN)
     handle_section(sideboard, BoardType.SIDE)
+
+    # Insert aggregated cards
+    for (card_id, board), total_count in card_aggregates.items():
+        dc = DeckCard(
+            entry_id=entry.id, card_id=card_id, count=total_count, board=board
+        )
+        session.add(dc)
+        inserted += 1
 
     return inserted, skipped, total_expected
 
