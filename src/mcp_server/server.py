@@ -1,14 +1,11 @@
-import os
 import argparse
-from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any
 
 from fastmcp import FastMCP
-from sqlalchemy import create_engine, text, event
-from sqlalchemy.engine import Engine
+from sqlalchemy import text, event
 
-from ..models import get_database_path
+from ..models import get_engine
 
 mcp = FastMCP(
     name="MTG Tournament MCP",
@@ -26,39 +23,14 @@ mcp = FastMCP(
 )
 
 
-def create_readonly_engine() -> Engine:
-    """
-    Open SQLite in read-only mode and enforce query_only=ON.
-    """
-    # Allow override via TOURNAMENT_DB_PATH for flexibility in different environments
-    db_path_str = os.getenv("TOURNAMENT_DB_PATH") or get_database_path()
-    db_path = Path(db_path_str).resolve()
-
-    if not db_path.exists():
-        raise RuntimeError(
-            f"Database file not found at: {db_path}\n"
-            "Ensure the DB exists (ingest data first) or set TOURNAMENT_DB_PATH to the correct file."
-        )
-
-    # SQLite URI with mode=ro; SQLAlchemy needs uri=True in connect args
-    uri = f"file:{db_path.as_posix()}?mode=ro&cache=shared"
-    engine = create_engine(
-        f"sqlite+pysqlite:///{uri}",
-        connect_args={"uri": True, "check_same_thread": False, "timeout": 5},
-        pool_pre_ping=True,
-    )
-
-    @event.listens_for(engine, "connect")
-    def _set_ro_pragmas(dbapi_connection, connection_record):
-        cur = dbapi_connection.cursor()
-        cur.execute("PRAGMA query_only=ON")
-        cur.execute("PRAGMA foreign_keys=ON")
-        cur.close()
-
-    return engine
+engine = get_engine()
 
 
-engine = create_readonly_engine()
+@event.listens_for(engine, "connect")
+def _set_ro_pragmas(dbapi_connection, connection_record):
+    cur = dbapi_connection.cursor()
+    cur.execute("PRAGMA query_only=ON")
+    cur.close()
 
 
 def _validate_select_only(sql: str) -> str:
