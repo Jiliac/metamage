@@ -54,7 +54,7 @@ class AgentContainer:
                     system_prompt = get_metamage_system_prompt()
 
                     logger.info("Creating ReAct agent...")
-                    self._agent = create_react_agent(llm, tools, state_modifier=system_prompt)
+                    self._agent = create_react_agent(llm, tools, prompt=system_prompt)
                     logger.info("Agent ready.")
         return self._agent
 
