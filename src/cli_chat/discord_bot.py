@@ -78,9 +78,9 @@ class MTGBot(discord.Client):
 bot = MTGBot()
 
 
-@bot.tree.command(name="mtgquery", description="Ask a one-shot MTG tournament data question")
-@app_commands.describe(query="Your question (one sentence works great)")
-async def mtgquery(interaction: discord.Interaction, query: str):
+@bot.tree.command(name="mage", description="Ask MetaMage about MTG tournament data")
+@app_commands.describe(query="Your question about tournaments, decks, or meta")
+async def mage(interaction: discord.Interaction, query: str):
     await interaction.response.defer(thinking=True)
 
     # Validate required env vars
@@ -113,8 +113,8 @@ async def mtgquery(interaction: discord.Interaction, query: str):
         )
 
 
-@bot.tree.command(name="mtgping", description="Health check for MTG bot")
-async def mtgping(interaction: discord.Interaction):
+@bot.tree.command(name="mageping", description="Health check for MetaMage")
+async def mageping(interaction: discord.Interaction):
     await interaction.response.send_message("MetaMage is alive! 🏓", ephemeral=True)
 
 
