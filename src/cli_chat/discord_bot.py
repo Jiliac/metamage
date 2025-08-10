@@ -68,16 +68,19 @@ class MTGBot(discord.Client):
 
     async def setup_hook(self) -> None:
         # Sync global commands on startup
-        await self.tree.sync()
-        logger.info("Slash commands synced.")
+        try:
+            synced = await self.tree.sync()
+            logger.info(f"Synced {len(synced)} slash commands: {[cmd.name for cmd in synced]}")
+        except Exception as e:
+            logger.error(f"Failed to sync commands: {e}")
 
 
 bot = MTGBot()
 
 
-@bot.tree.command(name="mtg", description="Ask a one-shot MTG tournament data question")
+@bot.tree.command(name="mtgquery", description="Ask a one-shot MTG tournament data question")
 @app_commands.describe(query="Your question (one sentence works great)")
-async def mtg(interaction: discord.Interaction, query: str):
+async def mtgquery(interaction: discord.Interaction, query: str):
     await interaction.response.defer(thinking=True)
 
     # Validate required env vars
@@ -110,9 +113,9 @@ async def mtg(interaction: discord.Interaction, query: str):
         )
 
 
-@bot.tree.command(name="ping", description="Health check")
-async def ping(interaction: discord.Interaction):
-    await interaction.response.send_message("Pong! 🏓", ephemeral=True)
+@bot.tree.command(name="mtgping", description="Health check for MTG bot")
+async def mtgping(interaction: discord.Interaction):
+    await interaction.response.send_message("MTG Bot is alive! 🏓", ephemeral=True)
 
 
 def main():
