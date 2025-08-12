@@ -69,3 +69,5 @@ mcp = FastMCP(
           - Optionally use a read-only replica file refreshed out-of-band.
     """,
 )
+
+# Import all tool and resource modules to register them with the MCP server

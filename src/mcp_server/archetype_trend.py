@@ -4,6 +4,7 @@ from sqlalchemy import text
 from .utils import engine
 from .mcp import mcp
 
+
 @mcp.tool
 def get_archetype_trends(
     format_id: str,

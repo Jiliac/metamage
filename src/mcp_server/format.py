@@ -3,6 +3,7 @@ from sqlalchemy import text
 from .utils import engine
 from .mcp import mcp
 
+
 @mcp.resource("mtg://formats/{format_id}")
 def get_format_resource(format_id: str) -> str:
     """

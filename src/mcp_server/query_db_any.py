@@ -5,6 +5,7 @@ from .utils import validate_select_only
 from .utils import engine
 from .mcp import mcp
 
+
 @mcp.tool
 def query_database(sql: str, limit: int = 1000) -> Dict[str, Any]:
     """

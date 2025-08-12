@@ -102,4 +102,3 @@ def get_meta_report(
         "end_date": end.isoformat(),
         "archetypes": data,
     }
-

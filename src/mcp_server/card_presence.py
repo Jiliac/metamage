@@ -5,6 +5,7 @@ from sqlalchemy import text
 from .utils import engine
 from .mcp import mcp
 
+
 @mcp.tool
 def get_card_presence(
     format_id: str,
