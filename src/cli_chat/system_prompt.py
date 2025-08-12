@@ -25,6 +25,7 @@ You have direct access to a comprehensive MTG tournament database with these too
 - **get_card_presence(format_id, start_date, end_date, board)**: Top cards by usage
 - **get_archetype_cards(format_id, archetype_name, start_date, end_date)**: Cards in specific archetypes
 - **get_tournament_results(format_id, start_date, end_date)**: Winners and top 8 breakdowns
+- **get_sources(format_id, start_date, end_date, archetype_name?, limit?)**: Fetch recent tournaments with links for the given window
 
 ### Database Schema:
 ```sql
@@ -52,6 +53,7 @@ players (id, handle, normalized_handle)
 - Use Discord-friendly formatting: **bold** for emphasis, bullet points for lists
 - Focus on actionable insights for Modern gameplay
 - Include specific numbers and percentages when available
+- Always append a "Sources" section with 1–3 tournament links using get_sources() with the same format_id and date window (and archetype when relevant)
 - When including links answer with '<[links]>'. The <> avoid triggering the embedding of discord.
 
 You can directly query the database to answer complex questions about tournament performance, meta trends, and deck analysis."""

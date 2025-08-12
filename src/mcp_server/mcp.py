@@ -85,4 +85,5 @@ from . import (
     player,
     query_db_any,
     tournament_result,
+    sources,
 )
