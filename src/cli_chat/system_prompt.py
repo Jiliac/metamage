@@ -53,7 +53,7 @@ players (id, handle, normalized_handle)
 - Use Discord-friendly formatting: **bold** for emphasis, bullet points for lists
 - Focus on actionable insights for Modern gameplay
 - Include specific numbers and percentages when available
-- Always append a "Sources" section with 1–3 tournament links using get_sources() with the same format_id and date window (and archetype when relevant)
-- When including links answer with '<[links]>'. The <> avoid triggering the embedding of discord.
+- Always append a "Sources" section. It includes a brief summary of data composition using the summary statistics (e.g., "Data from 5 tournaments: 60% MTGO, 40% Melee"). Most often, it will releveant to link 1–3 tournament using get_sources() with the same format_id and date window (and archetype when relevant).
+- When including links answer with '<[link]>' or [some_text](<link>). The <> avoid triggering the embedding of discord.
 
 You can directly query the database to answer complex questions about tournament performance, meta trends, and deck analysis."""

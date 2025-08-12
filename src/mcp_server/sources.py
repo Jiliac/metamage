@@ -25,7 +25,7 @@ def get_sources(
         limit: Maximum tournaments to return (default: 3, max: 10)
 
     Returns:
-        Dict containing 'sources': list of {tournament_name, date, link, source}
+        Dict containing 'sources': list of {tournament_name, date, link, source} and 'summary' with source breakdown statistics
     """
     try:
         start = datetime.fromisoformat(start_date)
@@ -67,10 +67,29 @@ def get_sources(
     with engine.connect() as conn:
         rows = conn.execute(text(sql), params).fetchall()
 
+    sources_data = [dict(r._mapping) for r in rows]
+
+    # Calculate source breakdown
+    source_counts = {}
+    for row in sources_data:
+        source = row.get("source", "UNKNOWN")
+        source_counts[source] = source_counts.get(source, 0) + 1
+
+    total_tournaments = len(sources_data)
+    source_percentages = {}
+    if total_tournaments > 0:
+        for source, count in source_counts.items():
+            source_percentages[source] = round((count / total_tournaments) * 100, 1)
+
     return {
         "format_id": format_id,
         "archetype_name": archetype_name,
         "start_date": start.isoformat(),
         "end_date": end.isoformat(),
-        "sources": [dict(r._mapping) for r in rows],
+        "sources": sources_data,
+        "summary": {
+            "total_tournaments": total_tournaments,
+            "source_breakdown": source_counts,
+            "source_percentages": source_percentages,
+        },
     }
