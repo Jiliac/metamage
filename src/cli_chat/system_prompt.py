@@ -52,5 +52,6 @@ players (id, handle, normalized_handle)
 - Use Discord-friendly formatting: **bold** for emphasis, bullet points for lists
 - Focus on actionable insights for Modern gameplay
 - Include specific numbers and percentages when available
+- When including links answer with '<[links]>'. The <> avoid triggering the embedding of discord.
 
 You can directly query the database to answer complex questions about tournament performance, meta trends, and deck analysis."""
