@@ -3,7 +3,6 @@
 
 import asyncio
 import inspect
-from .mcp_client import create_mcp_client
 
 
 async def list_tools_and_resources():

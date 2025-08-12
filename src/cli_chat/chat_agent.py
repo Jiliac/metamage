@@ -32,7 +32,7 @@ class MTGChatAgent:
         try:
             # Create MCP client and get tools
             print("📡 Connecting to MCP server...")
-            tools = await create_mcp_client()
+            tools, format_context = await create_mcp_client()
 
             # Create Claude Sonnet LLM
             print("🧠 Initializing Claude Sonnet...")
@@ -44,7 +44,7 @@ class MTGChatAgent:
 
             # Create ReAct agent with MCP tools
             print("🤖 Creating ReAct agent...")
-            system_prompt = get_metamage_system_prompt()
+            system_prompt = get_metamage_system_prompt() + format_context
             self.agent = create_react_agent(llm, tools, prompt=system_prompt)
 
             print("✅ Agent setup complete!")

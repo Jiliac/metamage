@@ -41,7 +41,7 @@ class AgentContainer:
             async with self._lock:
                 if self._agent is None:
                     logger.info("Initializing MCP tools...")
-                    tools = await create_mcp_client()
+                    tools, format_context = await create_mcp_client()
 
                     logger.info("Creating Claude Sonnet client...")
                     llm = ChatAnthropic(
@@ -50,8 +50,8 @@ class AgentContainer:
                         max_tokens=4096,
                     )
 
-                    # Get system prompt with current date
-                    system_prompt = get_metamage_system_prompt()
+                    # Get system prompt with current date and format context
+                    system_prompt = get_metamage_system_prompt() + format_context
 
                     logger.info("Creating ReAct agent...")
                     self._agent = create_react_agent(llm, tools, prompt=system_prompt)
