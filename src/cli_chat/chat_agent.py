@@ -4,7 +4,7 @@
 import asyncio
 import os
 
-from langchain_anthropic import ChatAnthropic
+from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 
 from .mcp_client import create_mcp_client
@@ -23,10 +23,10 @@ class MTGChatAgent:
         print("🔧 Setting up MTG Tournament Analysis Chat Agent...")
 
         # Check for API key
-        if not os.getenv("ANTHROPIC_API_KEY"):
-            print("❌ Error: ANTHROPIC_API_KEY environment variable not set")
-            print("Please set your Anthropic API key:")
-            print("export ANTHROPIC_API_KEY=your_api_key_here")
+        if not os.getenv("OPENAI_API_KEY"):
+            print("❌ Error: OPENAI_API_KEY environment variable not set")
+            print("Please set your OpenAI API key:")
+            print("export OPENAI_API_KEY=your_api_key_here")
             return False
 
         try:
@@ -34,10 +34,10 @@ class MTGChatAgent:
             print("📡 Connecting to MCP server...")
             tools, format_context = await create_mcp_client()
 
-            # Create Claude Sonnet LLM
-            print("🧠 Initializing Claude Sonnet...")
-            llm = ChatAnthropic(
-                model="claude-sonnet-4-20250514",
+            # Create GPT-5 LLM
+            print("🧠 Initializing GPT-5...")
+            llm = ChatOpenAI(
+                model="gpt-5",
                 temperature=0.1,  # Low temperature for consistent analysis
                 max_tokens=4096,
             )
