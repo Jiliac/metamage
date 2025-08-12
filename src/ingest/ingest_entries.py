@@ -326,9 +326,6 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
     existing_tournaments = (
         session.query(Tournament).filter(Tournament.format_id == format_id).all()
     )
-    existing_tournament_keys = {
-        f"{t.name}|{t.date.isoformat()}|{format_id}" for t in existing_tournaments
-    }
     for t in existing_tournaments:
         cache_key = f"{t.name}|{t.date.isoformat()}|{format_id}"
         t_cache[cache_key] = t
@@ -430,9 +427,6 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
         else:
             stats["tournaments_existing"] += 1
 
-        # Mark tournament for matches/standings finalization
-        touched_tournaments[tournament.id] = tournament
-
         # Player
         player = get_player(session, p_cache, player_handle)
         if not player:
@@ -467,12 +461,15 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
         )
         if created:
             stats["entries_created"] += 1
+            # Mark tournament for matches/standings finalization
+            touched_tournaments[tournament.id] = tournament
         else:
             stats["entries_existing"] += 1
             if archetype_changed:
                 stats["entries_updated_archetype"] = (
                     stats.get("entries_updated_archetype", 0) + 1
                 )
+            continue
 
         # Deck cards: rebuild
         mb = e.get("Mainboard", [])
