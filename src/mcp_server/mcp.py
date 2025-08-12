@@ -72,18 +72,18 @@ mcp = FastMCP(
 )
 
 # Import all tool and resource modules to register them with the MCP server
-from . import (
-    archetype,
-    archetype_cards,
-    archetype_trend,
-    archetype_wr,
-    card_presence,
-    search_card,
-    format,
-    matchup_wr,
-    meta_report,
-    player,
-    query_db_any,
-    tournament_result,
-    sources,
+from . import (  # noqa: E402
+    archetype,  # noqa: F401
+    archetype_cards,  # noqa: F401
+    archetype_trend,  # noqa: F401
+    archetype_wr,  # noqa: F401
+    card_presence,  # noqa: F401
+    search_card,  # noqa: F401
+    format,  # noqa: F401
+    matchup_wr,  # noqa: F401
+    meta_report,  # noqa: F401
+    player,  # noqa: F401
+    query_db_any,  # noqa: F401
+    tournament_result,  # noqa: F401
+    sources,  # noqa: F401
 )
