@@ -7,6 +7,7 @@ from sqlalchemy import (
     Index,
     Enum,
     UniqueConstraint,
+    Boolean,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import TypeDecorator, VARCHAR
@@ -74,6 +75,7 @@ class Card(Base, TimestampMixin):
     scryfall_oracle_id = Column(
         String(36), unique=True, nullable=False, index=True
     )  # UUID
+    is_land = Column(Boolean, nullable=False, default=False)
 
     # Relationships
     deck_cards = relationship("DeckCard", back_populates="card")

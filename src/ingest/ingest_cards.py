@@ -181,6 +181,8 @@ def get_or_create_card(
 
     canonical_name = scryfall_data.get("name", name)
     oracle_id = scryfall_data.get("oracle_id")
+    type_line = scryfall_data.get("type_line", "")
+    is_land = "Land" in type_line
 
     if not oracle_id:
         print(
@@ -195,7 +197,7 @@ def get_or_create_card(
         return existing, False
 
     # 4) Create new card with canonical name and oracle_id
-    card = Card(name=canonical_name, scryfall_oracle_id=oracle_id)
+    card = Card(name=canonical_name, scryfall_oracle_id=oracle_id, is_land=is_land)
     session.add(card)
     session.flush()  # Get the ID
 
