@@ -4,8 +4,8 @@ from .utils import engine
 from .mcp import mcp
 
 
-@mcp.resource("mtg://formats/{format_id}")
-def get_format_resource(format_id: str) -> str:
+@mcp.tool
+def get_format(format_id: str) -> str:
     """
     Get format overview with recent tournaments and meta snapshot.
     """

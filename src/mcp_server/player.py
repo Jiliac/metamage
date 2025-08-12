@@ -4,8 +4,8 @@ from .utils import engine
 from .mcp import mcp
 
 
-@mcp.resource("mtg://players/{player_id}")
-def get_player_resource(player_id: str) -> str:
+@mcp.tool
+def get_player(player_id: str) -> str:
     """
     Get player profile with recent tournament entries and performance.
     """
