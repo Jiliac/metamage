@@ -56,26 +56,6 @@ async def list_tools_and_resources():
 
             print(f"• {tool_name}{args_info}")
 
-        # Get resources
-        try:
-            resources = await client.get_resources("mtg")
-            print(f"\nAvailable MCP Resources ({len(resources)}):")
-            print("=" * 50)
-
-            for resource in resources:
-                print(resource.model_dump_json())
-                # print(f"• {resource}")
-                # if hasattr(resource, "name") and resource.name:
-                #     print(f"  Name: {resource.name}")
-                # if hasattr(resource, "description") and resource.description:
-                #     # Just show first line of description to keep it brief
-                #     desc_line = resource.description.split("\n")[0]
-                #     if len(desc_line) > 80:
-                #         desc_line = desc_line[:77] + "..."
-                #     print(f"  Description: {desc_line}")
-        except Exception as e:
-            print(f"\nCould not list resources: {e}")
-
         print("=" * 50)
 
     except Exception as e:

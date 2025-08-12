@@ -4,8 +4,8 @@ from .utils import engine
 from .mcp import mcp
 
 
-@mcp.resource("mtg://archetypes/{archetype_name}")
-def get_archetype_resource(archetype_name: str) -> str:
+@mcp.tool
+def get_archetype_overview(archetype_name: str) -> str:
     """
     Get archetype overview with recent performance and key cards.
     """
