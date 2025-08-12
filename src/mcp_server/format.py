@@ -4,15 +4,14 @@ from .utils import engine
 from .mcp import mcp
 
 
-@mcp.tool
-def get_formats_overview() -> str:
+@mcp.resource("mtg://formats/{format_id}")
+def get_format_resource(format_id: str) -> str:
     """
-    Get overview of all formats with recent tournament activity.
+    Get format overview with recent tournaments and meta snapshot.
     """
     sql = """
         SELECT 
             f.name as format_name,
-            f.id as format_id,
             COUNT(DISTINCT t.id) as recent_tournaments,
             COUNT(DISTINCT te.id) as recent_entries,
             MIN(t.date) as earliest_tournament,
@@ -20,35 +19,57 @@ def get_formats_overview() -> str:
         FROM formats f
         LEFT JOIN tournaments t ON f.id = t.format_id AND t.date >= date('now', '-30 days')
         LEFT JOIN tournament_entries te ON t.id = te.tournament_id
+        WHERE f.id = :format_id
         GROUP BY f.id, f.name
-        HAVING recent_tournaments > 0
-        ORDER BY recent_entries DESC
     """
 
     with engine.connect() as conn:
-        formats = conn.execute(text(sql)).fetchall()
+        format_info = (
+            conn.execute(text(sql), {"format_id": format_id}).mappings().first()
+        )
 
-    if not formats:
-        return "No format data available for the last 30 days"
+    if not format_info:
+        return f"Format {format_id} not found"
 
-    format_list = "\n".join(
+    # Get top 5 recent archetypes
+    meta_sql = """
+        SELECT 
+            a.name as archetype_name,
+            COUNT(DISTINCT te.id) as entries,
+            ROUND(
+                CAST(COUNT(CASE WHEN m.result = 'WIN' THEN 1 END) AS REAL) / 
+                CAST((COUNT(CASE WHEN m.result = 'WIN' THEN 1 END) + COUNT(CASE WHEN m.result = 'LOSS' THEN 1 END)) AS REAL) * 100, 1
+            ) as winrate_no_draws
+        FROM tournament_entries te
+        JOIN tournaments t ON te.tournament_id = t.id
+        JOIN archetypes a ON te.archetype_id = a.id
+        LEFT JOIN matches m ON te.id = m.entry_id AND m.entry_id < m.opponent_entry_id
+        WHERE t.format_id = :format_id
+        AND t.date >= date('now', '-30 days')
+        GROUP BY a.id, a.name
+        ORDER BY entries DESC
+        LIMIT 5
+    """
+
+    with engine.connect() as conn:
+        meta_rows = conn.execute(text(meta_sql), {"format_id": format_id}).fetchall()
+
+    meta_summary = "\n".join(
         [
-            f"- **{fmt.format_name}** (ID: {fmt.format_id}): {fmt.recent_tournaments} tournaments, {fmt.recent_entries} entries"
-            for fmt in formats
+            f"  {row.archetype_name}: {row.entries} entries ({row.winrate_no_draws}% WR)"
+            for row in meta_rows
         ]
     )
 
-    return f"""# MTG Formats Overview (Last 30 Days)
+    return f"""# {format_info["format_name"]} Format Overview
 
-## Active Formats by Tournament Activity
+## Recent Activity (Last 30 Days)
+- **Tournaments**: {format_info["recent_tournaments"] or 0}
+- **Total Entries**: {format_info["recent_entries"] or 0}
+- **Date Range**: {format_info["earliest_tournament"] or "N/A"} to {format_info["latest_tournament"] or "N/A"}
 
-{format_list}
+## Top Meta Archetypes
+{meta_summary or "No recent data available"}
 
-*Use get_meta_report() tool with format_id for detailed meta analysis*
-
-## Common Format IDs
-- Modern: 402d2a82-3ba6-4369-badf-a51f3eff4375
-- Legacy: 0f68f9f5-460d-4111-94df-965cf7e4d28c
-- Pioneer: 123dda9e-b157-4bbf-a990-310565cbef7c
-- Standard: ceff9123-427e-4099-810a-39f57884ec4e
+*Use mtg://archetypes/[name] for detailed archetype information*
 """
