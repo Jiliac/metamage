@@ -1,7 +1,6 @@
-from sqlalchemy import text
-
-from .utils import engine
+from .utils import get_session
 from .mcp import mcp
+from ..models import Format, MetaChange
 
 
 @mcp.tool
@@ -9,14 +8,8 @@ def list_formats() -> str:
     """
     List all available formats with their IDs and names.
     """
-    sql = """
-        SELECT id, name
-        FROM formats
-        ORDER BY name
-    """
-
-    with engine.connect() as conn:
-        formats = conn.execute(text(sql)).fetchall()
+    with get_session() as session:
+        formats = session.query(Format).order_by(Format.name).all()
 
     if not formats:
         return "No formats found in database"
@@ -35,35 +28,26 @@ def get_format_meta_changes(format_id: str) -> str:
     """
     Get all meta changes (bans, set releases) for a format.
     """
-    sql = """
-        SELECT 
-            mc.date,
-            mc.change_type,
-            mc.description,
-            mc.set_code
-        FROM meta_changes mc
-        JOIN formats f ON mc.format_id = f.id
-        WHERE f.id = :format_id
-        ORDER BY mc.date DESC
-    """
+    with get_session() as session:
+        fmt = session.query(Format).filter(Format.id == format_id).first()
+        if not fmt:
+            return f"Format {format_id} not found"
 
-    with engine.connect() as conn:
-        changes = conn.execute(text(sql), {"format_id": format_id}).fetchall()
+        changes = (
+            session.query(MetaChange)
+            .filter(MetaChange.format_id == format_id)
+            .order_by(MetaChange.date.desc())
+            .all()
+        )
 
     if not changes:
         return f"No meta changes found for format {format_id}"
 
-    # Get format name
-    format_sql = "SELECT name FROM formats WHERE id = :format_id"
-    with engine.connect() as conn:
-        format_name = conn.execute(text(format_sql), {"format_id": format_id}).scalar()
-
-    if not format_name:
-        return f"Format {format_id} not found"
-
     changes_list = []
     for change in changes:
-        change_text = f"**{change.date.strftime('%Y-%m-%d')}** - {change.change_type}"
+        change_text = (
+            f"**{change.date.strftime('%Y-%m-%d')}** - {change.change_type.value}"
+        )
         if change.set_code:
             change_text += f" ({change.set_code})"
         if change.description:
@@ -72,7 +56,7 @@ def get_format_meta_changes(format_id: str) -> str:
 
     changes_summary = "\n".join(changes_list)
 
-    return f"""# {format_name} Meta Changes
+    return f"""# {fmt.name} Meta Changes
 
 {changes_summary}
 

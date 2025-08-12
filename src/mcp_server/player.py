@@ -1,7 +1,9 @@
-from sqlalchemy import text
+from datetime import datetime, timedelta
+from sqlalchemy import func, distinct
 
-from .utils import engine
+from .utils import get_session
 from .mcp import mcp
+from ..models import Player, TournamentEntry, Tournament, Archetype
 
 
 @mcp.tool
@@ -9,50 +11,52 @@ def get_player(player_id: str) -> str:
     """
     Get player profile with recent tournament entries and performance.
     """
-    sql = """
-        SELECT 
-            p.handle,
-            COUNT(DISTINCT te.id) as total_entries,
-            COUNT(DISTINCT t.id) as tournaments_played,
-            AVG(te.wins + te.losses + te.draws) as avg_rounds,
-            MAX(t.date) as last_tournament
-        FROM players p
-        LEFT JOIN tournament_entries te ON p.id = te.player_id
-        LEFT JOIN tournaments t ON te.tournament_id = t.id
-        WHERE p.id = :player_id
-        AND t.date >= date('now', '-90 days')
-        GROUP BY p.id, p.handle
-    """
-
-    with engine.connect() as conn:
+    cutoff = datetime.utcnow() - timedelta(days=90)
+    with get_session() as session:
         player_info = (
-            conn.execute(text(sql), {"player_id": player_id}).mappings().first()
+            session.query(
+                Player.handle.label("handle"),
+                func.count(distinct(TournamentEntry.id)).label("total_entries"),
+                func.count(distinct(Tournament.id)).label("tournaments_played"),
+                func.avg(
+                    TournamentEntry.wins
+                    + TournamentEntry.losses
+                    + TournamentEntry.draws
+                ).label("avg_rounds"),
+                func.max(Tournament.date).label("last_tournament"),
+            )
+            .outerjoin(TournamentEntry, Player.id == TournamentEntry.player_id)
+            .outerjoin(Tournament, TournamentEntry.tournament_id == Tournament.id)
+            .filter(Player.id == player_id, Tournament.date >= cutoff)
+            .group_by(Player.id, Player.handle)
+            .first()
         )
 
     if not player_info:
         return f"Player {player_id} not found"
 
-    # Get recent results
-    results_sql = """
-        SELECT 
-            t.name as tournament_name,
-            t.date,
-            a.name as archetype_name,
-            te.wins,
-            te.losses,
-            te.draws,
-            te.rank
-        FROM tournament_entries te
-        JOIN tournaments t ON te.tournament_id = t.id
-        JOIN archetypes a ON te.archetype_id = a.id
-        WHERE te.player_id = :player_id
-        AND t.date >= date('now', '-90 days')
-        ORDER BY t.date DESC
-        LIMIT 5
-    """
+    # Normalize mapping access for formatted output
+    player_info = dict(player_info._mapping)
 
-    with engine.connect() as conn:
-        results = conn.execute(text(results_sql), {"player_id": player_id}).fetchall()
+    # Get recent results
+    with get_session() as session:
+        results = (
+            session.query(
+                Tournament.name.label("tournament_name"),
+                Tournament.date.label("date"),
+                Archetype.name.label("archetype_name"),
+                TournamentEntry.wins,
+                TournamentEntry.losses,
+                TournamentEntry.draws,
+                TournamentEntry.rank,
+            )
+            .join(Tournament, TournamentEntry.tournament_id == Tournament.id)
+            .join(Archetype, TournamentEntry.archetype_id == Archetype.id)
+            .filter(TournamentEntry.player_id == player_id, Tournament.date >= cutoff)
+            .order_by(Tournament.date.desc())
+            .limit(5)
+            .all()
+        )
 
     results_summary = "\n".join(
         [

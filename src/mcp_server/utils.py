@@ -1,9 +1,25 @@
 from datetime import datetime
+from contextlib import contextmanager
 from sqlalchemy import event
-from ..models import get_engine
+from ..models import get_engine, get_session_factory
 
 
 engine = get_engine()
+
+# Session factory for ORM usage
+session_factory = get_session_factory()
+
+
+@contextmanager
+def get_session():
+    """
+    Yield a SQLAlchemy ORM Session bound to the same read-only engine.
+    """
+    session = session_factory()
+    try:
+        yield session
+    finally:
+        session.close()
 
 
 @event.listens_for(engine, "connect")
