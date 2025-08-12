@@ -11,7 +11,7 @@ mcp = FastMCP(
           - get_archetype_winrate(archetype_id, start_date, end_date, exclude_mirror?): compute W/L/D and winrate
           - get_meta_report(format_id, start_date, end_date, limit?): meta report with presence % and winrates
           - get_matchup_winrate(format_id, archetype1_name, archetype2_name, start_date, end_date): head-to-head analysis
-          - get_card_presence(format_id, start_date, end_date, board?, limit?): top cards by presence in format
+          - get_card_presence(format_id, start_date, end_date, board?, exclude_lands?, limit?): top cards by presence in format
           - search_card(query): search card by name (partial/fuzzy) and return details (id, name, type, oracle_text, mana_cost)
           - get_archetype_cards(format_id, archetype_name, start_date, end_date, board?, limit?): cards in specific archetype
           - get_archetype_trends(format_id, archetype_name, days_back?): weekly presence/winrate trends

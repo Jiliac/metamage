@@ -11,7 +11,8 @@ def get_card_presence(
     format_id: str,
     start_date: str,
     end_date: str,
-    board: str = "MAIN",
+    board: str = None,
+    exclude_lands: bool = True,
     limit: int = 20,
 ) -> Dict[str, Any]:
     """
@@ -21,7 +22,8 @@ def get_card_presence(
         format_id: Format UUID (e.g., '402d2a82-3ba6-4369-badf-a51f3eff4375' for Modern)
         start_date: ISO 8601 date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)
         end_date: ISO 8601 date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)
-        board: Card board location - 'MAIN' or 'SIDE' (default: MAIN)
+        board: Card board location - 'MAIN', 'SIDE', or None for both (default: None)
+        exclude_lands: Whether to exclude land cards from results (default: True)
         limit: Maximum cards to return (default: 20)
 
     Returns:
@@ -37,8 +39,8 @@ def get_card_presence(
     if end < start:
         raise ValueError("end_date must be >= start_date")
 
-    if board not in ["MAIN", "SIDE"]:
-        raise ValueError("board must be 'MAIN' or 'SIDE'")
+    if board is not None and board not in ["MAIN", "SIDE"]:
+        raise ValueError("board must be 'MAIN', 'SIDE', or None")
 
     sql = """
         WITH total_decks AS (
@@ -62,7 +64,8 @@ def get_card_presence(
             WHERE t.format_id = :format_id
             AND t.date >= :start
             AND t.date <= :end
-            AND dc.board = :board
+            AND (:board IS NULL OR dc.board = :board)
+            AND (NOT :exclude_lands OR NOT c.is_land)
             GROUP BY c.id, c.name
         )
         SELECT 
@@ -88,6 +91,7 @@ def get_card_presence(
                 "start": start,
                 "end": end,
                 "board": board,
+                "exclude_lands": exclude_lands,
                 "limit": limit,
             },
         ).fetchall()
