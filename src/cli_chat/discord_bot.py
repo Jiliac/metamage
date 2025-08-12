@@ -46,7 +46,7 @@ class AgentContainer:
                     logger.info("Creating Claude Sonnet client...")
                     llm = ChatAnthropic(
                         model="claude-sonnet-4-20250514",
-                        temperature=0.1,
+                        # temperature=0.1,
                         max_tokens=4096,
                     )
 

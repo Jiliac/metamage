@@ -39,7 +39,7 @@ class MTGChatAgent:
             llm = ChatAnthropic(
                 # model="claude-opus-4-1-20250805",
                 model="claude-sonnet-4-20250514",
-                temperature=0.1,  # Low temperature for consistent analysis
+                # temperature=0.1,  # Low temperature for consistent analysis
                 max_tokens=4096,
             )
 

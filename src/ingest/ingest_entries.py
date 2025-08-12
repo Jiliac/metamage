@@ -170,6 +170,48 @@ def get_card(session: Session, card_cache: CardCache, name: str) -> Optional[Car
     return None
 
 
+def upsert_entry(
+    session: Session,
+    tournament_id: str,
+    player_id: str,
+    archetype_id: str,
+    decklist_url: Optional[str],
+) -> Tuple[TournamentEntry, bool, bool]:
+    """
+    Ensure a TournamentEntry exists for (tournament_id, player_id).
+    If it exists, update archetype/decklist when changed.
+
+    Returns:
+        (entry, created, archetype_changed)
+    """
+    entry = (
+        session.query(TournamentEntry)
+        .filter(
+            TournamentEntry.tournament_id == tournament_id,
+            TournamentEntry.player_id == player_id,
+        )
+        .first()
+    )
+    if entry:
+        archetype_changed = entry.archetype_id != archetype_id
+        decklist_changed = entry.decklist_url != decklist_url
+        if archetype_changed or decklist_changed:
+            entry.archetype_id = archetype_id
+            entry.decklist_url = decklist_url
+            session.flush()
+        return entry, False, archetype_changed
+
+    entry = TournamentEntry(
+        tournament_id=tournament_id,
+        player_id=player_id,
+        archetype_id=archetype_id,
+        decklist_url=decklist_url,
+    )
+    session.add(entry)
+    session.flush()
+    return entry, True, False
+
+
 def upsert_deck_cards_for_entry(
     session: Session,
     entry: TournamentEntry,
@@ -259,6 +301,7 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
         "tournaments_existing": 0,
         "entries_created": 0,
         "entries_existing": 0,
+        "entries_updated_archetype": 0,
         "deck_card_rows_written": 0,
         "deck_cards_missing_cards": 0,
         "skipped_missing_player": 0,
@@ -291,27 +334,11 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
         t_cache[cache_key] = t
     print(f"  📊 Found {len(existing_tournaments)} existing tournaments")
 
-    # Pre-filter entries to skip those from tournaments already in DB
-    filtered_entries = []
-    for e in entries:
-        t_name = e.get("Tournament")
-        date_str = e.get("Date")
-        if not t_name or not date_str:
-            filtered_entries.append(e)
-            continue
-
-        try:
-            t_date = parse_iso_datetime(date_str)
-            cache_key = f"{t_name}|{t_date.isoformat()}|{format_id}"
-            if cache_key not in existing_tournament_keys:
-                filtered_entries.append(e)
-            else:
-                stats["entries_filtered"] += 1
-        except Exception:
-            filtered_entries.append(e)
+    # Pre-processing: do not skip entries from tournaments already in DB anymore
+    filtered_entries = entries
 
     print(
-        f"  🚮 Filtered out {stats['entries_filtered']} entries from existing tournaments"
+        f"  🚮 Filtered out {stats['entries_filtered']} entries during pre-processing"
     )
     print(f"  📝 Processing {len(filtered_entries)} new entries")
 
@@ -430,33 +457,22 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
             stats["skipped_missing_archetype"] += 1
             continue
 
-        # Entry (unique per tournament + player)
-        existing_entry = (
-            session.query(TournamentEntry)
-            .filter(
-                TournamentEntry.tournament_id == tournament.id,
-                TournamentEntry.player_id == player.id,
-            )
-            .first()
+        # Entry (unique per tournament + player) - upsert and update if archetype changed
+        entry, created, archetype_changed = upsert_entry(
+            session=session,
+            tournament_id=tournament.id,
+            player_id=player.id,
+            archetype_id=archetype.id,
+            decklist_url=anchor,
         )
-
-        if existing_entry:
-            stats["entries_existing"] += 1
-            entry = existing_entry
-            # Refresh archetype and decklist_url in case they changed
-            entry.archetype_id = archetype.id
-            entry.decklist_url = anchor
-            session.flush()
-        else:
-            entry = TournamentEntry(
-                tournament_id=tournament.id,
-                player_id=player.id,
-                archetype_id=archetype.id,
-                decklist_url=anchor,
-            )
-            session.add(entry)
-            session.flush()
+        if created:
             stats["entries_created"] += 1
+        else:
+            stats["entries_existing"] += 1
+            if archetype_changed:
+                stats["entries_updated_archetype"] = (
+                    stats.get("entries_updated_archetype", 0) + 1
+                )
 
         # Deck cards: rebuild
         mb = e.get("Mainboard", [])
@@ -497,6 +513,9 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
     )
     print(
         f"  👤 Entries created: {stats['entries_created']}, existing: {stats['entries_existing']}"
+    )
+    print(
+        f"  🔄 Entries updated (archetype changed): {stats['entries_updated_archetype']}"
     )
     print(f"  ⚔️ Pairings seen: {stats['pairings_seen']}")
     print(f"  ➕ Pairings created: {stats['pairings_created']}")

@@ -47,6 +47,7 @@ def search_card(query: str) -> Dict[str, Any]:
     if rows:
         first = rows[0]._mapping
         db_card_id = first["id"]
+        q = first["name"]
 
     # Always fetch Scryfall for canonical details (fuzzy)
     scryfall = None
