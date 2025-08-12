@@ -6,11 +6,23 @@ import inspect
 from .mcp_client import create_mcp_client
 
 
-async def list_tools():
-    """List all available MCP tools with names and basic argument info."""
+async def list_tools_and_resources():
+    """List all available MCP tools and resources with names and basic argument info."""
     try:
-        tools = await create_mcp_client()
+        from langchain_mcp_adapters.client import MultiServerMCPClient
 
+        # Create MCP client configuration for HTTP transport
+        client = MultiServerMCPClient(
+            {
+                "mtg": {
+                    "url": "http://localhost:9000/mcp",
+                    "transport": "streamable_http",
+                }
+            }
+        )
+
+        # Get tools
+        tools = await client.get_tools()
         print(f"\nAvailable MCP Tools ({len(tools)}):")
         print("=" * 50)
 
@@ -44,10 +56,29 @@ async def list_tools():
 
             print(f"• {tool_name}{args_info}")
 
+        # Get resources
+        try:
+            resources = await client.get_resources(server_name="mtg")
+            print(f"\nAvailable MCP Resources ({len(resources)}):")
+            print("=" * 50)
+
+            for resource in resources:
+                print(f"• {resource.uri}")
+                if hasattr(resource, "name") and resource.name:
+                    print(f"  Name: {resource.name}")
+                if hasattr(resource, "description") and resource.description:
+                    # Just show first line of description to keep it brief
+                    desc_line = resource.description.split("\n")[0]
+                    if len(desc_line) > 80:
+                        desc_line = desc_line[:77] + "..."
+                    print(f"  Description: {desc_line}")
+        except Exception as e:
+            print(f"\nCould not list resources: {e}")
+
         print("=" * 50)
 
     except Exception as e:
-        print(f"Error listing tools: {e}")
+        print(f"Error listing tools and resources: {e}")
         return 1
 
     return 0
@@ -55,7 +86,7 @@ async def list_tools():
 
 async def main():
     """Main entry point."""
-    return await list_tools()
+    return await list_tools_and_resources()
 
 
 if __name__ == "__main__":
