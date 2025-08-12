@@ -8,6 +8,7 @@ from langchain_anthropic import ChatAnthropic
 from langgraph.prebuilt import create_react_agent
 
 from .mcp_client import create_mcp_client
+from .system_prompt import get_metamage_system_prompt
 
 
 class MTGChatAgent:
@@ -43,7 +44,8 @@ class MTGChatAgent:
 
             # Create ReAct agent with MCP tools
             print("🤖 Creating ReAct agent...")
-            self.agent = create_react_agent(llm, tools)
+            system_prompt = get_metamage_system_prompt()
+            self.agent = create_react_agent(llm, tools, prompt=system_prompt)
 
             print("✅ Agent setup complete!")
             return True

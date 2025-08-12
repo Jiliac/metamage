@@ -20,8 +20,8 @@ async def create_mcp_client() -> List[BaseTool]:
         # Get tools from the MCP server
         tools = await client.get_tools()
         print(f"Successfully connected to MCP server. Available tools: {len(tools)}")
-        for tool in tools:
-            print(f"  - {tool.name}: {tool.description}")
+        # for tool in tools:
+        #     print(f"  - {tool.name}: {tool.description}")
         return tools
     except Exception as e:
         print(f"Error connecting to MCP server: {e}")

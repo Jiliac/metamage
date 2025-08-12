@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+"""Simple tool to list available MCP tools without verbose descriptions."""
+
+import asyncio
+import inspect
+from .mcp_client import create_mcp_client
+
+
+async def list_tools():
+    """List all available MCP tools with names and basic argument info."""
+    try:
+        tools = await create_mcp_client()
+
+        print(f"\nAvailable MCP Tools ({len(tools)}):")
+        print("=" * 50)
+
+        for tool in tools:
+            # Get tool name
+            tool_name = tool.name
+
+            # Try to get arguments from the tool's schema or run method
+            args_info = ""
+            if hasattr(tool, "args_schema") and tool.args_schema:
+                # Get field names from pydantic model
+                if hasattr(tool.args_schema, "__fields__"):
+                    fields = list(tool.args_schema.__fields__.keys())
+                    args_info = f"({', '.join(fields)})"
+                elif hasattr(tool.args_schema, "model_fields"):
+                    fields = list(tool.args_schema.model_fields.keys())
+                    args_info = f"({', '.join(fields)})"
+            elif hasattr(tool, "_run"):
+                # Try to get signature from _run method
+                try:
+                    sig = inspect.signature(tool._run)
+                    params = [
+                        name
+                        for name, param in sig.parameters.items()
+                        if name not in ["self", "run_manager"]
+                    ]
+                    if params:
+                        args_info = f"({', '.join(params)})"
+                except Exception:
+                    pass
+
+            print(f"• {tool_name}{args_info}")
+
+        print("=" * 50)
+
+    except Exception as e:
+        print(f"Error listing tools: {e}")
+        return 1
+
+    return 0
+
+
+async def main():
+    """Main entry point."""
+    return await list_tools()
+
+
+if __name__ == "__main__":
+    try:
+        exit_code = asyncio.run(main())
+        exit(exit_code)
+    except KeyboardInterrupt:
+        print("\n👋 Goodbye!")
+        exit(0)
