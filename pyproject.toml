@@ -10,6 +10,7 @@ dependencies = [
     "requests>=2.32.4",
     "fastmcp",
     "langchain-anthropic>=0.3.0",
+    "langchain-openai>=0.3.0",
     "langchain-mcp-adapters",
     "langgraph",
     "discord>=2.3.2",
