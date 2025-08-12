@@ -14,7 +14,7 @@ def get_archetype_winrate(
     exclude_mirror: bool = True,
 ) -> Dict[str, Any]:
     """
-    Compute wins/losses/draws and winrate for a given archetype_id within [start_date, end_date].
+    Compute wins/losses/draws and winrate (excluding draws) for a given archetype_id within [start_date, end_date].
     Dates must be ISO 8601 (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS).
     """
     try:

@@ -13,10 +13,9 @@ def get_matchup_winrate(
     archetype2_name: str,
     start_date: str,
     end_date: str,
-    exclude_draws: bool = True,
 ) -> Dict[str, Any]:
     """
-    Compute head-to-head winrate between two archetypes within date range.
+    Compute head-to-head winrate (excluding draws) between two archetypes within date range.
 
     Args:
         format_id: Format UUID (e.g., '402d2a82-3ba6-4369-badf-a51f3eff4375' for Modern)
@@ -24,7 +23,6 @@ def get_matchup_winrate(
         archetype2_name: Name of second archetype (case-insensitive)
         start_date: ISO 8601 date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)
         end_date: ISO 8601 date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)
-        exclude_draws: Calculate winrate excluding draws (default: True)
 
     Returns:
         Dict with matchup stats: wins/losses/draws for archetype1 vs archetype2, winrates
@@ -83,10 +81,7 @@ def get_matchup_winrate(
         int(res["total_matches"]) if res and res["total_matches"] is not None else 0
     )
 
-    # Calculate winrates
-    winrate_with_draws = (
-        (arch1_wins / total_matches * 100) if total_matches > 0 else None
-    )
+    # Calculate winrate excluding draws
     decisive_matches = arch1_wins + arch1_losses
     winrate_no_draws = (
         (arch1_wins / decisive_matches * 100) if decisive_matches > 0 else None
@@ -103,9 +98,6 @@ def get_matchup_winrate(
         "draws": draws,
         "total_matches": total_matches,
         "decisive_matches": decisive_matches,
-        "winrate_with_draws": round(winrate_with_draws, 2)
-        if winrate_with_draws is not None
-        else None,
         "winrate_no_draws": round(winrate_no_draws, 2)
         if winrate_no_draws is not None
         else None,
