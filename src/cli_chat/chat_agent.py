@@ -91,8 +91,16 @@ class MTGChatAgent:
 
                 # Process query with agent
                 print("🤔 Analyzing...")
+
+                # Build full message history
+                messages = []
+                for prev_user, prev_assistant in self.conversation_history:
+                    messages.append(("user", prev_user))
+                    messages.append(("assistant", prev_assistant))
+                messages.append(("user", user_input))
+
                 response = await self.agent.ainvoke(
-                    {"messages": [("user", user_input)]}
+                    {"messages": messages}, config={"recursion_limit": 50}
                 )
 
                 # Extract and display response

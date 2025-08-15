@@ -99,7 +99,9 @@ async def mage(interaction: discord.Interaction, query: str):
     try:
         agent = await agent_container.get_agent()
         # One-shot, no history. Ask the agent directly.
-        result = await agent.ainvoke({"messages": [("user", query)]})
+        result = await agent.ainvoke(
+            {"messages": [("user", query)]}, config={"recursion_limit": 50}
+        )
         answer = result["messages"][-1].content
 
         # Echo the query + response (like ChatGPT/Claude)
