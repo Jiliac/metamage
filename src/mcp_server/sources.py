@@ -3,10 +3,10 @@ from typing import Dict, Any, Optional
 from sqlalchemy import text
 
 from .utils import engine
-from .mcp import mcp
+# from .mcp import mcp
 
 
-@mcp.tool
+# @mcp.tool
 def get_sources(
     format_id: str,
     start_date: str,
