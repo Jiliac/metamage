@@ -13,8 +13,9 @@ Usage:
 import sys
 import argparse
 import json
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 # Add the src directory to the path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -53,6 +54,37 @@ def load_json_data(file_path: str) -> Dict[str, Any]:
         sys.exit(1)
 
 
+def filter_entries_by_date(
+    entries: List[Dict[str, Any]], date_filter: str
+) -> List[Dict[str, Any]]:
+    """Filter tournament entries to only include those after the specified date."""
+    try:
+        filter_date = datetime.strptime(date_filter, "%Y-%m-%d")
+    except ValueError:
+        print(f"❌ Invalid date format: {date_filter}. Use YYYY-MM-DD format.")
+        sys.exit(1)
+
+    filtered_entries = []
+    for entry in entries:
+        # Check if entry has a date field (adjust field name as needed)
+        entry_date_str = entry.get("Date")
+        if not entry_date_str:
+            # Skip entries without dates or include them - adjust based on your needs
+            continue
+
+        try:
+            # Parse the entry date - ISO format with time
+            entry_date = datetime.fromisoformat(entry_date_str)
+            if entry_date.date() >= filter_date.date():
+                filtered_entries.append(entry)
+        except ValueError:
+            # Skip entries with invalid date formats
+            print(f"⚠️ Skipping entry with invalid date format: {entry_date_str}")
+            continue
+
+    return filtered_entries
+
+
 def get_format_id(session, format_name: str) -> str:
     """Get format ID from database by name."""
     format_obj = session.query(Format).filter(Format.name == format_name).first()
@@ -79,6 +111,11 @@ def main():
         action="store_true",
         help="Ingest tournaments, entries, deck cards and matches",
     )
+    parser.add_argument(
+        "--date",
+        type=str,
+        help="Filter out tournament entries before this date (YYYY-MM-DD format)",
+    )
 
     args = parser.parse_args()
 
@@ -104,6 +141,12 @@ def main():
 
     entries = data["Data"]
     print(f"📊 Found {len(entries)} entries")
+
+    # Apply date filter if provided
+    if args.date:
+        print(f"📅 Filtering entries after {args.date}...")
+        entries = filter_entries_by_date(entries, args.date)
+        print(f"📊 After date filter: {len(entries)} entries")
 
     # Initialize database
     engine = get_engine()
