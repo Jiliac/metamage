@@ -83,6 +83,7 @@ def _check_tournament_match(
     file_path: Path,
     expected_format: str,
     expected_tournament_name: str = None,
+    expected_tournament_id: str = None,
     expected_winner: str = None,
 ) -> bool:
     """
@@ -92,6 +93,7 @@ def _check_tournament_match(
         file_path: Path to the JSON file
         expected_format: Expected format name (e.g., 'pauper', 'modern')
         expected_tournament_name: Expected tournament name for exact matching
+        expected_tournament_id: Expected tournament ID for disambiguation
         expected_winner: Expected 1st place player name for disambiguation
 
     Returns:
@@ -102,24 +104,33 @@ def _check_tournament_match(
 
         data = json.loads(file_path.read_text(encoding="utf-8"))
 
-        # Get tournament name
+        # Get tournament info
         tournament_info = data.get("Tournament", {})
         if isinstance(tournament_info, dict):
             tournament_name = tournament_info.get("Name", "")
+            tournament_id = str(tournament_info.get("Id", ""))
         else:
             tournament_name = str(tournament_info)
+            tournament_id = ""
 
-        # 1. Check exact tournament name match first (most specific)
+        # 1. Check tournament ID match first (most specific)
+        if expected_tournament_id and tournament_id:
+            if tournament_id == expected_tournament_id:
+                return True
+            # If we have an expected ID but it doesn't match, this is not the right tournament
+            return False
+
+        # 2. Check exact tournament name match
         if expected_tournament_name:
             if tournament_name.strip() == expected_tournament_name.strip():
                 return True
 
-        # 2. Check format in tournament name
+        # 3. Check format in tournament name
         expected_format_lower = expected_format.lower()
         if expected_format_lower not in tournament_name.lower():
             return False
 
-        # 3. If we have an expected winner, check standings
+        # 4. If we have an expected winner, check standings
         if expected_winner:
             standings = data.get("Standings", [])
             if standings:
@@ -135,7 +146,7 @@ def _check_tournament_match(
                     # If winner doesn't match, this is probably not the right tournament
                     return False
 
-        # 4. Default: format matches, so it's a candidate
+        # 5. Default: format matches, so it's a candidate
         return True
 
     except Exception:
@@ -162,6 +173,7 @@ def _list_candidate_files_by_content(
     day_dir: Path,
     format_name: str,
     tournament_name: str = None,
+    tournament_id: str = None,
     expected_winner: str = None,
 ) -> List[Path]:
     """
@@ -176,7 +188,7 @@ def _list_candidate_files_by_content(
             p.is_file()
             and p.suffix.lower() == ".json"
             and _check_tournament_match(
-                p, format_name, tournament_name, expected_winner
+                p, format_name, tournament_name, tournament_id, expected_winner
             )
         ):
             candidates.append(p)
@@ -189,6 +201,7 @@ def find_rounds_file(
     source: TournamentSource,
     warned_multiple: set = None,
     tournament_name: str = None,
+    tournament_id: str = None,
     expected_winner: str = None,
 ) -> Optional[Path]:
     """
@@ -224,6 +237,8 @@ def find_rounds_file(
                 print(
                     f"  ⚠️ Multiple rounds files match {fmt_slug} on {yyyy}-{mm}-{dd}: {len(candidates)} candidates; skipping for now"
                 )
+                for candidate in candidates:
+                    print(f"    - {candidate}")
                 warned_multiple.add(warn_key)
             return None
         # Continue to content-based matching with the filename candidates
@@ -235,13 +250,13 @@ def find_rounds_file(
         content_candidates = []
         for candidate in candidates:
             if _check_tournament_match(
-                candidate, format_name, tournament_name, expected_winner
+                candidate, format_name, tournament_name, tournament_id, expected_winner
             ):
                 content_candidates.append(candidate)
     else:
         # No filename candidates, scan all files by content
         content_candidates = _list_candidate_files_by_content(
-            day_dir, format_name, tournament_name, expected_winner
+            day_dir, format_name, tournament_name, tournament_id, expected_winner
         )
     if len(content_candidates) == 1:
         # print(f"TOURNAMENT FILE (by content): {content_candidates[0]}")
@@ -276,6 +291,8 @@ def find_rounds_file(
             print(
                 f"  ⚠️ Multiple rounds files match format '{format_name}' by content on {yyyy}-{mm}-{dd}: {len(content_candidates)} candidates; skipping for now"
             )
+            for candidate in content_candidates:
+                print(f"    - {candidate}")
             warned_multiple.add(warn_key)
         return None
 
