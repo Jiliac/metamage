@@ -32,7 +32,7 @@ class MTGChatAgent:
         )
 
         # Check for API key based on provider
-        if self.provider == "claude":
+        if self.provider == "claude" or self.provider == "opus":
             if not os.getenv("ANTHROPIC_API_KEY"):
                 print("❌ Error: ANTHROPIC_API_KEY environment variable not set")
                 print("Please set your Anthropic API key:")
@@ -55,6 +55,13 @@ class MTGChatAgent:
                 print("🧠 Initializing Claude Sonnet...")
                 llm = ChatAnthropic(
                     model="claude-sonnet-4-20250514",
+                    max_tokens=4096,
+                )
+            # Create LLM based on provider
+            if self.provider == "opus":
+                print("🧠 Initializing Claude Opus...")
+                llm = ChatAnthropic(
+                    model="claude-opus-4-1-20250805",
                     max_tokens=4096,
                 )
             elif self.provider == "xai":
@@ -159,7 +166,7 @@ async def main():
     parser = argparse.ArgumentParser(description="MTG Tournament Analysis Chat Agent")
     parser.add_argument(
         "--provider",
-        choices=["claude", "xai"],
+        choices=["claude", "xai", "opus"],
         default="claude",
         help="LLM provider to use (default: claude)",
     )
