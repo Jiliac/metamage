@@ -4,27 +4,24 @@ suppressPackageStartupMessages({
   library(dplyr)
   library(tidyr)
   library(forcats)
+  library(stringr)
   library(ggrepel)
 })
 
 plot_presence <- function(pres_df, color_map, order_levels, title = "Presence") {
   df <- pres_df %>%
     mutate(name = factor(bucket, levels = c(order_levels, setdiff(bucket, order_levels)))) %>%
-    arrange(name)
-
-  # Highlight the top archetype, use a unified color for the rest
-  top_name <- order_levels[1]
-  default_col <- "#6271FF"
-  highlight_col <- "#F24B5A"
-  df$fill_col <- ifelse(df$bucket == top_name, highlight_col, default_col)
+    filter(bucket != "Other") %>%  # drop the aggregated 'Other' row from the chart
+    arrange(name) %>%
+    mutate(label = stringr::str_to_title(as.character(name)))  # Title Case labels
 
   xmax <- max(df$share, na.rm = TRUE)
   xmax <- ifelse(is.finite(xmax), xmax, 0.1)
 
-  ggplot(df, aes(x = share, y = fct_rev(name), fill = fill_col)) +
+  ggplot(df, aes(x = share, y = fct_rev(label), fill = name)) +
     geom_col(width = 0.65, color = NA) +
     geom_text(
-      aes(label = paste0("\u2013", scales::percent(share, accuracy = 0.1))),
+      aes(label = scales::percent(share, accuracy = 0.1)),
       hjust = -0.1, size = 3.6
     ) +
     scale_x_continuous(
@@ -32,7 +29,7 @@ plot_presence <- function(pres_df, color_map, order_levels, title = "Presence") 
       limits = c(0, xmax * 1.12),
       expand = expansion(mult = c(0, 0.08))
     ) +
-    scale_fill_identity(guide = "none") +
+    scale_fill_manual(values = color_map, guide = "none") +
     labs(
       title = title,
       x = "Presence (%)", y = NULL

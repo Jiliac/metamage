@@ -27,6 +27,8 @@ params <- list(
   matrix_height   = 1200,
   bar_width       = 1000,
   bar_height      = 1200,
+  presence_width  = 2200,
+  presence_height = 1400,
   bubble_width    = 1000,
   bubble_height   = 1000
 )

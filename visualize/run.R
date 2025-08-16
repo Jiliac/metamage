@@ -36,6 +36,7 @@ if (length(args) > 0) {
         message(sprintf("Overriding %s = %s", key, val))
         if (key %in% c("top_n", "overview_width", "overview_height",
                        "matrix_width","matrix_height","bar_width","bar_height",
+                       "presence_width","presence_height",
                        "bubble_width","bubble_height")) {
           params[[key]] <- as.integer(val)
         } else {
@@ -106,7 +107,7 @@ p_bubble   <- plot_wr_vs_presence(wr_pres, color_map)
 
 # Save outputs
 ggsave(outputs$meta_matrix,   p_matrix, width = params$matrix_width, height = params$matrix_height, units = "px", dpi = 300)
-ggsave(outputs$meta_presence, p_presence, width = params$bar_width, height = params$bar_height, units = "px", dpi = 300)
+ggsave(outputs$meta_presence, p_presence, width = params$presence_width, height = params$presence_height, units = "px", dpi = 300)
 ggsave(outputs$meta_wr_ci,    p_wr_ci, width = params$bar_width, height = params$bar_height, units = "px", dpi = 300)
 ggsave(outputs$meta_wr_presence, p_bubble, width = params$bubble_width, height = params$bubble_height, units = "px", dpi = 300)
 
