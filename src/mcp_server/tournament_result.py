@@ -4,8 +4,11 @@ from sqlalchemy import text
 
 from .utils import engine
 from .mcp import mcp
+from fastmcp import Context
+from .log_decorator import log_tool_calls
 
 
+@log_tool_calls
 @mcp.tool
 def get_tournament_results(
     format_id: str,
@@ -13,7 +16,7 @@ def get_tournament_results(
     end_date: str,
     min_players: int = 32,
     limit: int = 20,
-) -> Dict[str, Any]:
+, ctx: Context = None) -> Dict[str, Any]:
     """
     Get tournament winners and top 8 breakdown by archetype.
 

@@ -4,8 +4,11 @@ from sqlalchemy import text
 
 from .utils import engine
 from .mcp import mcp
+from fastmcp import Context
+from .log_decorator import log_tool_calls
 
 
+@log_tool_calls
 @mcp.tool
 def get_matchup_winrate(
     format_id: str,
@@ -13,7 +16,7 @@ def get_matchup_winrate(
     archetype2_name: str,
     start_date: str,
     end_date: str,
-) -> Dict[str, Any]:
+, ctx: Context = None) -> Dict[str, Any]:
     """
     Compute head-to-head winrate (excluding draws) between two archetypes within date range.
 

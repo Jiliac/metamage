@@ -5,10 +5,13 @@ from sqlalchemy import text
 
 from .utils import engine
 from .mcp import mcp
+from fastmcp import Context
+from .log_decorator import log_tool_calls
 
 
+@log_tool_calls
 @mcp.tool
-def search_card(query: str) -> Dict[str, Any]:
+def search_card(query: str, ctx: Context = None) -> Dict[str, Any]:
     """
     Search a card by partial name in the local DB; if not found, fall back to Scryfall fuzzy search.
     Even if the DB yields results, Scryfall is queried to return full card details.

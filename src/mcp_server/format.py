@@ -1,10 +1,13 @@
 from .utils import get_session
 from .mcp import mcp
+from fastmcp import Context
+from .log_decorator import log_tool_calls
 from ..models import Format, MetaChange
 
 
+@log_tool_calls
 @mcp.tool
-def list_formats() -> str:
+def list_formats(ctx: Context = None) -> str:
     """
     List all available formats with their IDs and names.
     """
@@ -23,8 +26,9 @@ def list_formats() -> str:
 Use these format IDs in other tools to query specific format data."""
 
 
+@log_tool_calls
 @mcp.tool
-def get_format_meta_changes(format_id: str) -> str:
+def get_format_meta_changes(format_id: str, ctx: Context = None) -> str:
     """
     Get all meta changes (bans, set releases) for a format.
     """

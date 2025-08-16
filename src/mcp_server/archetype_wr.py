@@ -1,17 +1,21 @@
 from datetime import datetime
 from typing import Dict, Any
 from sqlalchemy import text
+from fastmcp import Context
 
 from .utils import engine
 from .mcp import mcp
+from .log_decorator import log_tool_calls
 
 
 @mcp.tool
+@log_tool_calls
 def get_archetype_winrate(
     archetype_id: str,
     start_date: str,
     end_date: str,
     exclude_mirror: bool = True,
+    ctx: Context = None,
 ) -> Dict[str, Any]:
     """
     Compute wins/losses/draws and winrate (excluding draws) for a given archetype_id within [start_date, end_date].

@@ -1,14 +1,17 @@
 from datetime import datetime
 from typing import Dict, Any
 from sqlalchemy import text
+from fastmcp import Context
 
 from .utils import engine
 from .mcp import mcp
+from .log_decorator import log_tool_calls
 
 
 @mcp.tool
+@log_tool_calls
 def get_meta_report(
-    format_id: str, start_date: str, end_date: str, limit: int = 15
+    format_id: str, start_date: str, end_date: str, limit: int = 15, ctx: Context = None
 ) -> Dict[str, Any]:
     """
     Generate meta report showing top archetypes by match presence within date range.

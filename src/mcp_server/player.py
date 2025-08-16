@@ -3,11 +3,14 @@ from sqlalchemy import func, distinct
 
 from .utils import get_session
 from .mcp import mcp
+from fastmcp import Context
+from .log_decorator import log_tool_calls
 from ..models import Player, TournamentEntry, Tournament, Archetype
 
 
+@log_tool_calls
 @mcp.tool
-def get_player(player_id: str) -> str:
+def get_player(player_id: str, ctx: Context = None) -> str:
     """
     Get player profile with recent tournament entries and performance.
     """

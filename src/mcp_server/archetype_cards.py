@@ -4,8 +4,11 @@ from sqlalchemy import text
 
 from .utils import engine
 from .mcp import mcp
+from fastmcp import Context
+from .log_decorator import log_tool_calls
 
 
+@log_tool_calls
 @mcp.tool
 def get_archetype_cards(
     format_id: str,
@@ -14,7 +17,7 @@ def get_archetype_cards(
     end_date: str,
     board: str = "MAIN",
     limit: int = 20,
-) -> Dict[str, Any]:
+, ctx: Context = None) -> Dict[str, Any]:
     """
     Get top cards in specific archetype within date range.
 

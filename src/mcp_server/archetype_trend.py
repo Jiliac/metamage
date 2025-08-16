@@ -3,14 +3,17 @@ from sqlalchemy import text
 
 from .utils import engine
 from .mcp import mcp
+from fastmcp import Context
+from .log_decorator import log_tool_calls
 
 
+@log_tool_calls
 @mcp.tool
 def get_archetype_trends(
     format_id: str,
     archetype_name: str,
     days_back: int = 30,
-) -> Dict[str, Any]:
+, ctx: Context = None) -> Dict[str, Any]:
     """
     Get weekly presence and winrate trends for an archetype over time.
 

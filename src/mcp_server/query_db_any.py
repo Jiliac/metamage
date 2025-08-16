@@ -1,13 +1,16 @@
 from typing import Dict, Any
 from sqlalchemy import text
+from fastmcp import Context
 
 from .utils import validate_select_only
 from .utils import engine
 from .mcp import mcp
+from .log_decorator import log_tool_calls
 
 
 @mcp.tool
-def query_database(sql: str, limit: int = 1000) -> Dict[str, Any]:
+@log_tool_calls
+def query_database(sql: str, limit: int = 1000, ctx: Context = None) -> Dict[str, Any]:
     """
     Execute a SELECT-only SQL query against the tournament DB.
 

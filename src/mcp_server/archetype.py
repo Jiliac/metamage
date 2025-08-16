@@ -2,10 +2,13 @@ from sqlalchemy import text
 
 from .utils import engine
 from .mcp import mcp
+from fastmcp import Context
+from .log_decorator import log_tool_calls
 
 
+@log_tool_calls
 @mcp.tool
-def get_archetype_overview(archetype_name: str) -> str:
+def get_archetype_overview(archetype_name: str, ctx: Context = None) -> str:
     """
     Get archetype overview with recent performance and key cards.
     """
