@@ -82,7 +82,8 @@ plot_wr_ci <- function(
   color_map,
   order_levels,
   title = "Win Rates",
-  subtitle = NULL
+  subtitle = NULL,
+  caption = NULL
 ) {
   df <- wr_df %>%
     mutate(name = factor(archetype_name, levels = order_levels)) %>%
@@ -132,17 +133,48 @@ plot_wr_ci <- function(
   }
   pad <- max(0.01, (xmax - xmin) * 0.04)
   xmin <- max(0, xmin - pad)
-  xmax <- min(1, xmax + pad)
+  xmax_original <- xmax
+  xmax <- min(1, xmax + pad + 0.06) # Extra space for text
 
   ggplot(df, aes(y = fct_rev(label))) +
     # CI whiskers as horizontal segments
     geom_segment(
       aes(x = wr_lo, xend = wr_hi, yend = fct_rev(label), color = line_col),
-      size = 0.4,
+      linewidth = 0.4,
       lineend = "round"
     ) +
     # Point estimate
     geom_point(aes(x = wr, color = line_col), size = 1.2) +
+    # Text labels on the right - main WR (bold)
+    geom_text(
+      aes(
+        x = xmax_original + 0.02,
+        label = paste0(round(wr * 100, 1), "%")
+      ),
+      hjust = 0,
+      size = 1.6,
+      family = "Inter",
+      fontface = "bold",
+      color = "#303030"
+    ) +
+    # Text labels on the right - CI (normal)
+    geom_text(
+      aes(
+        x = xmax_original + 0.02,
+        label = paste0(
+          " (",
+          round(wr_lo * 100, 1),
+          "–",
+          round(wr_hi * 100, 1),
+          "%)"
+        )
+      ),
+      hjust = 0,
+      nudge_x = 0.018,
+      size = 1.6,
+      family = "Inter",
+      color = "#606060"
+    ) +
     # 50% reference line
     geom_vline(
       xintercept = 0.5,
@@ -153,12 +185,13 @@ plot_wr_ci <- function(
     scale_x_continuous(
       labels = percent_format(accuracy = 1),
       limits = c(xmin, xmax),
-      expand = expansion(mult = c(0, 0.06))
+      expand = expansion(mult = c(0, 0.02))
     ) +
     scale_color_identity(guide = "none") +
     labs(
       title = title,
       subtitle = subtitle,
+      caption = caption,
       x = "Win Rate",
       y = NULL
     ) +
@@ -173,9 +206,15 @@ plot_wr_ci <- function(
         family = "Inter"
       ),
       plot.subtitle = element_text(hjust = 0.5, size = 7, family = "Inter"),
+      plot.caption = element_text(
+        hjust = 0.5,
+        size = 6,
+        family = "Inter",
+        color = "#606060"
+      ),
       panel.grid.major.y = element_line(
-        color = "#E8E8E8",
-        size = 0.3,
+        color = "#F5F5F5",
+        linewidth = 0.3,
         linetype = "dotted"
       ),
       panel.grid.minor = element_blank(),

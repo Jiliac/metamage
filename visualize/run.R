@@ -161,10 +161,10 @@ p_wr_ci <- plot_wr_ci(
   color_map,
   top_order,
   title = paste0(params$format_name, " Win Rates"),
-  subtitle = paste0(
-    "95% confidence intervals, from ",
+  caption = paste0(
+    "Data: all events ",
     params$start_date,
-    " to ",
+    " → ",
     params$end_date
   )
 )
