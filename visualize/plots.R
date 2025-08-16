@@ -82,37 +82,66 @@ plot_wr_ci <- function(wr_df, color_map, order_levels) {
     mutate(name = factor(archetype_name, levels = order_levels)) %>%
     arrange(name)
 
-  ggplot(df, aes(x = wr, y = fct_rev(name), fill = name)) +
-    geom_col(width = 0.65) +
-    geom_errorbarh(
-      aes(xmin = wr_lo, xmax = wr_hi),
-      height = 0.2,
-      color = "black",
-      size = 0.3
+  # Ensure CI columns exist (in case caller didn't add them)
+  if (!all(c("wr_lo", "wr_hi") %in% names(df))) {
+    ci <- wilson_ci(df$wr, df$games)
+    df$wr_lo <- ci$lo
+    df$wr_hi <- ci$hi
+  }
+
+  # Warm-to-cool gradient like the presence chart, mapped by ordered names
+  lvl <- levels(df$name)
+  grad_cols <- grDevices::colorRampPalette(c("#F59E0B", "#10B981"))(length(lvl))
+  names(grad_cols) <- lvl
+  df$line_col <- grad_cols[as.character(df$name)]
+
+  # Compute x-range from data and add a little padding
+  xmin <- suppressWarnings(min(df$wr_lo, na.rm = TRUE))
+  xmax <- suppressWarnings(max(df$wr_hi, na.rm = TRUE))
+  if (!is.finite(xmin) || !is.finite(xmax)) {
+    xmin <- 0.4; xmax <- 0.6
+  }
+  pad <- max(0.02, (xmax - xmin) * 0.08)
+  xmin <- max(0, xmin - pad)
+  xmax <- min(1, xmax + pad)
+
+  ggplot(df, aes(y = fct_rev(name))) +
+    # CI whiskers as horizontal segments
+    geom_segment(
+      aes(x = wr_lo, xend = wr_hi, yend = fct_rev(name), color = line_col),
+      size = 1.2,
+      lineend = "round"
     ) +
-    geom_text(
-      aes(label = paste0(round(wr * 100, 1), "%")),
-      hjust = -0.05,
-      size = 3.2
-    ) +
+    # Point estimate
+    geom_point(aes(x = wr, color = line_col), size = 2.6) +
+    # 50% reference line
+    geom_vline(xintercept = 0.5, linetype = "dashed", color = "#60A5FA", alpha = 0.6) +
     scale_x_continuous(
       labels = percent_format(accuracy = 1),
-      limits = c(0.4, 0.6),
-      breaks = seq(0.4, 0.6, 0.05),
+      limits = c(xmin, xmax),
       expand = expansion(mult = c(0, 0.12))
     ) +
-    scale_fill_manual(values = color_map, guide = "none") +
+    scale_color_identity(guide = "none") +
     labs(
-      title = "Win Rate (95% CI), mirrors included",
-      x = NULL,
+      title = "Win rates with 95% confidence intervals",
+      x = "Win rate",
       y = NULL
     ) +
-    theme_minimal(base_size = 11) +
+    theme_minimal(base_size = 12, base_family = "Inter") +
     theme(
+      axis.text.y = element_text(size = 7, family = "Inter"),
+      axis.text.x = element_text(size = 10, family = "Inter"),
+      plot.title = element_text(
+        size = 20,
+        face = "bold",
+        hjust = 0.5,
+        family = "Inter"
+      ),
       panel.grid.major.y = element_blank(),
       panel.grid.minor = element_blank(),
       panel.background = element_rect(fill = "white", color = NA),
-      plot.background = element_rect(fill = "white", color = NA)
+      plot.background = element_rect(fill = "white", color = NA),
+      plot.margin = margin(10, 30, 10, 10)
     )
 }
 
