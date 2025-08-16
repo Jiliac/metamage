@@ -71,12 +71,12 @@ fetch_wr_by_archetype <- function(con, format_id, start_date, end_date) {
   )
   DBI::dbGetQuery(con, sql) %>%
     mutate(
-      wins   = as.integer(wins),
+      wins = as.integer(wins),
       losses = as.integer(losses),
-      draws  = as.integer(draws),
-      games  = wins + losses + draws,
+      draws = as.integer(draws),
+      games = wins + losses + draws,
       points = wins + 0.5 * draws,
-      wr     = ifelse(games > 0, points / games, NA_real_)
+      wr = ifelse(games > 0, points / games, NA_real_)
     )
 }
 
@@ -103,11 +103,11 @@ fetch_matchups <- function(con, format_id, start_date, end_date) {
   )
   DBI::dbGetQuery(con, sql) %>%
     mutate(
-      wins   = as.integer(wins),
+      wins = as.integer(wins),
       losses = as.integer(losses),
-      draws  = as.integer(draws),
-      games  = wins + losses + draws,
+      draws = as.integer(draws),
+      games = wins + losses + draws,
       points = wins + 0.5 * draws,
-      wr     = ifelse(games > 0, points / games, NA_real_)
+      wr = ifelse(games > 0, points / games, NA_real_)
     )
 }

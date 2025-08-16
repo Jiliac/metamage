@@ -4,11 +4,26 @@ suppressPackageStartupMessages({
 })
 
 okabe_ito <- c(
-  "#E69F00", "#56B4E9", "#009E73", "#F0E442",
-  "#0072B2", "#D55E00", "#CC79A7", "#999999",
-  "#000000", "#009E73", "#F5793A", "#8491B4",
-  "#66C2A5", "#FC8D62", "#8DA0CB", "#E78AC3",
-  "#A6D854", "#FFD92F", "#E5C494", "#B3B3B3"
+  "#E69F00",
+  "#56B4E9",
+  "#009E73",
+  "#F0E442",
+  "#0072B2",
+  "#D55E00",
+  "#CC79A7",
+  "#999999",
+  "#000000",
+  "#009E73",
+  "#F5793A",
+  "#8491B4",
+  "#66C2A5",
+  "#FC8D62",
+  "#8DA0CB",
+  "#E78AC3",
+  "#A6D854",
+  "#FFD92F",
+  "#E5C494",
+  "#B3B3B3"
 )
 
 assign_archetype_colors <- function(archetype_names) {
