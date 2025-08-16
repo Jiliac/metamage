@@ -9,9 +9,9 @@ env_or <- function(var, default) {
 
 params <- list(
   # Required analysis window
-  format_name = env_or("MTG_FORMAT", "Standard"),
-  start_date  = env_or("START_DATE", "2025-01-01"),
-  end_date    = env_or("END_DATE",   "2025-03-31"),
+  format_name = env_or("MTG_FORMAT", "Modern"),
+  start_date  = env_or("START_DATE", "2025-07-01"),
+  end_date    = env_or("END_DATE",   "2025-08-15"),
 
   # Selection and rendering
   top_n       = as.integer(env_or("TOP_N", "15")),

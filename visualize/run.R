@@ -99,23 +99,13 @@ p_wr_ci    <- plot_wr_ci(wr, color_map, top_order)
 p_matrix   <- plot_matrix(mat, color_map, top_order)
 p_bubble   <- plot_wr_vs_presence(wr_pres, color_map)
 
-# Compose overview (Karsten-style split)
-left_col <- p_presence / p_wr_ci + plot_layout(heights = c(1, 1))
-overview <- left_col + p_matrix + plot_layout(widths = c(0.45, 0.55)) +
-  plot_annotation(
-    title = sprintf("%s winrates: %s", params$format_name, fmt_title_date(params$start_date, params$end_date)),
-    subtitle = "Results include mirrors; draws = 0.5; error bars are 95% Wilson intervals; top decks by presence."
-  )
-
 # Save outputs
-ggsave(outputs$meta_overview, overview, width = params$overview_width, height = params$overview_height, units = "px", dpi = 300)
 ggsave(outputs$meta_matrix,   p_matrix, width = params$matrix_width, height = params$matrix_height, units = "px", dpi = 300)
 ggsave(outputs$meta_presence, p_presence, width = params$bar_width, height = params$bar_height, units = "px", dpi = 300)
 ggsave(outputs$meta_wr_ci,    p_wr_ci, width = params$bar_width, height = params$bar_height, units = "px", dpi = 300)
 ggsave(outputs$meta_wr_presence, p_bubble, width = params$bubble_width, height = params$bubble_height, units = "px", dpi = 300)
 
 message("Saved:")
-message(" - ", outputs$meta_overview)
 message(" - ", outputs$meta_matrix)
 message(" - ", outputs$meta_presence)
 message(" - ", outputs$meta_wr_ci)
