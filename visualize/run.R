@@ -94,7 +94,12 @@ mat <- all_pairs %>%
 color_map <- assign_archetype_colors(c(top_order, if ("Other" %in% presence_top_other$bucket) "Other"))
 
 # Build plots
-p_presence <- plot_presence(presence_top_other, color_map, top_order)
+p_presence <- plot_presence(
+  presence_top_other,
+  color_map,
+  top_order,
+  title = paste0(params$format_name, " Metagame Share (by Matches)")
+)
 p_wr_ci    <- plot_wr_ci(wr, color_map, top_order)
 p_matrix   <- plot_matrix(mat, color_map, top_order)
 p_bubble   <- plot_wr_vs_presence(wr_pres, color_map)

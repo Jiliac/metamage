@@ -7,32 +7,48 @@ suppressPackageStartupMessages({
   library(ggrepel)
 })
 
-plot_presence <- function(pres_df, color_map, order_levels) {
+plot_presence <- function(pres_df, color_map, order_levels, title = "Presence") {
   df <- pres_df %>%
     mutate(name = factor(bucket, levels = c(order_levels, setdiff(bucket, order_levels)))) %>%
     arrange(name)
 
-  ggplot(df, aes(x = share, y = fct_rev(name), fill = name)) +
-    geom_col(width = 0.65) +
+  # Highlight the top archetype, use a unified color for the rest
+  top_name <- order_levels[1]
+  default_col <- "#6271FF"
+  highlight_col <- "#F24B5A"
+  df$fill_col <- ifelse(df$bucket == top_name, highlight_col, default_col)
+
+  xmax <- max(df$share, na.rm = TRUE)
+  xmax <- ifelse(is.finite(xmax), xmax, 0.1)
+
+  ggplot(df, aes(x = share, y = fct_rev(name), fill = fill_col)) +
+    geom_col(width = 0.65, color = NA) +
     geom_text(
-      aes(
-        label = paste0(round(share * 100, 1), "%")
-      ),
-      hjust = -0.05, size = 3.2
+      aes(label = paste0("\u2013", scales::percent(share, accuracy = 0.1))),
+      hjust = -0.1, size = 3.6
     ) +
-    scale_x_continuous(labels = percent_format(accuracy = 1), expand = expansion(mult = c(0, 0.12))) +
-    scale_fill_manual(values = color_map, guide = "none") +
+    scale_x_continuous(
+      labels = percent_format(accuracy = 1),
+      limits = c(0, xmax * 1.12),
+      expand = expansion(mult = c(0, 0.08))
+    ) +
+    scale_fill_identity(guide = "none") +
     labs(
-      title = "Presence",
-      x = NULL, y = NULL
+      title = title,
+      x = "Presence (%)", y = NULL
     ) +
-    theme_minimal(base_size = 11) +
+    theme_minimal(base_size = 12) +
     theme(
+      axis.text.y = element_text(size = 11),
+      axis.text.x = element_text(size = 10),
+      plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
       panel.grid.major.y = element_blank(),
       panel.grid.minor = element_blank(),
       panel.background = element_rect(fill = "white", color = NA),
-      plot.background = element_rect(fill = "white", color = NA)
-    )
+      plot.background = element_rect(fill = "white", color = NA),
+      plot.margin = margin(10, 30, 10, 10)
+    ) +
+    coord_cartesian(clip = "off")
 }
 
 plot_wr_ci <- function(wr_df, color_map, order_levels) {
