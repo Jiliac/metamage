@@ -269,40 +269,115 @@ plot_matrix <- function(mat_df, color_map, order_levels) {
     coord_equal()
 }
 
-plot_wr_vs_presence <- function(df, color_map) {
+plot_wr_vs_presence <- function(
+  df,
+  color_map,
+  title = "Win Rate vs Presence",
+  subtitle = NULL,
+  caption = NULL
+) {
+  # Ensure CI columns exist
+  if (!all(c("wr_lo", "wr_hi") %in% names(df))) {
+    stop(
+      "CI columns (wr_lo, wr_hi) must be present. Use add_ci() from analysis.R"
+    )
+  }
+
+  # Color gradient based on lower bound CI values
+  min_wr_lo <- min(df$wr_lo, na.rm = TRUE)
+  max_wr_lo <- max(df$wr_lo, na.rm = TRUE)
+
+  # Create color ramp function (green to orange like in WR chart)
+  color_ramp <- grDevices::colorRampPalette(c("#10B981", "#F59E0B"))
+
+  # Map each wr_lo value to a color
+  df$point_col <- sapply(df$wr_lo, function(x) {
+    if (is.na(x)) {
+      return("#808080")
+    } # gray for NA
+    prop <- (x - min_wr_lo) / (max_wr_lo - min_wr_lo)
+    prop <- pmax(0, pmin(1, prop)) # clamp to [0,1]
+    color_ramp(100)[round(prop * 99) + 1]
+  })
+
+  # Compute y-range to minimize white space
+  ymin <- min(df$wr, na.rm = TRUE)
+  ymax <- max(df$wr, na.rm = TRUE)
+  ypad <- (ymax - ymin) * 0.08
+
   ggplot(
     df,
     aes(
       x = share,
       y = wr,
-      color = archetype_name,
-      label = archetype_name,
-      size = entries
+      color = point_col,
+      label = archetype_name
     )
   ) +
-    geom_point(alpha = 0.85) +
+    geom_point(size = 2.5, alpha = 0.9) +
     ggrepel::geom_text_repel(
       show.legend = FALSE,
-      size = 3,
-      max.overlaps = 25,
-      segment.size = 0.2
+      size = 2.2,
+      family = "Inter",
+      max.overlaps = Inf, # No overlaps
+      segment.size = 0.15,
+      segment.color = "#D0D0D0",
+      box.padding = 0.5,
+      point.padding = 0.5,
+      force = 3,
+      min.segment.length = 0.05,
+      nudge_x = 0.001,
+      nudge_y = 0.005
     ) +
-    scale_x_continuous(labels = percent_format(accuracy = 1)) +
+    scale_x_sqrt(
+      labels = percent_format(accuracy = 1),
+      expand = expansion(mult = c(0.02, 0.08))
+    ) +
     scale_y_continuous(
       labels = percent_format(accuracy = 1),
-      limits = c(0.35, 0.65)
+      limits = c(ymin - ypad, ymax + ypad),
+      expand = expansion(mult = c(0.02, 0.02))
     ) +
-    scale_color_manual(values = color_map, guide = "none") +
-    scale_size_area(max_size = 8, guide = "none") +
-    geom_hline(yintercept = 0.5, linetype = "dashed", color = "gray50") +
+    scale_color_identity(guide = "none") +
+    geom_hline(
+      yintercept = 0.5,
+      linetype = "longdash",
+      color = "#60A5FA",
+      alpha = 0.6
+    ) +
     labs(
-      title = "Win Rate vs Presence",
-      x = "Presence",
+      title = title,
+      subtitle = subtitle,
+      caption = caption,
+      x = "Presence (%)",
       y = "Win Rate"
     ) +
-    theme_minimal(base_size = 11) +
+    theme_minimal(base_size = 12, base_family = "Inter") +
     theme(
+      axis.text.x = element_text(size = 6, family = "Inter"),
+      axis.text.y = element_text(size = 6, family = "Inter"),
+      axis.title.x = element_text(size = 10, family = "Inter"),
+      axis.title.y = element_text(size = 10, family = "Inter"),
+      plot.title = element_text(
+        size = 14,
+        face = "bold",
+        hjust = 0.5,
+        family = "Inter"
+      ),
+      plot.subtitle = element_text(hjust = 0.5, size = 7, family = "Inter"),
+      plot.caption = element_text(
+        hjust = 0.3,
+        size = 6,
+        family = "Inter",
+        color = "#606060"
+      ),
+      panel.grid.major = element_line(
+        color = "#F5F5F5",
+        linewidth = 0.3
+      ),
+      panel.grid.minor = element_blank(),
       panel.background = element_rect(fill = "white", color = NA),
-      plot.background = element_rect(fill = "white", color = NA)
+      plot.background = element_rect(fill = "white", color = NA),
+      plot.margin = margin(10, 10, 10, 10)
     )
 }

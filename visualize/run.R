@@ -170,7 +170,17 @@ p_wr_ci <- plot_wr_ci(
   )
 )
 p_matrix <- plot_matrix(mat, color_map, top_order)
-p_bubble <- plot_wr_vs_presence(wr_pres, color_map)
+p_bubble <- plot_wr_vs_presence(
+  wr_pres,
+  color_map,
+  title = paste0(params$format_name, " Win Rate vs Presence"),
+  caption = paste0(
+    "Source: MTGO & Melee tournaments  •  ",
+    params$start_date,
+    " → ",
+    params$end_date
+  )
+)
 
 # Save outputs
 ggsave(

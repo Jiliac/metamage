@@ -4,3 +4,7 @@ __pycache__
 Pauper_data.json
 *foo*
 *.pdf
+
+.Rproj.user
+.Rhistory
+metamage.Rproj
