@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Simple CLI chat agent for MTG tournament analysis using Claude Sonnet + MCP."""
 
+import argparse
 import asyncio
 import os
 
 from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
+from langchain_xai import ChatXAI
 from langgraph.prebuilt import create_react_agent
 
 from .mcp_client import create_mcp_client
@@ -18,34 +20,52 @@ load_dotenv()
 class MTGChatAgent:
     """CLI chat agent for MTG tournament analysis."""
 
-    def __init__(self):
+    def __init__(self, provider="claude"):
         self.agent = None
         self.conversation_history = []
+        self.provider = provider
 
     async def setup(self):
-        """Initialize the agent with MCP tools and Claude Sonnet."""
-        print("🔧 Setting up MTG Tournament Analysis Chat Agent...")
+        """Initialize the agent with MCP tools and selected LLM provider."""
+        print(
+            f"🔧 Setting up MTG Tournament Analysis Chat Agent with {self.provider.upper()}..."
+        )
 
-        # Check for API key
-        if not os.getenv("ANTHROPIC_API_KEY"):
-            print("❌ Error: ANTHROPIC_API_KEY environment variable not set")
-            print("Please set your Anthropic API key:")
-            print("export ANTHROPIC_API_KEY=your_api_key_here")
-            return False
+        # Check for API key based on provider
+        if self.provider == "claude":
+            if not os.getenv("ANTHROPIC_API_KEY"):
+                print("❌ Error: ANTHROPIC_API_KEY environment variable not set")
+                print("Please set your Anthropic API key:")
+                print("export ANTHROPIC_API_KEY=your_api_key_here")
+                return False
+        elif self.provider == "xai":
+            if not os.getenv("XAI_API_KEY"):
+                print("❌ Error: XAI_API_KEY environment variable not set")
+                print("Please set your xAI API key:")
+                print("export XAI_API_KEY=your_api_key_here")
+                return False
 
         try:
             # Create MCP client and get tools
             print("📡 Connecting to MCP server...")
             tools, format_context = await create_mcp_client()
 
-            # Create Claude Sonnet LLM
-            print("🧠 Initializing Claude Sonnet...")
-            llm = ChatAnthropic(
-                # model="claude-opus-4-1-20250805",
-                model="claude-sonnet-4-20250514",
-                # temperature=0.1,  # Low temperature for consistent analysis
-                max_tokens=4096,
-            )
+            # Create LLM based on provider
+            if self.provider == "claude":
+                print("🧠 Initializing Claude Sonnet...")
+                llm = ChatAnthropic(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=4096,
+                )
+            elif self.provider == "xai":
+                print("🧠 Initializing xAI Grok...")
+                llm = ChatXAI(
+                    model="grok-2-1212",
+                    max_tokens=4096,
+                )
+            else:
+                print(f"❌ Error: Unknown provider '{self.provider}'")
+                return False
 
             # Create ReAct agent with MCP tools
             print("🤖 Creating ReAct agent...")
@@ -136,7 +156,16 @@ class MTGChatAgent:
 
 async def main():
     """Main entry point for the CLI chat agent."""
-    agent = MTGChatAgent()
+    parser = argparse.ArgumentParser(description="MTG Tournament Analysis Chat Agent")
+    parser.add_argument(
+        "--provider",
+        choices=["claude", "xai"],
+        default="claude",
+        help="LLM provider to use (default: claude)",
+    )
+    args = parser.parse_args()
+
+    agent = MTGChatAgent(provider=args.provider)
 
     # Setup agent
     if not await agent.setup():

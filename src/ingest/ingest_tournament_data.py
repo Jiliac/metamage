@@ -167,15 +167,26 @@ def main():
         if args.archetypes:
             print("🎭 Ingesting archetypes...")
             ingest_archetypes(session, entries, format_id)
+            # Commit all changes
+            session.commit()
+
         if args.players:
             print("👥 Ingesting players...")
             ingest_players(session, entries)
+            # Commit all changes
+            session.commit()
+
         if args.cards:
             print("🃏 Ingesting cards...")
             ingest_cards(session, entries)
+            # Commit all changes
+            session.commit()
+
         if args.entries:
             print("🧾 Ingesting tournaments, entries, deck cards and matches...")
             ingest_entries(session, entries, format_id)
+            # Commit all changes
+            session.commit()
 
         if not any_flag_set:
             print("📦 Ingesting all data types...")
@@ -185,9 +196,9 @@ def main():
             ingest_cards(session, entries)
             # Now ingest tournaments, entries, deck cards and matches last
             ingest_entries(session, entries, format_id)
+            # Commit all changes
+            session.commit()
 
-        # Commit all changes
-        session.commit()
         print("\n✅ Data ingestion completed successfully!")
 
     except Exception as e:

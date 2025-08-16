@@ -16,6 +16,7 @@ dependencies = [
     "discord>=2.3.2",
     "langchain>=0.3.27",
     "python-dotenv>=1.0.0",
+    "langchain-xai>=0.2.5",
 ]
 
 [dependency-groups]
