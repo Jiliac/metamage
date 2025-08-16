@@ -7,27 +7,32 @@ suppressPackageStartupMessages({
 })
 
 wilson_ci <- function(p, n, z = 1.96) {
-  # p: proportion (can be fractional wins/games), n: trials
-  ifelse(
-    n > 0,
-    {
-      denom  <- 1 + (z^2) / n
-      center <- p + (z^2) / (2 * n)
-      margin <- z * sqrt((p * (1 - p) + (z^2) / (4 * n)) / n)
-      lo <- (center - margin) / denom
-      hi <- (center + margin) / denom
-      lo <- pmax(0, pmin(1, lo))
-      hi <- pmax(0, pmin(1, hi))
-      cbind(lo = lo, hi = hi)
-    },
-    cbind(lo = NA_real_, hi = NA_real_)
-  )
+  # p: proportion (wins + 0.5*draws)/games
+  # n: number of trials (games)
+  p <- as.numeric(p)
+  n <- as.numeric(n)
+  m <- length(p)
+
+  lo <- rep(NA_real_, m)
+  hi <- rep(NA_real_, m)
+
+  ok <- !is.na(p) & !is.na(n) & n > 0
+  if (any(ok)) {
+    denom  <- 1 + (z^2) / n[ok]
+    center <- p[ok] + (z^2) / (2 * n[ok])
+    margin <- z * sqrt((p[ok] * (1 - p[ok]) + (z^2) / (4 * n[ok])) / n[ok])
+    lo[ok] <- pmax(0, pmin(1, (center - margin) / denom))
+    hi[ok] <- pmax(0, pmin(1, (center + margin) / denom))
+  }
+
+  data.frame(lo = lo, hi = hi)
 }
 
 add_ci <- function(df, p_col = "wr", n_col = "games") {
+  if (nrow(df) == 0) return(df)
   ci <- wilson_ci(df[[p_col]], df[[n_col]])
-  df$wr_lo <- ci[, "lo"]
-  df$wr_hi <- ci[, "hi"]
+  df$wr_lo <- ci$lo
+  df$wr_hi <- ci$hi
   df
 }
 
