@@ -13,7 +13,8 @@ plot_presence <- function(
   color_map,
   order_levels,
   title = "Presence",
-  subtitle = NULL
+  subtitle = NULL,
+  caption = NULL
 ) {
   df <- pres_df %>%
     mutate(
@@ -54,6 +55,7 @@ plot_presence <- function(
     labs(
       title = title,
       subtitle = subtitle,
+      caption = caption,
       x = "Presence (%)",
       y = NULL
     ) +
@@ -62,12 +64,18 @@ plot_presence <- function(
       axis.text.y = element_text(size = 7, family = "Inter"),
       axis.text.x = element_text(size = 10, family = "Inter"),
       plot.title = element_text(
-        size = 20,
+        size = 17,
         face = "bold",
         hjust = 0.5,
         family = "Inter"
       ),
       plot.subtitle = element_text(hjust = 0.5, size = 7, family = "Inter"),
+      plot.caption = element_text(
+        hjust = 0.5,
+        size = 6,
+        family = "Inter",
+        color = "#606060"
+      ),
       panel.grid.major.y = element_blank(),
       panel.grid.minor = element_blank(),
       panel.background = element_rect(fill = "white", color = NA),
@@ -200,7 +208,7 @@ plot_wr_ci <- function(
       axis.text.y = element_text(size = 6, family = "Inter"),
       axis.text.x = element_text(size = 6, family = "Inter"),
       plot.title = element_text(
-        size = 12,
+        size = 17,
         face = "bold",
         hjust = 0.5,
         family = "Inter"

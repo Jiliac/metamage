@@ -148,12 +148,11 @@ p_presence <- plot_presence(
   color_map,
   top_order,
   title = paste0(params$format_name, " Metagame Share"),
-  subtitle = paste0(
-    "From ",
+  caption = paste0(
     params$start_date,
-    " to ",
+    " → ",
     params$end_date,
-    ", presence by matches"
+    ", presence by matches "
   )
 )
 p_wr_ci <- plot_wr_ci(
@@ -162,7 +161,6 @@ p_wr_ci <- plot_wr_ci(
   top_order,
   title = paste0(params$format_name, " Win Rates"),
   caption = paste0(
-    "Data: all events ",
     params$start_date,
     " → ",
     params$end_date
