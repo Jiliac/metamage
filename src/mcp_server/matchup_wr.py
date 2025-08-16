@@ -16,7 +16,8 @@ def get_matchup_winrate(
     archetype2_name: str,
     start_date: str,
     end_date: str,
-, ctx: Context = None) -> Dict[str, Any]:
+    ctx: Context = None,
+) -> Dict[str, Any]:
     """
     Compute head-to-head winrate (excluding draws) between two archetypes within date range.
 

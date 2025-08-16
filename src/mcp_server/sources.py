@@ -3,12 +3,12 @@ from typing import Dict, Any, Optional
 from sqlalchemy import text
 
 from .utils import engine
-# from .mcp import mcp
+from .mcp import mcp
 from fastmcp import Context
 from .log_decorator import log_tool_calls
 
 
-# @log_tool_calls
+@log_tool_calls
 @mcp.tool
 def get_sources(
     format_id: str,
@@ -16,7 +16,8 @@ def get_sources(
     end_date: str,
     archetype_name: Optional[str] = None,
     limit: int = 3,
-, ctx: Context = None) -> Dict[str, Any]:
+    ctx: Context = None,
+) -> Dict[str, Any]:
     """
     Return up to N recent tournaments (with links) for a format and optional archetype within a date window.
 

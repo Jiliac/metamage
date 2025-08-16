@@ -16,7 +16,8 @@ def get_tournament_results(
     end_date: str,
     min_players: int = 32,
     limit: int = 20,
-, ctx: Context = None) -> Dict[str, Any]:
+    ctx: Context = None,
+) -> Dict[str, Any]:
     """
     Get tournament winners and top 8 breakdown by archetype.
 

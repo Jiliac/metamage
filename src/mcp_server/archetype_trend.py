@@ -13,7 +13,8 @@ def get_archetype_trends(
     format_id: str,
     archetype_name: str,
     days_back: int = 30,
-, ctx: Context = None) -> Dict[str, Any]:
+    ctx: Context = None,
+) -> Dict[str, Any]:
     """
     Get weekly presence and winrate trends for an archetype over time.
 

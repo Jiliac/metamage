@@ -17,7 +17,8 @@ def get_card_presence(
     board: str = None,
     exclude_lands: bool = True,
     limit: int = 20,
-, ctx: Context = None) -> Dict[str, Any]:
+    ctx: Context = None,
+) -> Dict[str, Any]:
     """
     Get top cards by presence in format within date range.
 

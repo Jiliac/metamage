@@ -17,7 +17,8 @@ def get_archetype_cards(
     end_date: str,
     board: str = "MAIN",
     limit: int = 20,
-, ctx: Context = None) -> Dict[str, Any]:
+    ctx: Context = None,
+) -> Dict[str, Any]:
     """
     Get top cards in specific archetype within date range.
 
