@@ -20,9 +20,22 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Set
 
 from models import TournamentSource
+
+
+@dataclass
+class TournamentSearchCriteria:
+    """Criteria for searching tournament rounds files."""
+
+    date: datetime
+    format_name: str
+    source: TournamentSource
+    tournament_name: Optional[str] = None
+    tournament_id: Optional[str] = None
+    expected_winner: Optional[str] = None
+    warned_multiple: Optional[Set[str]] = None
 
 
 CONFIG_PATH = Path("data/config_tournament.json")
@@ -195,32 +208,24 @@ def _list_candidate_files_by_content(
     return sorted(candidates)
 
 
-def find_rounds_file(
-    date: datetime,
-    format_name: str,
-    source: TournamentSource,
-    warned_multiple: set = None,
-    tournament_name: str = None,
-    tournament_id: str = None,
-    expected_winner: str = None,
-) -> Optional[Path]:
+def find_rounds_file(criteria: TournamentSearchCriteria) -> Optional[Path]:
     """
     Attempt to locate the rounds JSON file for a tournament.
 
     Returns the Path if exactly one candidate is found; otherwise None.
     """
-    if source == TournamentSource.OTHER:
+    if criteria.source == TournamentSource.OTHER:
         return None
 
-    base = _get_base_folder_for_source(source)
+    base = _get_base_folder_for_source(criteria.source)
     if not base:
         return None
 
-    yyyy = f"{date.year:04d}"
-    mm = f"{date.month:02d}"
-    dd = f"{date.day:02d}"
+    yyyy = f"{criteria.date.year:04d}"
+    mm = f"{criteria.date.month:02d}"
+    dd = f"{criteria.date.day:02d}"
     day_dir = base / yyyy / mm / dd
-    fmt_slug = _format_slug(format_name)
+    fmt_slug = _format_slug(criteria.format_name)
 
     # Try 1: Use filename-based matching (current approach)
     candidates = _list_candidate_files(day_dir, fmt_slug)
@@ -230,16 +235,19 @@ def find_rounds_file(
     elif len(candidates) > 1:
         # If we have a specific tournament name, proceed to content-based matching
         # to disambiguate; otherwise warn and return None
-        if not tournament_name:
+        if not criteria.tournament_name:
             # Only warn once per day/format combination
             warn_key = f"{fmt_slug}|{yyyy}-{mm}-{dd}"
-            if warned_multiple is not None and warn_key not in warned_multiple:
+            if (
+                criteria.warned_multiple is not None
+                and warn_key not in criteria.warned_multiple
+            ):
                 print(
                     f"  ⚠️ Multiple rounds files match {fmt_slug} on {yyyy}-{mm}-{dd}: {len(candidates)} candidates; skipping for now"
                 )
                 for candidate in candidates:
                     print(f"    - {candidate}")
-                warned_multiple.add(warn_key)
+                criteria.warned_multiple.add(warn_key)
             return None
         # Continue to content-based matching with the filename candidates
 
@@ -250,20 +258,28 @@ def find_rounds_file(
         content_candidates = []
         for candidate in candidates:
             if _check_tournament_match(
-                candidate, format_name, tournament_name, tournament_id, expected_winner
+                candidate,
+                criteria.format_name,
+                criteria.tournament_name,
+                criteria.tournament_id,
+                criteria.expected_winner,
             ):
                 content_candidates.append(candidate)
     else:
         # No filename candidates, scan all files by content
         content_candidates = _list_candidate_files_by_content(
-            day_dir, format_name, tournament_name, tournament_id, expected_winner
+            day_dir,
+            criteria.format_name,
+            criteria.tournament_name,
+            criteria.tournament_id,
+            criteria.expected_winner,
         )
     if len(content_candidates) == 1:
         # print(f"TOURNAMENT FILE (by content): {content_candidates[0]}")
         return content_candidates[0]
     elif len(content_candidates) > 1:
         # If we have multiple candidates but provided a tournament name, try exact match priority
-        if tournament_name:
+        if criteria.tournament_name:
             exact_matches = []
             for candidate in content_candidates:
                 try:
@@ -276,7 +292,7 @@ def find_rounds_file(
                         if isinstance(tournament_info, dict)
                         else str(tournament_info)
                     )
-                    if actual_name.strip() == tournament_name.strip():
+                    if actual_name.strip() == criteria.tournament_name.strip():
                         exact_matches.append(candidate)
                 except Exception:
                     continue
@@ -286,14 +302,17 @@ def find_rounds_file(
                 return exact_matches[0]
 
         # Still multiple candidates, show warning
-        warn_key = f"content-{format_name}|{yyyy}-{mm}-{dd}"
-        if warned_multiple is not None and warn_key not in warned_multiple:
+        warn_key = f"content-{criteria.format_name}|{yyyy}-{mm}-{dd}"
+        if (
+            criteria.warned_multiple is not None
+            and warn_key not in criteria.warned_multiple
+        ):
             print(
-                f"  ⚠️ Multiple rounds files match format '{format_name}' by content on {yyyy}-{mm}-{dd}: {len(content_candidates)} candidates; skipping for now"
+                f"  ⚠️ Multiple rounds files match format '{criteria.format_name}' by content on {yyyy}-{mm}-{dd}: {len(content_candidates)} candidates; skipping for now"
             )
             for candidate in content_candidates:
                 print(f"    - {candidate}")
-            warned_multiple.add(warn_key)
+            criteria.warned_multiple.add(warn_key)
         return None
 
     # No matches found

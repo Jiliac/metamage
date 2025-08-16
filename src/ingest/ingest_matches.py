@@ -14,7 +14,7 @@ from models import (
     MatchResult,
 )
 from ingest.ingest_players import normalize_player_handle
-from ingest.rounds_finder import find_rounds_file
+from ingest.rounds_finder import find_rounds_file, TournamentSearchCriteria
 
 
 def _pairing_already_present(session: Session, e1_id: str, e2_id: str) -> bool:
@@ -92,7 +92,10 @@ def _apply_standings(
 
 
 def process_rounds_for_tournament(
-    session: Session, tournament: Tournament, format_name: str
+    session: Session,
+    tournament: Tournament,
+    format_name: str,
+    tournament_id: str = None,
 ) -> Dict[str, int]:
     """
     Load and process the rounds file for a single tournament.
@@ -109,9 +112,14 @@ def process_rounds_for_tournament(
         "file_ambiguous": 0,
     }
 
-    rounds_path = find_rounds_file(
-        tournament.date, format_name, tournament.source, None, tournament.name
+    criteria = TournamentSearchCriteria(
+        date=tournament.date,
+        format_name=format_name,
+        source=tournament.source,
+        tournament_name=tournament.name,
+        tournament_id=tournament_id,
     )
+    rounds_path = find_rounds_file(criteria)
     if not rounds_path:
         stats["file_missing"] += 1
         return stats

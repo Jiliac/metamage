@@ -30,7 +30,7 @@ from models import (
 from ingest.ingest_players import normalize_player_handle
 from ingest.ingest_archetypes import normalize_archetype_name
 from ingest.ingest_cards import normalize_card_name, CardCache, fetch_scryfall_data
-from ingest.rounds_finder import find_rounds_file
+from ingest.rounds_finder import find_rounds_file, TournamentSearchCriteria
 
 
 def parse_iso_datetime(dt_str: str) -> datetime:
@@ -340,7 +340,8 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
     print(f"  📝 Processing {len(filtered_entries)} new entries")
 
     # Track tournaments we touched to finalize matches/standings after entries
-    touched_tournaments: Dict[str, Tournament] = {}
+    # Store both tournament and its original tournament_id for rounds file lookup
+    touched_tournaments: Dict[str, Tuple[Tournament, Optional[str]]] = {}
 
     # Track tournaments already warned about missing rounds files
     warned_missing_rounds: set = set()
@@ -401,18 +402,24 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
 
                     # Extract just the tournament ID (after the final date pattern)
                     # Pattern: format-name-YYYY-MM-DDID -> extract just ID part
-                    match = re.search(r"-(\d{4})-(\d{2})-(\d{2})(\d+)$", tournament_file)
+                    match = re.search(
+                        r"-(\d{4})-(\d{2})-(\d{2})(\d+)$", tournament_file
+                    )
                     if match:
-                        tournament_id = match.group(4)  # Get just the tournament ID part
+                        tournament_id = match.group(
+                            4
+                        )  # Get just the tournament ID part
 
-                rounds_path = find_rounds_file(
-                    t_date,
-                    format_name,
-                    source,
-                    warned_multiple_rounds,
-                    t_name,
-                    tournament_id,
+                criteria = TournamentSearchCriteria(
+                    date=t_date,
+                    format_name=format_name,
+                    source=source,
+                    tournament_name=t_name,
+                    tournament_id=tournament_id,
+                    warned_multiple=warned_multiple_rounds,
                 )
+                rounds_path = find_rounds_file(criteria)
+
                 if not rounds_path:
                     # Only warn once per tournament and only for dates after Nov 1, 2024
                     warn_key = f"{t_name}|{t_date.date()}"
@@ -480,7 +487,7 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
         if created:
             stats["entries_created"] += 1
             # Mark tournament for matches/standings finalization
-            touched_tournaments[tournament.id] = tournament
+            touched_tournaments[tournament.id] = (tournament, tournament_id)
         else:
             stats["entries_existing"] += 1
             if archetype_changed:
@@ -503,8 +510,10 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
             print(f"  📊 Processed {i}/{len(filtered_entries)} entries...")
 
     # After processing all entries, finalize matches + standings per tournament
-    for t in touched_tournaments.values():
-        mstats = process_rounds_for_tournament(session, t, format_name)
+    for tournament, tournament_id in touched_tournaments.values():
+        mstats = process_rounds_for_tournament(
+            session, tournament, format_name, tournament_id
+        )
         stats["pairings_seen"] += mstats["pairings_seen"]
         stats["pairings_created"] += mstats["pairings_created"]
         stats["pairings_skipped_missing_entry"] += mstats[
