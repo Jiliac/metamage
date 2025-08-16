@@ -18,10 +18,16 @@ plot_presence <- function(pres_df, color_map, order_levels, title = "Presence") 
       label = factor(label, levels = stringr::str_to_title(levels(name)))
     )  # Title Case labels with preserved order
 
+  # Assign warm-to-cold gradient colors in descending share order
+  lvl <- levels(df$name)
+  grad_cols <- grDevices::colorRampPalette(c("#F59E0B", "#3B82F6"))(length(lvl))
+  names(grad_cols) <- stringr::str_to_title(lvl)
+  df$fill_col <- grad_cols[as.character(df$label)]
+
   xmax <- max(df$share, na.rm = TRUE)
   xmax <- ifelse(is.finite(xmax), xmax, 0.1)
 
-  ggplot(df, aes(x = share, y = fct_rev(label), fill = name)) +
+  ggplot(df, aes(x = share, y = fct_rev(label), fill = fill_col)) +
     geom_col(width = 0.65, color = NA) +
     geom_text(
       aes(label = scales::percent(share, accuracy = 0.1)),
@@ -32,7 +38,7 @@ plot_presence <- function(pres_df, color_map, order_levels, title = "Presence") 
       limits = c(0, xmax * 1.12),
       expand = expansion(mult = c(0, 0.08))
     ) +
-    scale_fill_manual(values = color_map, guide = "none") +
+    scale_fill_identity(guide = "none") +
     labs(
       title = title,
       x = "Presence (%)", y = NULL
