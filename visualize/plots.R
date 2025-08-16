@@ -8,7 +8,7 @@ suppressPackageStartupMessages({
   library(ggrepel)
 })
 
-plot_presence <- function(pres_df, color_map, order_levels, title = "Presence") {
+plot_presence <- function(pres_df, color_map, order_levels, title = "Presence", subtitle = NULL) {
   df <- pres_df %>%
     mutate(name = factor(bucket, levels = c(order_levels, setdiff(bucket, order_levels)))) %>%
     filter(bucket != "Other") %>%  # drop the aggregated 'Other' row from the chart
@@ -20,7 +20,7 @@ plot_presence <- function(pres_df, color_map, order_levels, title = "Presence") 
 
   # Assign warm-to-cold gradient colors in descending share order
   lvl <- levels(df$name)
-  grad_cols <- grDevices::colorRampPalette(c("#F59E0B", "#3B82F6"))(length(lvl))
+  grad_cols <- grDevices::colorRampPalette(c("#F59E0B", "#10B981"))(length(lvl))
   names(grad_cols) <- stringr::str_to_title(lvl)
   df$fill_col <- grad_cols[as.character(df$label)]
 
@@ -41,13 +41,15 @@ plot_presence <- function(pres_df, color_map, order_levels, title = "Presence") 
     scale_fill_identity(guide = "none") +
     labs(
       title = title,
+      subtitle = subtitle,
       x = "Presence (%)", y = NULL
     ) +
     theme_minimal(base_size = 12) +
     theme(
-      axis.text.y = element_text(size = 11),
+      axis.text.y = element_text(size = 9),
       axis.text.x = element_text(size = 10),
       plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+      plot.subtitle = element_text(hjust = 0.5, size = 7),
       panel.grid.major.y = element_blank(),
       panel.grid.minor = element_blank(),
       panel.background = element_rect(fill = "white", color = NA),

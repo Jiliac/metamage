@@ -99,7 +99,8 @@ p_presence <- plot_presence(
   presence_top_other,
   color_map,
   top_order,
-  title = paste0(params$format_name, " Metagame Share (by Matches)")
+  title = paste0(params$format_name, " Metagame Share"),
+  subtitle = paste0("From ", params$start_date, " to ", params$end_date, ", presence by matches")
 )
 p_wr_ci    <- plot_wr_ci(wr, color_map, top_order)
 p_matrix   <- plot_matrix(mat, color_map, top_order)

@@ -14,7 +14,7 @@ params <- list(
   end_date    = env_or("END_DATE",   "2025-08-15"),
 
   # Selection and rendering
-  top_n       = as.integer(env_or("TOP_N", "15")),
+  top_n       = as.integer(env_or("TOP_N", "20")),
   output_dir  = env_or("OUTPUT_DIR", "docs"),
   db_path     = env_or("TOURNAMENT_DB_PATH", "data/tournament.db"),
 
