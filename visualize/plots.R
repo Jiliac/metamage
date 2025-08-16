@@ -101,12 +101,7 @@ plot_wr_ci <- function(
       label = name
     )
 
-  # Ensure CI columns exist (in case caller didn't add them)
-  if (!all(c("wr_lo", "wr_hi") %in% names(df))) {
-    ci <- wilson_ci(df$wr, df$games)
-    df$wr_lo <- ci$lo
-    df$wr_hi <- ci$hi
-  }
+  # CI columns should be added by caller using add_ci() from analysis.R
 
   # Sort by lower bound CI and create new factor levels
   df <- df %>%

@@ -38,6 +38,7 @@ suppressPackageStartupMessages({
 source("visualize/params.R")
 source("visualize/db.R")
 source("visualize/utils.R")
+source("visualize/analysis.R")
 source("visualize/colors.R")
 source("visualize/plots.R")
 
