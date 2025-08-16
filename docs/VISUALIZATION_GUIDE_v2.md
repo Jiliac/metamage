@@ -12,7 +12,7 @@ General conventions
 - Time window: a clearly stated date range (e.g., “Standard, Jan–Mar 2025”). All panels use the same window.
 - Sample size: annotate with counts; visually de‑emphasize fragile estimates.
 - Mirrors: included by default. The A–A diagonal in a matchup matrix is 50% by definition.
-- Draws: count as 0.5 in WR. If a format has many draws, note this in the caption.
+- Draws: Excluded from the WR calculation
 - Top N: show the top N archetypes (e.g., 12–20), collapse the rest to “Other” for presence only; do not include “Other” in matchup/WR panels.
 - Ordering: unless stated otherwise, sort by presence (descending). Secondary order for ties: win rate (descending).
 - Colors: assign one distinct, colorblind‑safe color per archetype and reuse it across every panel. Keep “Other” as a neutral gray.
@@ -33,7 +33,7 @@ Deliverables
 
 ---
 
-1) Matchup Matrix Heatmap (includes mirrors)
+## 1) Matchup Matrix Heatmap (includes mirrors)
 Purpose
 - Show how archetypes fare head‑to‑head. Rows = “row deck vs column deck”. The diagonal is 50% and acts as a visual anchor.
 
@@ -60,31 +60,28 @@ Design
   - Always show numeric text on tiles; color is secondary.
   - Provide a sparse gridline or thin separators to aid scanning.
 
-Caption
-- “Rows vs columns, mirrors included; draws counted 0.5. Tile saturation capped at 35–65% WR; light tiles indicate low sample sizes.”
-
 ---
 
-2) Presence Bar Chart (share of entries)
+## 2) Presence Bar Chart (share of entries)
 Purpose
 - Provide the popularity baseline and explain the matrix order.
 
 Data needed per archetype
-- Entries (n) and share (% of total entries) in the window.
+- Matches (n) and share (% of total matches) in the window.
 
 Design
 - Horizontal bars sorted by share (descending) for the same archetype list.
 - Bars colored by archetype color; value labels at end of each bar as “xx.x% (n=###)”.
 - “Other” appears last in muted gray if shown, with its share and n; do not color “Other” with an archetype color.
-- Axis from 0% to max(share) with 10% ticks; percent formatting.
+- Axis from 0% to max(share) with 5% ticks; percent formatting.
 - Spacing: compact but legible; 0.6–0.7 bar width; 3–6 px gaps.
 
 Caption
-- “Presence = share of entries in the selected window.”
+- “Presence = share of matches in the selected window.”
 
 ---
 
-3) Win Rate per Archetype with 95% CI (mirrors included)
+## 3) Win Rate per Archetype with 95% CI (mirrors included)
 Purpose
 - Rank archetypes by observed performance while communicating uncertainty.
 
@@ -107,7 +104,7 @@ Caption
 
 ---
 
-4) Win Rate vs Presence (bubble chart)
+## 4) Win Rate vs Presence (bubble chart)
 Purpose
 - Snapshot of “how good” vs “how common” right now; ideal for identifying over‑ or under‑performers.
 
@@ -132,7 +129,7 @@ Caption
 
 ---
 
-Putting it together: “Meta Overview” hero figure
+## Putting it together: “Meta Overview” hero figure
 - Two recommended compositions:
   1) Karsten‑style split:
      - Left column: Presence (top), Win Rate + CI (bottom).
@@ -154,7 +151,7 @@ Export recommendations
 
 ---
 
-Card Report (single figure)
+## Card Report (single figure)
 Purpose
 - Highlight defining cards of the window and how they correlate with outcomes (correlation, not causation).
 
@@ -184,7 +181,7 @@ Card Report composition and export
 
 ---
 
-Accessibility and QC checklist
+## Accessibility and QC checklist
 - Numeric labels present on tiles and bars; color not strictly required to interpret values.
 - All percentages are percent‑formatted; consistent rounding.
 - Small‑sample indicators present (e.g., g < 5 for cells; g < 30 for bars).

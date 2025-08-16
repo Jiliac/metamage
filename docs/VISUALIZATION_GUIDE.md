@@ -43,7 +43,7 @@ palette_archetypes <- function(n) scales::hue_pal(l = 65, c = 100)(n)
 # dbGetQuery(con, "SELECT id, name FROM formats WHERE lower(name) = lower(?)", params = list("Standard"))
 ```
 
-Shared aggregates (presence + win rates, includes mirrors)
+## Shared aggregates (presence + win rates, includes mirrors)
 ```r
 # Presence (entries per archetype in window)
 presence <- dbGetQuery(con, "
@@ -100,7 +100,7 @@ summary_df <- presence_top |>
   mutate(archetype = fct_reorder(archetype, share))
 ```
 
-1) Matchup matrix heatmap (includes mirrors)
+## 1) Matchup matrix heatmap (includes mirrors)
 - Meaning: each cell (row A, col B) is A’s win rate vs B, counting DRAW as 0.5. Diagonal (A vs A) is 50% by definition.
 - Use only the player’s side of each match (m.entry_id) to avoid double-counting.
 - Limit to top N archetypes for readability.
@@ -144,7 +144,7 @@ p_matrix <- ggplot(mu_top, aes(a, b, fill = wr)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-2) Presence bar chart
+## 2) Presence bar chart
 - Horizontal bars, sorted by share; annotate with % and N.
 ```r
 pal <- setNames(palette_archetypes(nrow(presence_top)), levels(summary_df$archetype))
@@ -160,7 +160,7 @@ p_presence <- ggplot(summary_df, aes(x = fct_rev(archetype), y = share, fill = a
   theme_minimal(base_size = 11)
 ```
 
-3) Archetype win rate with 95% CI (includes mirrors)
+## 3) Archetype win rate with 95% CI (includes mirrors)
 - Bars with error bars; sort by WR; label WR and games.
 - CI uses normal approximation on points-per-game; for high-draw formats consider a bootstrap CI.
 ```r
@@ -180,7 +180,7 @@ p_wr_ci <- ggplot(wr_plot_df, aes(x = fct_rev(archetype), y = wr, fill = archety
   theme_minimal(base_size = 11)
 ```
 
-4) Win rate vs Presence bubble chart
+## 4) Win rate vs Presence bubble chart
 - x = WR (incl. mirrors), y = share, size = entries, color by archetype.
 - Reference lines at 50% WR and median share; label archetypes.
 ```r
@@ -298,7 +298,7 @@ card_df <- card_df |>
 pal_cards <- setNames(palette_archetypes(nrow(card_df)), levels(card_df$card))
 ```
 
-A) Card presence (entries share)
+## 5) Card presence (entries share)
 ```r
 p_card_presence <- ggplot(card_df, aes(x = fct_rev(card), y = presence, fill = card)) +
   geom_col(width = 0.7) +
@@ -311,96 +311,3 @@ p_card_presence <- ggplot(card_df, aes(x = fct_rev(card), y = presence, fill = c
   labs(title = "Card Presence", x = "", y = "Share of entries (window)") +
   theme_minimal(base_size = 11)
 ```
-
-B) Card win rate with 95% CI (incl. mirrors)
-```r
-p_card_wr_ci <- ggplot(card_df, aes(x = fct_rev(card), y = wr, fill = card)) +
-  geom_col(width = 0.7, alpha = 0.9) +
-  geom_errorbar(aes(ymin = wr_lo, ymax = wr_hi), width = 0.2) +
-  geom_text(aes(label = ifelse(is.na(wr), "—",
-                               paste0(scales::percent(wr, accuracy = 0.1),
-                                      " (g=", g, ")"))),
-            hjust = -0.05, size = 3.0) +
-  scale_y_continuous(labels = scales::percent_format(), limits = c(0.4, 0.6),
-                     expand = expansion(mult = c(0, 0.1))) +
-  scale_fill_manual(values = pal_cards, guide = "none") +
-  coord_flip() +
-  labs(title = "Card Win Rate (incl. mirrors) with 95% CI",
-       x = "", y = "Win rate") +
-  theme_minimal(base_size = 11)
-```
-
-C) Win rate vs presence (bubble)
-```r
-p_card_wr_vs_presence <- ggplot(card_df, aes(x = wr, y = presence, size = entries_with_card,
-                                             color = card, label = card)) +
-  geom_hline(yintercept = median(card_df$presence, na.rm = TRUE), linetype = 3, color = "grey60") +
-  geom_vline(xintercept = 0.5, linetype = 3, color = "grey60") +
-  geom_point(alpha = 0.85) +
-  ggrepel::geom_text_repel(size = 3, max.overlaps = 30, seed = 1, box.padding = 0.3) +
-  scale_x_continuous(labels = scales::percent_format()) +
-  scale_y_continuous(labels = scales::percent_format()) +
-  scale_size_area(max_size = 12, guide = "none") +
-  scale_color_manual(values = pal_cards, guide = "none") +
-  labs(title = "Cards: Win Rate vs Presence", x = "Win rate (incl. mirrors)", y = "Presence") +
-  theme_minimal(base_size = 11)
-```
-
-Compose and save the Card Report figure
-```r
-card_report <- p_card_presence / p_card_wr_ci / p_card_wr_vs_presence +
-  plot_layout(heights = c(1.1, 1.1, 1.3))
-ggsave("docs/card_report.png", card_report, width = 12, height = 14, dpi = 200)
-```
-
-Optional: card trends over time (small multiples)
-```r
-card_trend <- dbGetQuery(con, "
-WITH weekly_entries AS (
-  SELECT te.id, strftime('%Y-%W', t.date) AS week
-  FROM tournament_entries te
-  JOIN tournaments t ON t.id = te.tournament_id
-  WHERE t.format_id = ? AND date(t.date) BETWEEN date(?) AND date(?)
-),
-weekly_totals AS (
-  SELECT week, COUNT(*) AS total_entries
-  FROM weekly_entries
-  GROUP BY week
-),
-weekly_card AS (
-  SELECT we.week, dc.card_id, COUNT(DISTINCT dc.entry_id) AS n_entries
-  FROM deck_cards dc
-  JOIN weekly_entries we ON we.id = dc.entry_id
-  JOIN cards c ON c.id = dc.card_id
-  WHERE (? IS NULL OR dc.board = ?)
-    AND (? = 0 OR c.is_land = 0)
-  GROUP BY we.week, dc.card_id
-)
-SELECT we.week, c.name AS card,
-       1.0 * wc.n_entries / wt.total_entries AS presence
-FROM weekly_card wc
-JOIN cards c ON c.id = wc.card_id
-JOIN weekly_totals wt ON wt.week = wc.week
-JOIN (SELECT DISTINCT card FROM (SELECT card FROM (SELECT c.name AS card
-      FROM deck_cards dc JOIN cards c ON c.id = dc.card_id))) keep ON keep.card = c.name
-JOIN (SELECT name FROM cards) we ON 1=1
-", params = list(format_id, start_date, end_date, board_filter, board_filter, as.integer(!exclude_lands)))
-# Filter to the same top cards as the report:
-card_trend <- card_trend |>
-  filter(card %in% levels(card_df$card)) |>
-  mutate(card = factor(card, levels = levels(card_df$card)))
-
-p_card_trend <- ggplot(card_trend, aes(week, presence, color = card)) +
-  geom_line() +
-  scale_y_continuous(labels = scales::percent_format()) +
-  labs(title = "Card Presence Over Time", x = "Week", y = "Presence") +
-  theme_minimal(base_size = 11) +
-  theme(legend.position = "none") +
-  facet_wrap(~card, scales = "free_y")
-ggsave("docs/card_trends.png", p_card_trend, width = 14, height = 10, dpi = 200)
-```
-
-Interpretation notes
-- Selection bias: a card’s WR reflects the decks that choose it. Use this to spot staples and rising tech, not causal effects.
-- Board filter: set `board_filter <- "MAIN"` for maindeck staples; `"SIDE"` highlights sideboard tech.
-- Lands: set `exclude_lands <- FALSE` to study manabases; otherwise they are filtered by default using `cards.is_land`.
