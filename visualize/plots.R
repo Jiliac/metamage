@@ -77,7 +77,13 @@ plot_presence <- function(
     coord_cartesian(clip = "off")
 }
 
-plot_wr_ci <- function(wr_df, color_map, order_levels, subtitle = NULL) {
+plot_wr_ci <- function(
+  wr_df,
+  color_map,
+  order_levels,
+  title = "Win Rates",
+  subtitle = NULL
+) {
   df <- wr_df %>%
     mutate(name = factor(archetype_name, levels = order_levels)) %>%
     arrange(name) %>%
@@ -93,11 +99,29 @@ plot_wr_ci <- function(wr_df, color_map, order_levels, subtitle = NULL) {
     df$wr_hi <- ci$hi
   }
 
-  # Warm-to-cool gradient like the presence chart, mapped by ordered names
-  lvl <- levels(df$name)
-  grad_cols <- grDevices::colorRampPalette(c("#F59E0B", "#10B981"))(length(lvl))
-  names(grad_cols) <- stringr::str_to_title(lvl)
-  df$line_col <- grad_cols[as.character(df$label)]
+  # Sort by lower bound CI and create new factor levels
+  df <- df %>%
+    arrange(desc(wr_lo)) %>%
+    mutate(
+      label = factor(label, levels = unique(label))
+    )
+
+  # Color gradient based on actual lower bound CI values
+  min_wr_lo <- min(df$wr_lo, na.rm = TRUE)
+  max_wr_lo <- max(df$wr_lo, na.rm = TRUE)
+
+  # Create color ramp function
+  color_ramp <- grDevices::colorRampPalette(c("#10B981", "#F59E0B"))
+
+  # Map each wr_lo value to a color based on its position in the range
+  df$line_col <- sapply(df$wr_lo, function(x) {
+    if (is.na(x)) {
+      return("#808080")
+    } # gray for NA
+    prop <- (x - min_wr_lo) / (max_wr_lo - min_wr_lo)
+    prop <- pmax(0, pmin(1, prop)) # clamp to [0,1]
+    color_ramp(100)[round(prop * 99) + 1]
+  })
 
   # Compute x-range from data and add a little padding
   xmin <- suppressWarnings(min(df$wr_lo, na.rm = TRUE))
@@ -106,7 +130,7 @@ plot_wr_ci <- function(wr_df, color_map, order_levels, subtitle = NULL) {
     xmin <- 0.4
     xmax <- 0.6
   }
-  pad <- max(0.02, (xmax - xmin) * 0.08)
+  pad <- max(0.01, (xmax - xmin) * 0.04)
   xmin <- max(0, xmin - pad)
   xmax <- min(1, xmax + pad)
 
@@ -114,11 +138,11 @@ plot_wr_ci <- function(wr_df, color_map, order_levels, subtitle = NULL) {
     # CI whiskers as horizontal segments
     geom_segment(
       aes(x = wr_lo, xend = wr_hi, yend = fct_rev(label), color = line_col),
-      size = 0.6,
+      size = 0.4,
       lineend = "round"
     ) +
     # Point estimate
-    geom_point(aes(x = wr, color = line_col), size = 1.5) +
+    geom_point(aes(x = wr, color = line_col), size = 1.2) +
     # 50% reference line
     geom_vline(
       xintercept = 0.5,
@@ -129,18 +153,18 @@ plot_wr_ci <- function(wr_df, color_map, order_levels, subtitle = NULL) {
     scale_x_continuous(
       labels = percent_format(accuracy = 1),
       limits = c(xmin, xmax),
-      expand = expansion(mult = c(0, 0.12))
+      expand = expansion(mult = c(0, 0.06))
     ) +
     scale_color_identity(guide = "none") +
     labs(
-      title = "Win rates with 95% confidence intervals",
+      title = title,
       subtitle = subtitle,
-      x = "Win rate",
+      x = "Win Rate",
       y = NULL
     ) +
     theme_minimal(base_size = 12, base_family = "Inter") +
     theme(
-      axis.text.y = element_text(size = 7, family = "Inter"),
+      axis.text.y = element_text(size = 6, family = "Inter"),
       axis.text.x = element_text(size = 6, family = "Inter"),
       plot.title = element_text(
         size = 12,
@@ -149,7 +173,11 @@ plot_wr_ci <- function(wr_df, color_map, order_levels, subtitle = NULL) {
         family = "Inter"
       ),
       plot.subtitle = element_text(hjust = 0.5, size = 7, family = "Inter"),
-      panel.grid.major.y = element_blank(),
+      panel.grid.major.y = element_line(
+        color = "#E8E8E8",
+        size = 0.3,
+        linetype = "dotted"
+      ),
       panel.grid.minor = element_blank(),
       panel.background = element_rect(fill = "white", color = NA),
       plot.background = element_rect(fill = "white", color = NA),
