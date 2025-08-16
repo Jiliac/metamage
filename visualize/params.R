@@ -7,25 +7,31 @@ env_or <- function(var, default) {
   if (is.na(v) || v == "") default else v
 }
 
+# Get values once
+format_name <- env_or("MTG_FORMAT", "Modern")
+start_date <- env_or("START_DATE", "2025-06-01")
+end_date <- env_or("END_DATE", "2025-08-15")
+
+# Build output directory path
+start_year <- format(as.Date(start_date), "%Y")
+start_md <- format(as.Date(start_date), "%m-%d")
+end_md <- format(as.Date(end_date), "%m-%d")
+output_dir <- file.path(
+  "Results",
+  format_name,
+  start_year,
+  paste0(start_md, "-", end_md)
+)
+
 params <- list(
   # Required analysis window
-  format_name = env_or("MTG_FORMAT", "Modern"),
-  start_date = env_or("START_DATE", "2025-07-01"),
-  end_date = env_or("END_DATE", "2025-08-15"),
+  format_name = format_name,
+  start_date = start_date,
+  end_date = end_date,
 
   # Selection and rendering
   top_n = as.integer(env_or("TOP_N", "20")),
-  output_dir = {
-    start_date <- env_or("START_DATE", "2025-07-01")
-    end_date <- env_or("END_DATE", "2025-08-15")
-    format_name <- env_or("MTG_FORMAT", "Modern")
-
-    start_year <- format(as.Date(start_date), "%Y")
-    start_md <- format(as.Date(start_date), "%m-%d")
-    end_md <- format(as.Date(end_date), "%m-%d")
-
-    file.path("Results", format_name, start_year, paste0(start_md, "-", end_md))
-  },
+  output_dir = output_dir,
   db_path = env_or("TOURNAMENT_DB_PATH", "data/tournament.db"),
 
   # Export sizes (pixels) for 300 DPI-like raster

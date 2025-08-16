@@ -43,8 +43,8 @@ plot_presence <- function(
     geom_col(width = 0.55, color = NA) +
     geom_text(
       aes(label = scales::percent(share, accuracy = 0.1)),
-      hjust = -0.1,
-      size = 3.6
+      hjust = -0.15,
+      size = 2.5
     ) +
     scale_x_continuous(
       labels = percent_format(accuracy = 1),
@@ -61,8 +61,8 @@ plot_presence <- function(
     ) +
     theme_minimal(base_size = 12, base_family = "Inter") +
     theme(
-      axis.text.y = element_text(size = 7, family = "Inter"),
-      axis.text.x = element_text(size = 10, family = "Inter"),
+      axis.text.y = element_text(size = 6, family = "Inter"),
+      axis.text.x = element_text(size = 6, family = "Inter"),
       plot.title = element_text(
         size = 17,
         face = "bold",
@@ -193,6 +193,11 @@ plot_wr_ci <- function(
     scale_x_continuous(
       labels = percent_format(accuracy = 1),
       limits = c(xmin, xmax),
+      breaks = seq(
+        ceiling(xmin * 20) / 20,
+        floor(xmax_original * 20) / 20,
+        by = 0.05
+      ),
       expand = expansion(mult = c(0, 0.02))
     ) +
     scale_color_identity(guide = "none") +
