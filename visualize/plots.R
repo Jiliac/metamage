@@ -305,29 +305,54 @@ plot_wr_vs_presence <- function(
   ymax <- max(df$wr, na.rm = TRUE)
   ypad <- (ymax - ymin) * 0.08
 
+  # Label top 7 by lower bound win rate AND top 5 by presence
+  top_7_wr <- df %>%
+    arrange(desc(wr_lo)) %>%
+    slice_head(n = 7) %>%
+    pull(archetype_name)
+
+  top_5_presence <- df %>%
+    arrange(desc(share)) %>%
+    slice_head(n = 5) %>%
+    pull(archetype_name)
+
+  # Union of both sets
+  labeled_archetypes <- union(top_7_wr, top_5_presence)
+
+  df_labeled <- df %>%
+    mutate(
+      label_text = ifelse(
+        archetype_name %in% labeled_archetypes,
+        archetype_name,
+        ""
+      )
+    )
+
   ggplot(
-    df,
+    df_labeled,
     aes(
       x = share,
       y = wr,
       color = point_col,
-      label = archetype_name
+      label = label_text
     )
   ) +
     geom_point(size = 2.5, alpha = 0.9) +
     ggrepel::geom_text_repel(
       show.legend = FALSE,
-      size = 2.2,
+      size = 1.5,
       family = "Inter",
-      max.overlaps = Inf, # No overlaps
+      max.overlaps = Inf,
       segment.size = 0.15,
       segment.color = "#D0D0D0",
-      box.padding = 0.5,
-      point.padding = 0.5,
-      force = 3,
-      min.segment.length = 0.05,
-      nudge_x = 0.001,
-      nudge_y = 0.005
+      box.padding = 0.8,
+      point.padding = 0.8,
+      force = 5,
+      force_pull = 2,
+      min.segment.length = 0.02,
+      max.time = 2,
+      max.iter = 10000,
+      seed = 42
     ) +
     scale_x_sqrt(
       labels = percent_format(accuracy = 1),
