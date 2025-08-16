@@ -156,7 +156,12 @@ p_presence <- plot_presence(
     ", presence by matches"
   )
 )
-p_wr_ci <- plot_wr_ci(wr, color_map, top_order)
+p_wr_ci <- plot_wr_ci(
+  wr,
+  color_map,
+  top_order,
+  subtitle = paste0("From ", params$start_date, " to ", params$end_date)
+)
 p_matrix <- plot_matrix(mat, color_map, top_order)
 p_bubble <- plot_wr_vs_presence(wr_pres, color_map)
 

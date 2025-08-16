@@ -77,10 +77,14 @@ plot_presence <- function(
     coord_cartesian(clip = "off")
 }
 
-plot_wr_ci <- function(wr_df, color_map, order_levels) {
+plot_wr_ci <- function(wr_df, color_map, order_levels, subtitle = NULL) {
   df <- wr_df %>%
     mutate(name = factor(archetype_name, levels = order_levels)) %>%
-    arrange(name)
+    arrange(name) %>%
+    mutate(
+      label = stringr::str_to_title(as.character(name)),
+      label = factor(label, levels = stringr::str_to_title(levels(name)))
+    )
 
   # Ensure CI columns exist (in case caller didn't add them)
   if (!all(c("wr_lo", "wr_hi") %in% names(df))) {
@@ -92,30 +96,36 @@ plot_wr_ci <- function(wr_df, color_map, order_levels) {
   # Warm-to-cool gradient like the presence chart, mapped by ordered names
   lvl <- levels(df$name)
   grad_cols <- grDevices::colorRampPalette(c("#F59E0B", "#10B981"))(length(lvl))
-  names(grad_cols) <- lvl
-  df$line_col <- grad_cols[as.character(df$name)]
+  names(grad_cols) <- stringr::str_to_title(lvl)
+  df$line_col <- grad_cols[as.character(df$label)]
 
   # Compute x-range from data and add a little padding
   xmin <- suppressWarnings(min(df$wr_lo, na.rm = TRUE))
   xmax <- suppressWarnings(max(df$wr_hi, na.rm = TRUE))
   if (!is.finite(xmin) || !is.finite(xmax)) {
-    xmin <- 0.4; xmax <- 0.6
+    xmin <- 0.4
+    xmax <- 0.6
   }
   pad <- max(0.02, (xmax - xmin) * 0.08)
   xmin <- max(0, xmin - pad)
   xmax <- min(1, xmax + pad)
 
-  ggplot(df, aes(y = fct_rev(name))) +
+  ggplot(df, aes(y = fct_rev(label))) +
     # CI whiskers as horizontal segments
     geom_segment(
-      aes(x = wr_lo, xend = wr_hi, yend = fct_rev(name), color = line_col),
-      size = 1.2,
+      aes(x = wr_lo, xend = wr_hi, yend = fct_rev(label), color = line_col),
+      size = 0.6,
       lineend = "round"
     ) +
     # Point estimate
-    geom_point(aes(x = wr, color = line_col), size = 2.6) +
+    geom_point(aes(x = wr, color = line_col), size = 1.5) +
     # 50% reference line
-    geom_vline(xintercept = 0.5, linetype = "dashed", color = "#60A5FA", alpha = 0.6) +
+    geom_vline(
+      xintercept = 0.5,
+      linetype = "longdash",
+      color = "#60A5FA",
+      alpha = 0.6
+    ) +
     scale_x_continuous(
       labels = percent_format(accuracy = 1),
       limits = c(xmin, xmax),
@@ -124,19 +134,21 @@ plot_wr_ci <- function(wr_df, color_map, order_levels) {
     scale_color_identity(guide = "none") +
     labs(
       title = "Win rates with 95% confidence intervals",
+      subtitle = subtitle,
       x = "Win rate",
       y = NULL
     ) +
     theme_minimal(base_size = 12, base_family = "Inter") +
     theme(
       axis.text.y = element_text(size = 7, family = "Inter"),
-      axis.text.x = element_text(size = 10, family = "Inter"),
+      axis.text.x = element_text(size = 6, family = "Inter"),
       plot.title = element_text(
-        size = 20,
+        size = 12,
         face = "bold",
         hjust = 0.5,
         family = "Inter"
       ),
+      plot.subtitle = element_text(hjust = 0.5, size = 7, family = "Inter"),
       panel.grid.major.y = element_blank(),
       panel.grid.minor = element_blank(),
       panel.background = element_rect(fill = "white", color = NA),
