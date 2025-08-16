@@ -225,3 +225,182 @@ FAQ
 License and reproducibility
 - These snippets assume `data/tournament.db` (see src/models/base.py for path). Adjust as needed.
 - Output artifacts (e.g., docs/meta_overview.png) are safe to commit.
+
+---
+
+Card Report — presence and performance of individual cards (incl. mirrors)
+Goal: a single figure summarizing which cards define the meta and how they perform. This is correlation, not causation: strong cards tend to appear in strong archetypes.
+
+Parameters
+```r
+cards_top_n   <- 30          # how many cards to display
+exclude_lands <- TRUE        # drop basic/land cards by default
+board_filter  <- NULL        # NULL, "MAIN", or "SIDE"
+```
+
+SQL: card presence and WR (from the player’s side, counting a match if the player’s deck contains the card)
+```r
+card_df <- dbGetQuery(con, "
+WITH entries AS (
+  SELECT te.id
+  FROM tournament_entries te
+  JOIN tournaments t ON t.id = te.tournament_id
+  WHERE t.format_id = ? AND date(t.date) BETWEEN date(?) AND date(?)
+),
+card_entries AS (
+  SELECT DISTINCT dc.entry_id, dc.card_id
+  FROM deck_cards dc
+  JOIN entries e ON e.id = dc.entry_id
+  JOIN cards c ON c.id = dc.card_id
+  WHERE (? IS NULL OR dc.board = ?)
+    AND (? = 0 OR c.is_land = 0)
+),
+counts AS (
+  SELECT ce.card_id, COUNT(*) AS entries_with_card
+  FROM card_entries ce
+  GROUP BY ce.card_id
+),
+totals AS (
+  SELECT COUNT(*) AS total_entries FROM entries
+),
+wr AS (
+  SELECT ce.card_id,
+         SUM(CASE WHEN m.result='WIN'  THEN 1
+                  WHEN m.result='DRAW' THEN 0.5
+                  ELSE 0 END) AS pts,
+         COUNT(*) AS g
+  FROM matches m
+  JOIN card_entries ce ON ce.entry_id = m.entry_id
+  GROUP BY ce.card_id
+)
+SELECT c.name AS card,
+       cnt.entries_with_card,
+       1.0 * cnt.entries_with_card / (SELECT total_entries FROM totals) AS presence,
+       COALESCE(wr.pts, 0) AS pts,
+       COALESCE(wr.g, 0) AS g
+FROM counts cnt
+JOIN cards c ON c.id = cnt.card_id
+LEFT JOIN wr ON wr.card_id = cnt.card_id
+ORDER BY entries_with_card DESC
+", params = list(format_id, start_date, end_date, board_filter, board_filter, as.integer(!exclude_lands))) |>
+  mutate(wr = ifelse(g > 0, pts / g, NA_real_)) |>
+  slice_head(n = cards_top_n)
+```
+
+Compute 95% CI and palette
+```r
+z <- qnorm(0.975)
+card_df <- card_df |>
+  mutate(se = sqrt(pmax(wr * (1 - wr), 0) / pmax(g, 1)),
+         wr_lo = pmax(0, wr - z * se),
+         wr_hi = pmin(1, wr + z * se),
+         card  = forcats::fct_reorder(card, presence))
+pal_cards <- setNames(palette_archetypes(nrow(card_df)), levels(card_df$card))
+```
+
+A) Card presence (entries share)
+```r
+p_card_presence <- ggplot(card_df, aes(x = fct_rev(card), y = presence, fill = card)) +
+  geom_col(width = 0.7) +
+  geom_text(aes(label = paste0(scales::percent(presence, accuracy = 0.1),
+                               " (n=", entries_with_card, ")")),
+            hjust = -0.05, size = 3.0) +
+  scale_y_continuous(labels = scales::percent_format(), expand = expansion(mult = c(0, 0.1))) +
+  scale_fill_manual(values = pal_cards, guide = "none") +
+  coord_flip() +
+  labs(title = "Card Presence", x = "", y = "Share of entries (window)") +
+  theme_minimal(base_size = 11)
+```
+
+B) Card win rate with 95% CI (incl. mirrors)
+```r
+p_card_wr_ci <- ggplot(card_df, aes(x = fct_rev(card), y = wr, fill = card)) +
+  geom_col(width = 0.7, alpha = 0.9) +
+  geom_errorbar(aes(ymin = wr_lo, ymax = wr_hi), width = 0.2) +
+  geom_text(aes(label = ifelse(is.na(wr), "—",
+                               paste0(scales::percent(wr, accuracy = 0.1),
+                                      " (g=", g, ")"))),
+            hjust = -0.05, size = 3.0) +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0.4, 0.6),
+                     expand = expansion(mult = c(0, 0.1))) +
+  scale_fill_manual(values = pal_cards, guide = "none") +
+  coord_flip() +
+  labs(title = "Card Win Rate (incl. mirrors) with 95% CI",
+       x = "", y = "Win rate") +
+  theme_minimal(base_size = 11)
+```
+
+C) Win rate vs presence (bubble)
+```r
+p_card_wr_vs_presence <- ggplot(card_df, aes(x = wr, y = presence, size = entries_with_card,
+                                             color = card, label = card)) +
+  geom_hline(yintercept = median(card_df$presence, na.rm = TRUE), linetype = 3, color = "grey60") +
+  geom_vline(xintercept = 0.5, linetype = 3, color = "grey60") +
+  geom_point(alpha = 0.85) +
+  ggrepel::geom_text_repel(size = 3, max.overlaps = 30, seed = 1, box.padding = 0.3) +
+  scale_x_continuous(labels = scales::percent_format()) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_size_area(max_size = 12, guide = "none") +
+  scale_color_manual(values = pal_cards, guide = "none") +
+  labs(title = "Cards: Win Rate vs Presence", x = "Win rate (incl. mirrors)", y = "Presence") +
+  theme_minimal(base_size = 11)
+```
+
+Compose and save the Card Report figure
+```r
+card_report <- p_card_presence / p_card_wr_ci / p_card_wr_vs_presence +
+  plot_layout(heights = c(1.1, 1.1, 1.3))
+ggsave("docs/card_report.png", card_report, width = 12, height = 14, dpi = 200)
+```
+
+Optional: card trends over time (small multiples)
+```r
+card_trend <- dbGetQuery(con, "
+WITH weekly_entries AS (
+  SELECT te.id, strftime('%Y-%W', t.date) AS week
+  FROM tournament_entries te
+  JOIN tournaments t ON t.id = te.tournament_id
+  WHERE t.format_id = ? AND date(t.date) BETWEEN date(?) AND date(?)
+),
+weekly_totals AS (
+  SELECT week, COUNT(*) AS total_entries
+  FROM weekly_entries
+  GROUP BY week
+),
+weekly_card AS (
+  SELECT we.week, dc.card_id, COUNT(DISTINCT dc.entry_id) AS n_entries
+  FROM deck_cards dc
+  JOIN weekly_entries we ON we.id = dc.entry_id
+  JOIN cards c ON c.id = dc.card_id
+  WHERE (? IS NULL OR dc.board = ?)
+    AND (? = 0 OR c.is_land = 0)
+  GROUP BY we.week, dc.card_id
+)
+SELECT we.week, c.name AS card,
+       1.0 * wc.n_entries / wt.total_entries AS presence
+FROM weekly_card wc
+JOIN cards c ON c.id = wc.card_id
+JOIN weekly_totals wt ON wt.week = wc.week
+JOIN (SELECT DISTINCT card FROM (SELECT card FROM (SELECT c.name AS card
+      FROM deck_cards dc JOIN cards c ON c.id = dc.card_id))) keep ON keep.card = c.name
+JOIN (SELECT name FROM cards) we ON 1=1
+", params = list(format_id, start_date, end_date, board_filter, board_filter, as.integer(!exclude_lands)))
+# Filter to the same top cards as the report:
+card_trend <- card_trend |>
+  filter(card %in% levels(card_df$card)) |>
+  mutate(card = factor(card, levels = levels(card_df$card)))
+
+p_card_trend <- ggplot(card_trend, aes(week, presence, color = card)) +
+  geom_line() +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(title = "Card Presence Over Time", x = "Week", y = "Presence") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "none") +
+  facet_wrap(~card, scales = "free_y")
+ggsave("docs/card_trends.png", p_card_trend, width = 14, height = 10, dpi = 200)
+```
+
+Interpretation notes
+- Selection bias: a card’s WR reflects the decks that choose it. Use this to spot staples and rising tech, not causal effects.
+- Board filter: set `board_filter <- "MAIN"` for maindeck staples; `"SIDE"` highlights sideboard tech.
+- Lands: set `exclude_lands <- FALSE` to study manabases; otherwise they are filtered by default using `cards.is_land`.
