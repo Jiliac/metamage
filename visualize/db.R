@@ -43,7 +43,10 @@ fetch_presence <- function(con, format_id, start_date, end_date) {
     .con = con
   )
   pres <- DBI::dbGetQuery(con, sql) %>%
-    mutate(entries = as.integer(entries)) %>%
+    mutate(
+      entries = as.integer(entries),
+      archetype_name = stringr::str_to_title(archetype_name)
+    ) %>%
     arrange(desc(entries))
   total_entries <- sum(pres$entries)
   pres %>%
@@ -71,6 +74,7 @@ fetch_wr_by_archetype <- function(con, format_id, start_date, end_date) {
   )
   DBI::dbGetQuery(con, sql) %>%
     mutate(
+      archetype_name = stringr::str_to_title(archetype_name),
       wins = as.integer(wins),
       losses = as.integer(losses),
       draws = as.integer(draws),
@@ -103,6 +107,8 @@ fetch_matchups <- function(con, format_id, start_date, end_date) {
   )
   DBI::dbGetQuery(con, sql) %>%
     mutate(
+      row_archetype = stringr::str_to_title(row_archetype),
+      col_archetype = stringr::str_to_title(col_archetype),
       wins = as.integer(wins),
       losses = as.integer(losses),
       draws = as.integer(draws),

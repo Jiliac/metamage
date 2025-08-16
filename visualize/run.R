@@ -149,10 +149,11 @@ p_presence <- plot_presence(
   top_order,
   title = paste0(params$format_name, " Metagame Share"),
   caption = paste0(
+    "Source: MTGO & Melee tournaments  •  ",
     params$start_date,
     " → ",
     params$end_date,
-    ", presence by matches "
+    ", presence by matches"
   )
 )
 p_wr_ci <- plot_wr_ci(
@@ -161,6 +162,7 @@ p_wr_ci <- plot_wr_ci(
   top_order,
   title = paste0(params$format_name, " Win Rates"),
   caption = paste0(
+    "Source: MTGO & Melee tournaments  •  ",
     params$start_date,
     " → ",
     params$end_date

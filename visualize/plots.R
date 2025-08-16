@@ -26,14 +26,13 @@ plot_presence <- function(
     filter(bucket != "Other") %>% # drop the aggregated 'Other' row from the chart
     arrange(name) %>%
     mutate(
-      label = stringr::str_to_title(as.character(name)),
-      label = factor(label, levels = stringr::str_to_title(levels(name)))
-    ) # Title Case labels with preserved order
+      label = name
+    ) # Use archetype names as-is (already title cased from DB)
 
   # Assign warm-to-cold gradient colors in descending share order
   lvl <- levels(df$name)
   grad_cols <- grDevices::colorRampPalette(c("#F59E0B", "#10B981"))(length(lvl))
-  names(grad_cols) <- stringr::str_to_title(lvl)
+  names(grad_cols) <- as.character(lvl)
   df$fill_col <- grad_cols[as.character(df$label)]
 
   xmax <- max(df$share, na.rm = TRUE)
@@ -46,7 +45,7 @@ plot_presence <- function(
       hjust = -0.15,
       size = 2.5
     ) +
-    scale_x_continuous(
+    scale_x_sqrt(
       labels = percent_format(accuracy = 1),
       limits = c(0, xmax * 1.12),
       expand = expansion(mult = c(0, 0.08))
@@ -62,7 +61,8 @@ plot_presence <- function(
     theme_minimal(base_size = 12, base_family = "Inter") +
     theme(
       axis.text.y = element_text(size = 6, family = "Inter"),
-      axis.text.x = element_text(size = 6, family = "Inter"),
+      axis.text.x = element_blank(),
+      axis.title.x = element_text(size = 10, family = "Inter"),
       plot.title = element_text(
         size = 17,
         face = "bold",
@@ -71,18 +71,19 @@ plot_presence <- function(
       ),
       plot.subtitle = element_text(hjust = 0.5, size = 7, family = "Inter"),
       plot.caption = element_text(
-        hjust = 0.5,
+        hjust = 0.3,
         size = 6,
         family = "Inter",
         color = "#606060"
       ),
       panel.grid.major.y = element_blank(),
+      panel.grid.major.x = element_blank(),
       panel.grid.minor = element_blank(),
       panel.background = element_rect(fill = "white", color = NA),
       plot.background = element_rect(fill = "white", color = NA),
       plot.margin = margin(10, 30, 10, 10)
     ) +
-    coord_cartesian(clip = "off")
+    coord_cartesian(clip = "off", expand = FALSE)
 }
 
 plot_wr_ci <- function(
@@ -97,8 +98,7 @@ plot_wr_ci <- function(
     mutate(name = factor(archetype_name, levels = order_levels)) %>%
     arrange(name) %>%
     mutate(
-      label = stringr::str_to_title(as.character(name)),
-      label = factor(label, levels = stringr::str_to_title(levels(name)))
+      label = name
     )
 
   # Ensure CI columns exist (in case caller didn't add them)
@@ -212,6 +212,7 @@ plot_wr_ci <- function(
     theme(
       axis.text.y = element_text(size = 6, family = "Inter"),
       axis.text.x = element_text(size = 6, family = "Inter"),
+      axis.title.x = element_text(size = 10, family = "Inter"),
       plot.title = element_text(
         size = 17,
         face = "bold",
@@ -220,7 +221,7 @@ plot_wr_ci <- function(
       ),
       plot.subtitle = element_text(hjust = 0.5, size = 7, family = "Inter"),
       plot.caption = element_text(
-        hjust = 0.5,
+        hjust = 0.3,
         size = 6,
         family = "Inter",
         color = "#606060"
