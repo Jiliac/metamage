@@ -7,6 +7,7 @@ import os
 
 from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
+from langchain_openai import ChatOpenAI
 from langchain_xai import ChatXAI
 from langgraph.prebuilt import create_react_agent
 
@@ -44,6 +45,12 @@ class MTGChatAgent:
                 print("Please set your xAI API key:")
                 print("export XAI_API_KEY=your_api_key_here")
                 return False
+        elif self.provider == "gpt5":
+            if not os.getenv("OPENAI_API_KEY"):
+                print("❌ Error: OPENAI_API_KEY environment variable not set")
+                print("Please set your OpenAI API key:")
+                print("export OPENAI_API_KEY=your_api_key_here")
+                return False
 
         try:
             # Create MCP client and get tools
@@ -57,8 +64,7 @@ class MTGChatAgent:
                     model="claude-sonnet-4-20250514",
                     max_tokens=4096,
                 )
-            # Create LLM based on provider
-            if self.provider == "opus":
+            elif self.provider == "opus":
                 print("🧠 Initializing Claude Opus...")
                 llm = ChatAnthropic(
                     model="claude-opus-4-1-20250805",
@@ -68,6 +74,12 @@ class MTGChatAgent:
                 print("🧠 Initializing xAI Grok...")
                 llm = ChatXAI(
                     model="grok-2-1212",
+                    max_tokens=4096,
+                )
+            elif self.provider == "gpt5":
+                print("🧠 Initializing OpenAI GPT-5...")
+                llm = ChatOpenAI(
+                    model="gpt-5",
                     max_tokens=4096,
                 )
             else:
@@ -166,7 +178,7 @@ async def main():
     parser = argparse.ArgumentParser(description="MTG Tournament Analysis Chat Agent")
     parser.add_argument(
         "--provider",
-        choices=["claude", "xai", "opus"],
+        choices=["claude", "xai", "opus", "gpt5"],
         default="claude",
         help="LLM provider to use (default: claude)",
     )
