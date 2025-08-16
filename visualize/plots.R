@@ -13,7 +13,10 @@ plot_presence <- function(pres_df, color_map, order_levels, title = "Presence") 
     mutate(name = factor(bucket, levels = c(order_levels, setdiff(bucket, order_levels)))) %>%
     filter(bucket != "Other") %>%  # drop the aggregated 'Other' row from the chart
     arrange(name) %>%
-    mutate(label = stringr::str_to_title(as.character(name)))  # Title Case labels
+    mutate(
+      label = stringr::str_to_title(as.character(name)),
+      label = factor(label, levels = stringr::str_to_title(levels(name)))
+    )  # Title Case labels with preserved order
 
   xmax <- max(df$share, na.rm = TRUE)
   xmax <- ifelse(is.finite(xmax), xmax, 0.1)
