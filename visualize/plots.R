@@ -266,7 +266,7 @@ plot_matrix <- function(mat_df, color_map, order_levels) {
       label = dplyr::case_when(
         as.character(row_name) == as.character(col_name) ~ "",
         is.na(wr) | games == 0 ~ "",
-        TRUE ~ paste0(round(wr * 100, 0), "%\n", games)
+        TRUE ~ paste0(round(wr * 100, 0), "%")
       ),
       wr_plot = dplyr::if_else(
         as.character(row_name) == as.character(col_name),
@@ -286,7 +286,11 @@ plot_matrix <- function(mat_df, color_map, order_levels) {
   wr_tiles <- tibble::tibble(
     row_name = factor(row_sum$row_name, levels = order_levels),
     col_name2 = factor("WR", levels = x_levels),
-    title = ifelse(is.na(row_sum$wr), "–", paste0(round(row_sum$wr * 100, 1), "%")),
+    title = ifelse(
+      is.na(row_sum$wr),
+      "–",
+      paste0(round(row_sum$wr * 100, 1), "%")
+    ),
     subtitle = paste0(row_sum$games, " g")
   )
 
@@ -312,7 +316,7 @@ plot_matrix <- function(mat_df, color_map, order_levels) {
     geom_text(
       data = df_cells,
       aes(x = col_name2, y = row_name, label = label),
-      size = 2.2,
+      size = 1.8,
       lineheight = 0.9,
       family = "Inter",
       color = "#111827"
@@ -330,7 +334,7 @@ plot_matrix <- function(mat_df, color_map, order_levels) {
       aes(x = col_name2, y = row_name, label = title),
       hjust = 0,
       nudge_x = -0.35,
-      size = 2.6,
+      size = 2.0,
       family = "Inter",
       fontface = "bold",
       color = "#111827"
@@ -346,7 +350,7 @@ plot_matrix <- function(mat_df, color_map, order_levels) {
     geom_text(
       data = wr_tiles,
       aes(x = col_name2, y = row_name, label = title),
-      size = 2.4,
+      size = 2.0,
       family = "Inter",
       fontface = "bold",
       color = "#111827",
@@ -361,21 +365,36 @@ plot_matrix <- function(mat_df, color_map, order_levels) {
       nudge_y = -0.2
     ) +
     fill_scale +
-    scale_x_discrete(position = "top", limits = x_levels, labels = c("", "", col_levels)) +
+    scale_x_discrete(
+      position = "top",
+      limits = x_levels,
+      labels = c("", "", col_levels)
+    ) +
     labs(
       title = "Matchup Matrix (row vs column)",
       x = NULL,
       y = NULL
     ) +
-    theme_minimal(base_size = 12, base_family = "Inter") +
+    theme_minimal(base_size = 10, base_family = "Inter") +
     theme(
-      axis.text.x = element_text(angle = 40, hjust = 0, vjust = 0, size = 6, family = "Inter"),
+      axis.text.x = element_text(
+        angle = 30,
+        hjust = 0,
+        vjust = 0,
+        size = 5,
+        family = "Inter"
+      ),
       axis.text.y = element_blank(),
       panel.grid = element_blank(),
-      plot.title = element_text(size = 17, face = "bold", hjust = 0.5, family = "Inter"),
+      plot.title = element_text(
+        size = 17,
+        face = "bold",
+        hjust = 0.5,
+        family = "Inter"
+      ),
       plot.background = element_rect(fill = "white", color = NA),
       panel.background = element_rect(fill = "white", color = NA),
-      plot.margin = margin(10, 30, 10, 10)
+      plot.margin = margin(20, 40, 20, 20)
     ) +
     coord_equal()
 }

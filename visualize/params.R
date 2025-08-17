@@ -39,8 +39,8 @@ params <- list(
   overview_height = 1400,
 
   # Panel exports
-  matrix_width = 1800,
-  matrix_height = 1200,
+  matrix_width = 2800,
+  matrix_height = 2400,
   bar_width = 1400,
   bar_height = 1200,
   presence_width = 1400,
