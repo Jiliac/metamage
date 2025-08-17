@@ -117,3 +117,36 @@ fetch_matchups <- function(con, format_id, start_date, end_date) {
       wr = ifelse(games > 0, points / games, NA_real_)
     )
 }
+
+fetch_wr_by_archetype_player <- function(con, format_id, start_date, end_date) {
+  sql <- glue::glue_sql(
+    "
+    SELECT a.name AS archetype_name,
+           p.id   AS player_id,
+           SUM(CASE WHEN m.result = 'WIN'  THEN 1 ELSE 0 END) AS wins,
+           SUM(CASE WHEN m.result = 'LOSS' THEN 1 ELSE 0 END) AS losses,
+           SUM(CASE WHEN m.result = 'DRAW' THEN 1 ELSE 0 END) AS draws
+    FROM tournaments t
+    JOIN tournament_entries e  ON e.tournament_id = t.id
+    JOIN archetypes a          ON a.id = e.archetype_id
+    JOIN players p             ON p.id = e.player_id
+    JOIN matches m             ON m.entry_id = e.id
+    WHERE t.format_id = {format_id}
+      AND t.date >= {start_date}
+      AND t.date <= {end_date}
+    GROUP BY a.name, p.id;
+    ",
+    .con = con
+  )
+  DBI::dbGetQuery(con, sql) %>%
+    mutate(
+      archetype_name = stringr::str_to_title(archetype_name),
+      player_id = as.character(player_id),
+      wins = as.integer(wins),
+      losses = as.integer(losses),
+      draws = as.integer(draws),
+      games = wins + losses + draws,
+      points = wins + 0.5 * draws,
+      wr = ifelse(games > 0, points / games, NA_real_)
+    )
+}

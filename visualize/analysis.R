@@ -43,3 +43,88 @@ add_ci <- function(df, p_col = "wr", n_col = "games") {
   df$wr_hi <- ci$hi
   df
 }
+
+#' Add clustered (by player) confidence intervals for archetype win rates
+#'
+#' Uses cluster-robust SE (CR2) on per-player archetype win rates, with weights = games.
+#' Falls back to Wilson CI when clustering is not possible (e.g., < 2 players).
+#'
+#' @param wr_df aggregated archetype WR data (columns: archetype_name, wr, games)
+#' @param per_player_df per-player aggregated data
+#'   (columns: archetype_name, player_id, wr, games)
+#' @param level confidence level (default 0.95)
+#' @return wr_df with wr_lo and wr_hi columns populated
+add_ci_clustered <- function(wr_df, per_player_df, level = 0.95) {
+  if (nrow(wr_df) == 0) {
+    return(wr_df)
+  }
+
+  # Initialize
+  wr_df$wr_lo <- NA_real_
+  wr_df$wr_hi <- NA_real_
+
+  for (i in seq_len(nrow(wr_df))) {
+    arch <- wr_df$archetype_name[i]
+    sub <- per_player_df %>%
+      dplyr::filter(archetype_name == arch, is.finite(wr), !is.na(player_id))
+
+    n_players <- dplyr::n_distinct(sub$player_id)
+    total_games <- sum(sub$games %||% 0, na.rm = TRUE)
+
+    if (n_players >= 2 && total_games > 0) {
+      fit <- tryCatch(
+        estimatr::lm_robust(
+          wr ~ 1,
+          data = sub,
+          weights = games,
+          clusters = player_id,
+          se_type = "CR2"
+        ),
+        error = function(e) NULL
+      )
+
+      if (!is.null(fit)) {
+        ci <- tryCatch(stats::confint(fit, level = level), error = function(e) {
+          NULL
+        })
+        if (!is.null(ci)) {
+          if (is.matrix(ci) && "(Intercept)" %in% rownames(ci)) {
+            lo <- ci["(Intercept)", 1]
+            hi <- ci["(Intercept)", 2]
+          } else if (is.numeric(ci) && length(ci) == 2) {
+            lo <- ci[1]
+            hi <- ci[2]
+          } else {
+            lo <- NA_real_
+            hi <- NA_real_
+          }
+          if (is.finite(lo)) {
+            wr_df$wr_lo[i] <- max(0, min(1, lo))
+          }
+          if (is.finite(hi)) wr_df$wr_hi[i] <- max(0, min(1, hi))
+        }
+      }
+    }
+  }
+
+  # Wilson fallback for any missing CI bounds
+  need_fallback <- is.na(wr_df$wr_lo) | is.na(wr_df$wr_hi)
+  if (any(need_fallback)) {
+    ci_fb <- wilson_ci(wr_df$wr[need_fallback], wr_df$games[need_fallback])
+    wr_df$wr_lo[need_fallback] <- ifelse(
+      is.na(wr_df$wr_lo[need_fallback]),
+      ci_fb$lo,
+      wr_df$wr_lo[need_fallback]
+    )
+    wr_df$wr_hi[need_fallback] <- ifelse(
+      is.na(wr_df$wr_hi[need_fallback]),
+      ci_fb$hi,
+      wr_df$wr_hi[need_fallback]
+    )
+  }
+
+  wr_df
+}
+
+# null-coalescing helper
+`%||%` <- function(x, y) if (is.null(x)) y else x

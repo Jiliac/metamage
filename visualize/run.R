@@ -21,6 +21,7 @@ ensure_packages(c(
   "ggrepel",
   "forcats",
   "tibble",
+  "estimatr",
   "patchwork"
 ))
 
@@ -103,8 +104,19 @@ wr <- fetch_wr_by_archetype(
   params$start_date,
   params$end_date
 ) %>%
-  filter(archetype_name %in% top_order) %>%
-  add_ci()
+  filter(archetype_name %in% top_order)
+
+# Fetch per-player aggregates for clustered CI
+wr_by_player <- fetch_wr_by_archetype_player(
+  con,
+  format_id,
+  params$start_date,
+  params$end_date
+) %>%
+  filter(archetype_name %in% top_order)
+
+# Add clustered (by player) CI with Wilson fallback
+wr <- add_ci_clustered(wr, wr_by_player)
 
 # Merge WR with presence for bubble chart
 wr_pres <- wr %>%
