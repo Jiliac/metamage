@@ -72,6 +72,17 @@ plot_wr_ci <- function(
     ) +
     # Point estimate
     geom_point(aes(x = wr, color = line_col), size = 1.2) +
+    # White background rectangles for text labels
+    geom_rect(
+      aes(
+        xmin = xmax_original + 0.01,
+        xmax = xmax,
+        ymin = as.numeric(fct_rev(label)) - 0.4,
+        ymax = as.numeric(fct_rev(label)) + 0.4
+      ),
+      fill = "white",
+      color = NA
+    ) +
     # Text labels on the right - main WR (bold)
     geom_text(
       aes(
@@ -154,5 +165,6 @@ plot_wr_ci <- function(
       panel.background = element_rect(fill = "white", color = NA),
       plot.background = element_rect(fill = "white", color = NA),
       plot.margin = margin(10, 30, 10, 10)
-    )
+    ) +
+    coord_cartesian(clip = "on")
 }

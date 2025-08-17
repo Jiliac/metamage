@@ -11,7 +11,7 @@ CHART_COLORS <- list(
 
   # UI colors
   reference_line = "#60A5FA", # Blue for 50% reference line
-  grid_light = "#F5F5F5", # Very light gray for grid lines
+  grid_light = "#D0D0D0", # Light gray for grid lines
   segment_light = "#D0D0D0", # Light gray for segments/connectors
 
   # Special colors
