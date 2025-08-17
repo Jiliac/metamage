@@ -263,7 +263,7 @@ plot_matrix <- function(
 
   # Build x-axis with two left columns for row header and row WR summary
   col_levels <- levels(df$col_name)
-  x_levels <- c("NAME", "WR", col_levels)
+  x_levels <- c("NAME", "WINRATE", col_levels)
   df$col_name2 <- factor(as.character(df$col_name), levels = x_levels)
 
   # Labels for the matrix cells (blank on mirrors)
@@ -283,7 +283,8 @@ plot_matrix <- function(
         as.character(row_name) == as.character(col_name),
         NA_real_,
         wr
-      )
+      ),
+      is_mirror = as.character(row_name) == as.character(col_name)
     )
 
   # Left-side header tiles: NAME and WR (with games under)
@@ -297,7 +298,7 @@ plot_matrix <- function(
 
   wr_tiles <- tibble::tibble(
     row_name = factor(row_sum$row_name, levels = rev(order_levels)),
-    col_name2 = factor("WR", levels = x_levels),
+    col_name2 = factor("WINRATE", levels = x_levels),
     title = ifelse(
       is.na(row_sum$wr),
       "–",
@@ -317,29 +318,48 @@ plot_matrix <- function(
     guide = "none"
   )
 
+  # Create separate data for mirror and non-mirror cells
+  df_non_mirror <- df_cells %>% filter(!is_mirror)
+  df_mirror <- df_cells %>% filter(is_mirror)
+
   ggplot() +
-    # Matrix cells
+    # Non-mirror matrix cells
     geom_tile(
-      data = df_cells,
+      data = df_non_mirror,
       aes(x = col_name2, y = row_name, fill = wr_plot),
       color = "#E5E7EB",
       size = 0.25
     ) +
-    # Win rate percentage (larger text)
+    # Mirror cells (white background)
+    geom_tile(
+      data = df_mirror,
+      aes(x = col_name2, y = row_name),
+      fill = "white",
+      color = "#E5E7EB",
+      size = 0.25
+    ) +
+    # Grey circles for mirror cells
+    geom_point(
+      data = df_mirror,
+      aes(x = col_name2, y = row_name),
+      color = "#D1D5DB",
+      size = 4
+    ) +
+    # Win rate percentage (larger text) - only for non-mirror cells
     geom_text(
-      data = df_cells,
+      data = df_non_mirror,
       aes(x = col_name2, y = row_name, label = label_wr),
-      size = 2.4,
+      size = 2.6,
       family = "Inter",
       color = "#111827",
       fontface = "bold",
       nudge_y = 0.15
     ) +
-    # Wins-losses record (smaller text)
+    # Wins-losses record (smaller text) - only for non-mirror cells
     geom_text(
-      data = df_cells,
+      data = df_non_mirror,
       aes(x = col_name2, y = row_name, label = label_record),
-      size = 1.2,
+      size = 1.7,
       family = "Inter",
       color = "#6B7280",
       nudge_y = -0.15
@@ -373,7 +393,7 @@ plot_matrix <- function(
     geom_text(
       data = wr_tiles,
       aes(x = col_name2, y = row_name, label = title),
-      size = 2.4,
+      size = 2.6,
       family = "Inter",
       fontface = "bold",
       color = "#111827",
@@ -391,7 +411,7 @@ plot_matrix <- function(
     scale_x_discrete(
       position = "top",
       limits = x_levels,
-      labels = c("", "", col_levels)
+      labels = c("", "Winrate vs\nMetagame", col_levels)
     ) +
     labs(
       title = title,
@@ -405,7 +425,7 @@ plot_matrix <- function(
         angle = 30,
         hjust = 0,
         vjust = 0,
-        size = 5,
+        size = 7,
         family = "Inter"
       ),
       axis.text.y = element_blank(),
@@ -414,17 +434,19 @@ plot_matrix <- function(
         size = 17,
         face = "bold",
         hjust = 0.5,
-        family = "Inter"
+        family = "Inter",
+        margin = margin(b = 20)
       ),
       plot.caption = element_text(
         hjust = 0.6,
         size = 9,
         family = "Inter",
-        color = "#606060"
+        color = "#606060",
+        margin = margin(t = 20)
       ),
       plot.background = element_rect(fill = "white", color = NA),
       panel.background = element_rect(fill = "white", color = NA),
-      plot.margin = margin(20, 60, 20, 140)
+      plot.margin = margin(20, 30, 20, 40)
     ) +
     coord_equal(clip = "off")
 }
