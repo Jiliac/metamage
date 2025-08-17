@@ -136,3 +136,9 @@ class MetaChange(Base, TimestampMixin):
 
 # Create indexes for performance
 Index("idx_meta_change_format_date", MetaChange.format_id, MetaChange.date)
+
+# SQLite FTS5 virtual table for archetype fuzzy search
+# Note: This needs to be created via raw SQL as SQLAlchemy doesn't directly support FTS virtual tables
+# Example SQL to create:
+# CREATE VIRTUAL TABLE archetype_fts USING fts5(name, archetype_id, content='archetypes', content_rowid='rowid');
+# INSERT INTO archetype_fts(name, archetype_id) SELECT name, id FROM archetypes;

@@ -1,11 +1,61 @@
 from datetime import datetime, timedelta
-from sqlalchemy import func, distinct
+from sqlalchemy import func, distinct, text
 
-from .utils import get_session
+from .utils import get_session, engine
 from .mcp import mcp
 from fastmcp import Context
 from .log_decorator import log_tool_calls
 from ..models import Player, TournamentEntry, Tournament, Archetype
+
+
+def _find_player_fuzzy(player_handle: str):
+    """Find player using fuzzy matching with fallback strategies."""
+
+    # Strategy 1: Exact match (case-insensitive) using normalized_handle
+    exact_sql = """
+        SELECT id, handle, normalized_handle
+        FROM players
+        WHERE normalized_handle = LOWER(:player_handle)
+    """
+
+    with engine.connect() as conn:
+        result = conn.execute(text(exact_sql), {"player_handle": player_handle}).first()
+        if result:
+            return result._mapping
+
+    # Strategy 2: Partial match on handle (contains)
+    partial_sql = """
+        SELECT id, handle, normalized_handle
+        FROM players
+        WHERE LOWER(handle) LIKE LOWER(:pattern)
+        ORDER BY LENGTH(handle)
+        LIMIT 1
+    """
+
+    with engine.connect() as conn:
+        pattern = f"%{player_handle}%"
+        result = conn.execute(text(partial_sql), {"pattern": pattern}).first()
+        if result:
+            return result._mapping
+
+    # Strategy 3: Partial match on normalized_handle (contains)
+    normalized_partial_sql = """
+        SELECT id, handle, normalized_handle
+        FROM players
+        WHERE normalized_handle LIKE LOWER(:pattern)
+        ORDER BY LENGTH(handle)
+        LIMIT 1
+    """
+
+    with engine.connect() as conn:
+        pattern = f"%{player_handle.lower()}%"
+        result = conn.execute(
+            text(normalized_partial_sql), {"pattern": pattern}
+        ).first()
+        if result:
+            return result._mapping
+
+    return None
 
 
 @log_tool_calls
@@ -13,7 +63,18 @@ from ..models import Player, TournamentEntry, Tournament, Archetype
 def get_player(player_id: str, ctx: Context = None) -> str:
     """
     Get player profile with recent tournament entries and performance.
+    Accepts either a player UUID or player handle (with fuzzy matching).
     """
+    # Try to determine if input is a UUID or handle
+    actual_player_id = player_id
+
+    # If it doesn't look like a UUID (36 chars with dashes), treat as handle
+    if len(player_id) != 36 or player_id.count("-") != 4:
+        player_match = _find_player_fuzzy(player_id)
+        if not player_match:
+            return f"Player '{player_id}' not found. Try a different name or check spelling."
+        actual_player_id = player_match["id"]
+
     cutoff = datetime.utcnow() - timedelta(days=90)
     with get_session() as session:
         player_info = (
@@ -30,13 +91,13 @@ def get_player(player_id: str, ctx: Context = None) -> str:
             )
             .outerjoin(TournamentEntry, Player.id == TournamentEntry.player_id)
             .outerjoin(Tournament, TournamentEntry.tournament_id == Tournament.id)
-            .filter(Player.id == player_id, Tournament.date >= cutoff)
+            .filter(Player.id == actual_player_id, Tournament.date >= cutoff)
             .group_by(Player.id, Player.handle)
             .first()
         )
 
     if not player_info:
-        return f"Player {player_id} not found"
+        return f"Player {actual_player_id} not found"
 
     # Normalize mapping access for formatted output
     player_info = dict(player_info._mapping)
@@ -55,7 +116,9 @@ def get_player(player_id: str, ctx: Context = None) -> str:
             )
             .join(Tournament, TournamentEntry.tournament_id == Tournament.id)
             .join(Archetype, TournamentEntry.archetype_id == Archetype.id)
-            .filter(TournamentEntry.player_id == player_id, Tournament.date >= cutoff)
+            .filter(
+                TournamentEntry.player_id == actual_player_id, Tournament.date >= cutoff
+            )
             .order_by(Tournament.date.desc())
             .limit(5)
             .all()
@@ -79,3 +142,20 @@ def get_player(player_id: str, ctx: Context = None) -> str:
 ## Recent Results
 {results_summary or "No recent tournament data"}
 """
+
+
+@log_tool_calls
+@mcp.tool
+def search_player(player_handle: str, ctx: Context = None) -> str:
+    """
+    Search for a player by handle using fuzzy matching, then return their profile.
+    This is more user-friendly than get_player which requires an exact player ID.
+    """
+    # Find player using fuzzy matching
+    player_match = _find_player_fuzzy(player_handle)
+
+    if not player_match:
+        return f"Player '{player_handle}' not found. Try a different name or check spelling."
+
+    # Use the found player ID to get full profile
+    return get_player(player_match["id"], ctx)
