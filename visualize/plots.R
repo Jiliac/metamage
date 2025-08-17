@@ -274,17 +274,37 @@ plot_matrix <- function(
       reliability = pmin(1, games / 50), # R = clamp(n/50, 0, 1)
       overlay_alpha = 1 - reliability, # white overlay alpha
       low_n = !is_mirror & games < 5, # very low sample
+
+      # Calculate 95% CI for win rate (Wilson score interval approximation)
+      points = wins + 0.5 * draws,
+      p_hat = ifelse(games > 0, points / games, 0.5),
+      z = 1.96, # 95% CI
+      margin = ifelse(games > 0, z * sqrt(p_hat * (1 - p_hat) / games), 0),
+      ci_low = pmax(0, p_hat - margin),
+      ci_high = pmin(1, p_hat + margin),
+      ci_crosses_50 = !is_mirror & games >= 5 & ci_low <= 0.5 & ci_high >= 0.5,
+
+      # CI indicator: ▲ if CI doesn't cross 50% and WR > 50%, ▼ if CI doesn't cross 50% and WR < 50%
+      ci_indicator = dplyr::case_when(
+        is_mirror | low_n | games == 0 ~ "",
+        ci_crosses_50 ~ "", # No indicator if CI crosses 50%
+        p_hat > 0.5 ~ "▲", # Triangle up for confident above 50%
+        p_hat < 0.5 ~ "▼", # Triangle down for confident below 50%
+        TRUE ~ ""
+      ),
+
       label_wr = dplyr::case_when(
         is_mirror ~ "",
         low_n ~ "–",
         is.na(wr) | games == 0 ~ "",
+        # TRUE ~ paste0(round(wr * 100, 0), "%", ci_indicator)
         TRUE ~ paste0(round(wr * 100, 0), "%")
       ),
       label_n = dplyr::case_when(
         is_mirror ~ "",
         low_n ~ "",
         is.na(wr) | games == 0 ~ "",
-        TRUE ~ as.character(games)
+        TRUE ~ paste0(wins, "-", losses)
       )
     )
 
@@ -308,11 +328,11 @@ plot_matrix <- function(
     subtitle = paste0(row_sum$wins, "-", row_sum$losses)
   )
 
-  # Fill scale similar to other charts (subtle red-white-green)
+  # Fill scale with tightened range to avoid saturated extremes
   fill_scale <- scale_fill_gradient2(
-    low = "#EF4444",
+    low = "#F87171", # Lighter red
     mid = "#F3F4F6",
-    high = "#10B981",
+    high = "#4ADE80", # Lighter green
     midpoint = 0.5,
     limits = c(0.35, 0.65),
     oob = scales::squish,
@@ -372,7 +392,7 @@ plot_matrix <- function(
       fontface = "bold",
       nudge_y = 0.15
     ) +
-    # Games count (smaller text) - only for non-mirror cells
+    # Wins-losses record (smaller text) - only for non-mirror cells
     geom_text(
       data = df_non_mirror,
       aes(x = col_name2, y = row_name, label = label_n),
