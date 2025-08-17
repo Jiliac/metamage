@@ -58,7 +58,7 @@ plot_wr_ci <- function(
     xmin <- 0.4
     xmax <- 0.6
   }
-  pad <- max(0.01, (xmax - xmin) * 0.04)
+  pad <- max(0.01, (xmax - xmin) * 0.05)
   xmin <- max(0, xmin - pad)
   xmax_original <- xmax
   xmax <- min(1, xmax + pad + 0.06) # Extra space for text
@@ -87,9 +87,9 @@ plot_wr_ci <- function(
     # Text labels on the right - CI (normal)
     geom_text(
       aes(
-        x = xmax_original + 0.015,
+        x = xmax_original + 0.02,
         label = paste0(
-          " (",
+          "(",
           round(wr_lo * 100, 1),
           "–",
           round(wr_hi * 100, 1),

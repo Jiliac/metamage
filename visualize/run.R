@@ -116,7 +116,8 @@ wr_by_player <- fetch_wr_by_archetype_player(
   filter(archetype_name %in% top_order)
 
 # Add clustered (by player) CI with Wilson fallback
-wr <- add_ci_clustered(wr, wr_by_player)
+CI_LEVEL = 0.9
+wr <- add_ci_clustered(wr, wr_by_player, CI_LEVEL)
 
 # Merge WR with presence for bubble chart
 wr_pres <- wr %>%

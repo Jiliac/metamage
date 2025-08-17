@@ -89,7 +89,7 @@ plot_wr_vs_presence <- function(
       box.padding = 0.8,
       point.padding = 0.8,
       force = 5,
-      force_pull = 2,
+      force_pull = 1,
       min.segment.length = 0.02,
       max.time = 2,
       max.iter = 10000,
