@@ -233,11 +233,11 @@ plot_wr_ci <- function(
     )
 }
 
-plot_matrix <- function(mat_df, color_map, order_levels) {
-  # Prepare factors
+plot_matrix <- function(mat_df, color_map, order_levels, caption = NULL) {
+  # Prepare factors (reverse row order to put first archetype on top)
   df <- mat_df %>%
     mutate(
-      row_name = factor(row_archetype, levels = order_levels),
+      row_name = factor(row_archetype, levels = rev(order_levels)),
       col_name = factor(col_archetype, levels = order_levels)
     )
 
@@ -263,10 +263,15 @@ plot_matrix <- function(mat_df, color_map, order_levels) {
   # Labels for the matrix cells (blank on mirrors)
   df_cells <- df %>%
     mutate(
-      label = dplyr::case_when(
+      label_wr = dplyr::case_when(
         as.character(row_name) == as.character(col_name) ~ "",
         is.na(wr) | games == 0 ~ "",
         TRUE ~ paste0(round(wr * 100, 0), "%")
+      ),
+      label_record = dplyr::case_when(
+        as.character(row_name) == as.character(col_name) ~ "",
+        is.na(wr) | games == 0 ~ "",
+        TRUE ~ paste0(wins, "-", losses)
       ),
       wr_plot = dplyr::if_else(
         as.character(row_name) == as.character(col_name),
@@ -277,21 +282,21 @@ plot_matrix <- function(mat_df, color_map, order_levels) {
 
   # Left-side header tiles: NAME and WR (with games under)
   name_tiles <- tibble::tibble(
-    row_name = factor(order_levels, levels = order_levels),
+    row_name = factor(rev(order_levels), levels = rev(order_levels)),
     col_name2 = factor("NAME", levels = x_levels),
-    title = as.character(order_levels),
+    title = as.character(rev(order_levels)),
     subtitle = ""
   )
 
   wr_tiles <- tibble::tibble(
-    row_name = factor(row_sum$row_name, levels = order_levels),
+    row_name = factor(row_sum$row_name, levels = rev(order_levels)),
     col_name2 = factor("WR", levels = x_levels),
     title = ifelse(
       is.na(row_sum$wr),
       "–",
       paste0(round(row_sum$wr * 100, 1), "%")
     ),
-    subtitle = paste0(row_sum$games, " g")
+    subtitle = paste0(row_sum$wins, "-", row_sum$losses)
   )
 
   # Fill scale similar to other charts (subtle red-white-green)
@@ -313,13 +318,24 @@ plot_matrix <- function(mat_df, color_map, order_levels) {
       color = "#E5E7EB",
       size = 0.25
     ) +
+    # Win rate percentage (larger text)
     geom_text(
       data = df_cells,
-      aes(x = col_name2, y = row_name, label = label),
-      size = 1.8,
-      lineheight = 0.9,
+      aes(x = col_name2, y = row_name, label = label_wr),
+      size = 2.0,
       family = "Inter",
-      color = "#111827"
+      color = "#111827",
+      fontface = "bold",
+      nudge_y = 0.15
+    ) +
+    # Wins-losses record (smaller text)
+    geom_text(
+      data = df_cells,
+      aes(x = col_name2, y = row_name, label = label_record),
+      size = 1.2,
+      family = "Inter",
+      color = "#6B7280",
+      nudge_y = -0.15
     ) +
     # Left name column
     geom_tile(
@@ -372,10 +388,11 @@ plot_matrix <- function(mat_df, color_map, order_levels) {
     ) +
     labs(
       title = "Matchup Matrix (row vs column)",
+      caption = caption,
       x = NULL,
       y = NULL
     ) +
-    theme_minimal(base_size = 10, base_family = "Inter") +
+    theme_minimal(base_size = 12, base_family = "Inter") +
     theme(
       axis.text.x = element_text(
         angle = 30,
@@ -391,6 +408,12 @@ plot_matrix <- function(mat_df, color_map, order_levels) {
         face = "bold",
         hjust = 0.5,
         family = "Inter"
+      ),
+      plot.caption = element_text(
+        hjust = 0.6,
+        size = 9,
+        family = "Inter",
+        color = "#606060"
       ),
       plot.background = element_rect(fill = "white", color = NA),
       panel.background = element_rect(fill = "white", color = NA),
@@ -521,8 +544,8 @@ plot_wr_vs_presence <- function(
       ),
       plot.subtitle = element_text(hjust = 0.5, size = 7, family = "Inter"),
       plot.caption = element_text(
-        hjust = 0.3,
-        size = 6,
+        hjust = 0.2,
+        size = 5,
         family = "Inter",
         color = "#606060"
       ),

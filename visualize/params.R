@@ -31,6 +31,7 @@ params <- list(
 
   # Selection and rendering
   top_n = as.integer(env_or("TOP_N", "20")),
+  matrix_top_n = as.integer(env_or("MATRIX_TOP_N", "12")),
   output_dir = output_dir,
   db_path = env_or("TOURNAMENT_DB_PATH", "data/tournament.db"),
 

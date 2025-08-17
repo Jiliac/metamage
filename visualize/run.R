@@ -118,14 +118,20 @@ wr_pres <- wr %>%
     share
   )
 
-# Matchups for just the top N archetypes
+# Create separate order for matrix (top 12)
+matrix_order <- presence$archetype_name[seq_len(min(
+  params$matrix_top_n,
+  nrow(presence)
+))]
+
+# Matchups for just the top matrix_top_n archetypes
 mat <- fetch_matchups(con, format_id, params$start_date, params$end_date) %>%
-  filter(row_archetype %in% top_order, col_archetype %in% top_order)
+  filter(row_archetype %in% matrix_order, col_archetype %in% matrix_order)
 
 # Ensure a full grid; leave mirrors blank
 all_pairs <- tidyr::expand_grid(
-  row_archetype = top_order,
-  col_archetype = top_order
+  row_archetype = matrix_order,
+  col_archetype = matrix_order
 )
 mat <- all_pairs %>%
   left_join(mat, by = c("row_archetype", "col_archetype")) %>%
@@ -169,7 +175,17 @@ p_wr_ci <- plot_wr_ci(
     params$end_date
   )
 )
-p_matrix <- plot_matrix(mat, color_map, top_order)
+p_matrix <- plot_matrix(
+  mat,
+  color_map,
+  matrix_order,
+  caption = paste0(
+    "Source: MTGO & Melee tournaments  •  ",
+    params$start_date,
+    " → ",
+    params$end_date
+  )
+)
 p_bubble <- plot_wr_vs_presence(
   wr_pres,
   color_map,
