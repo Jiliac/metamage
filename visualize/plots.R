@@ -233,7 +233,13 @@ plot_wr_ci <- function(
     )
 }
 
-plot_matrix <- function(mat_df, color_map, order_levels, caption = NULL) {
+plot_matrix <- function(
+  mat_df,
+  color_map,
+  order_levels,
+  title = "Matchup Matrix",
+  caption = NULL
+) {
   # Prepare factors (reverse row order to put first archetype on top)
   df <- mat_df %>%
     mutate(
@@ -322,7 +328,7 @@ plot_matrix <- function(mat_df, color_map, order_levels, caption = NULL) {
     geom_text(
       data = df_cells,
       aes(x = col_name2, y = row_name, label = label_wr),
-      size = 2.0,
+      size = 2.4,
       family = "Inter",
       color = "#111827",
       fontface = "bold",
@@ -337,36 +343,35 @@ plot_matrix <- function(mat_df, color_map, order_levels, caption = NULL) {
       color = "#6B7280",
       nudge_y = -0.15
     ) +
-    # Left name column
+    # Left name column (no border)
     geom_tile(
       data = name_tiles,
       aes(x = col_name2, y = row_name),
       fill = "white",
-      color = "#E5E7EB",
-      size = 0.25
+      color = NA
     ) +
     geom_text(
       data = name_tiles,
       aes(x = col_name2, y = row_name, label = title),
-      hjust = 0,
-      nudge_x = -0.35,
-      size = 2.0,
+      hjust = 1,
+      nudge_x = 0.45,
+      size = 2.1,
       family = "Inter",
       fontface = "bold",
       color = "#111827"
     ) +
-    # Left WR column (with games below)
+    # Left WR column (highlighted background with strong border)
     geom_tile(
       data = wr_tiles,
       aes(x = col_name2, y = row_name),
-      fill = "white",
-      color = "#E5E7EB",
-      size = 0.25
+      fill = "#F8FAFC",
+      color = "#374151",
+      linewidth = 0.5
     ) +
     geom_text(
       data = wr_tiles,
       aes(x = col_name2, y = row_name, label = title),
-      size = 2.0,
+      size = 2.4,
       family = "Inter",
       fontface = "bold",
       color = "#111827",
@@ -387,7 +392,7 @@ plot_matrix <- function(mat_df, color_map, order_levels, caption = NULL) {
       labels = c("", "", col_levels)
     ) +
     labs(
-      title = "Matchup Matrix (row vs column)",
+      title = title,
       caption = caption,
       x = NULL,
       y = NULL
@@ -417,7 +422,7 @@ plot_matrix <- function(mat_df, color_map, order_levels, caption = NULL) {
       ),
       plot.background = element_rect(fill = "white", color = NA),
       panel.background = element_rect(fill = "white", color = NA),
-      plot.margin = margin(20, 40, 20, 20)
+      plot.margin = margin(20, 60, 20, 20)
     ) +
     coord_equal()
 }

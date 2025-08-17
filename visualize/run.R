@@ -179,6 +179,7 @@ p_matrix <- plot_matrix(
   mat,
   color_map,
   matrix_order,
+  title = paste0(params$format_name, " Matchup Matrix"),
   caption = paste0(
     "Source: MTGO & Melee tournaments  •  ",
     params$start_date,
