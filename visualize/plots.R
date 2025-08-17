@@ -291,6 +291,7 @@ plot_matrix <- function(
     row_name = factor(rev(order_levels), levels = rev(order_levels)),
     col_name2 = factor("NAME", levels = x_levels),
     title = as.character(rev(order_levels)),
+    label = stringr::str_wrap(as.character(rev(order_levels)), width = 16),
     subtitle = ""
   )
 
@@ -352,13 +353,14 @@ plot_matrix <- function(
     ) +
     geom_text(
       data = name_tiles,
-      aes(x = col_name2, y = row_name, label = title),
+      aes(x = col_name2, y = row_name, label = label),
       hjust = 1,
       nudge_x = 0.30,
       size = 2.8,
       family = "Inter",
       fontface = "bold",
-      color = "#111827"
+      color = "#111827",
+      lineheight = 0.92
     ) +
     # Left WR column (highlighted background with strong border)
     geom_tile(
@@ -422,9 +424,9 @@ plot_matrix <- function(
       ),
       plot.background = element_rect(fill = "white", color = NA),
       panel.background = element_rect(fill = "white", color = NA),
-      plot.margin = margin(20, 60, 20, 20)
+      plot.margin = margin(20, 60, 20, 140)
     ) +
-    coord_equal()
+    coord_equal(clip = "off")
 }
 
 plot_wr_vs_presence <- function(
