@@ -354,8 +354,8 @@ plot_matrix <- function(
       data = name_tiles,
       aes(x = col_name2, y = row_name, label = title),
       hjust = 1,
-      nudge_x = 0.45,
-      size = 2.1,
+      nudge_x = 0.30,
+      size = 2.8,
       family = "Inter",
       fontface = "bold",
       color = "#111827"
