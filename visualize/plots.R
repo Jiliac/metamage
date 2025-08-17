@@ -266,25 +266,26 @@ plot_matrix <- function(
   x_levels <- c("NAME", "WINRATE", col_levels)
   df$col_name2 <- factor(as.character(df$col_name), levels = x_levels)
 
-  # Labels for the matrix cells (blank on mirrors)
+  # Labels for the matrix cells and reliability (blank on mirrors; low-N special)
   df_cells <- df %>%
     mutate(
+      is_mirror = as.character(row_name) == as.character(col_name),
+      wr_plot = dplyr::if_else(is_mirror, NA_real_, wr),
+      reliability = pmin(1, games / 50), # R = clamp(n/50, 0, 1)
+      overlay_alpha = 1 - reliability, # white overlay alpha
+      low_n = !is_mirror & games < 5, # very low sample
       label_wr = dplyr::case_when(
-        as.character(row_name) == as.character(col_name) ~ "",
+        is_mirror ~ "",
+        low_n ~ "–",
         is.na(wr) | games == 0 ~ "",
         TRUE ~ paste0(round(wr * 100, 0), "%")
       ),
-      label_record = dplyr::case_when(
-        as.character(row_name) == as.character(col_name) ~ "",
+      label_n = dplyr::case_when(
+        is_mirror ~ "",
+        low_n ~ "",
         is.na(wr) | games == 0 ~ "",
-        TRUE ~ paste0(wins, "-", losses)
-      ),
-      wr_plot = dplyr::if_else(
-        as.character(row_name) == as.character(col_name),
-        NA_real_,
-        wr
-      ),
-      is_mirror = as.character(row_name) == as.character(col_name)
+        TRUE ~ as.character(games)
+      )
     )
 
   # Left-side header tiles: NAME and WR (with games under)
@@ -318,15 +319,24 @@ plot_matrix <- function(
     guide = "none"
   )
 
-  # Create separate data for mirror and non-mirror cells
+  # Create separate data for mirror, low-N, and regular non-mirror cells
   df_non_mirror <- df_cells %>% filter(!is_mirror)
+  df_non_mirror_strong <- df_non_mirror %>% filter(!low_n)
+  df_low_n <- df_non_mirror %>% filter(low_n)
   df_mirror <- df_cells %>% filter(is_mirror)
 
   ggplot() +
-    # Non-mirror matrix cells
+    # Non-mirror matrix cells (colored for regular, light grey for very low N)
     geom_tile(
-      data = df_non_mirror,
+      data = df_non_mirror_strong,
       aes(x = col_name2, y = row_name, fill = wr_plot),
+      color = "#E5E7EB",
+      size = 0.25
+    ) +
+    geom_tile(
+      data = df_low_n,
+      aes(x = col_name2, y = row_name),
+      fill = "#F3F4F6",
       color = "#E5E7EB",
       size = 0.25
     ) +
@@ -337,6 +347,13 @@ plot_matrix <- function(
       fill = "white",
       color = "#E5E7EB",
       size = 0.25
+    ) +
+    # Reliability washout overlay for regular cells
+    geom_tile(
+      data = df_non_mirror_strong,
+      aes(x = col_name2, y = row_name, alpha = overlay_alpha),
+      fill = "white",
+      color = NA
     ) +
     # Grey circles for mirror cells
     geom_point(
@@ -355,10 +372,10 @@ plot_matrix <- function(
       fontface = "bold",
       nudge_y = 0.15
     ) +
-    # Wins-losses record (smaller text) - only for non-mirror cells
+    # Games count (smaller text) - only for non-mirror cells
     geom_text(
       data = df_non_mirror,
-      aes(x = col_name2, y = row_name, label = label_record),
+      aes(x = col_name2, y = row_name, label = label_n),
       size = 1.7,
       family = "Inter",
       color = "#6B7280",
@@ -413,6 +430,7 @@ plot_matrix <- function(
       limits = x_levels,
       labels = c("", "Winrate vs\nMetagame", col_levels)
     ) +
+    scale_alpha_identity(guide = "none") +
     labs(
       title = title,
       caption = caption,
