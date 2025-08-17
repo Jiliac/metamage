@@ -8,6 +8,26 @@ suppressPackageStartupMessages({
   library(ggrepel)
 })
 
+# Color constants for consistency across charts (excluding matrix)
+CHART_COLORS <- list(
+  # Primary gradient colors (warm to cool) - sophisticated palette
+  gradient_warm = "#e15759", # Muted red for poor performance
+  gradient_cool = "#4e79a7", # Dusty blue for good performance
+
+  # Text colors
+  text_primary = "#303030", # Dark gray for main text
+  text_secondary = "#606060", # Medium gray for secondary text
+  text_tertiary = "#6B7280", # Light gray for tertiary text
+
+  # UI colors
+  reference_line = "#60A5FA", # Blue for 50% reference line
+  grid_light = "#F5F5F5", # Very light gray for grid lines
+  segment_light = "#D0D0D0", # Light gray for segments/connectors
+
+  # Special colors
+  na_fallback = "#808080" # Gray for missing/NA values
+)
+
 plot_presence <- function(
   pres_df,
   color_map,
@@ -31,7 +51,10 @@ plot_presence <- function(
 
   # Assign warm-to-cold gradient colors in descending share order
   lvl <- levels(df$name)
-  grad_cols <- grDevices::colorRampPalette(c("#F59E0B", "#10B981"))(length(lvl))
+  grad_cols <- grDevices::colorRampPalette(c(
+    CHART_COLORS$gradient_warm,
+    CHART_COLORS$gradient_cool
+  ))(length(lvl))
   names(grad_cols) <- as.character(lvl)
   df$fill_col <- grad_cols[as.character(df$label)]
 
@@ -74,7 +97,7 @@ plot_presence <- function(
         hjust = 0.3,
         size = 6,
         family = "Inter",
-        color = "#606060"
+        color = CHART_COLORS$text_secondary
       ),
       panel.grid.major.y = element_blank(),
       panel.grid.major.x = element_blank(),
@@ -115,12 +138,15 @@ plot_wr_ci <- function(
   max_wr_lo <- max(df$wr_lo, na.rm = TRUE)
 
   # Create color ramp function
-  color_ramp <- grDevices::colorRampPalette(c("#10B981", "#F59E0B"))
+  color_ramp <- grDevices::colorRampPalette(c(
+    CHART_COLORS$gradient_cool,
+    CHART_COLORS$gradient_warm
+  ))
 
   # Map each wr_lo value to a color based on its position in the range
   df$line_col <- sapply(df$wr_lo, function(x) {
     if (is.na(x)) {
-      return("#808080")
+      return(CHART_COLORS$na_fallback)
     } # gray for NA
     prop <- (x - min_wr_lo) / (max_wr_lo - min_wr_lo)
     prop <- pmax(0, pmin(1, prop)) # clamp to [0,1]
@@ -158,7 +184,7 @@ plot_wr_ci <- function(
       size = 1.6,
       family = "Inter",
       fontface = "bold",
-      color = "#303030"
+      color = CHART_COLORS$text_primary
     ) +
     # Text labels on the right - CI (normal)
     geom_text(
@@ -182,7 +208,7 @@ plot_wr_ci <- function(
     geom_vline(
       xintercept = 0.5,
       linetype = "longdash",
-      color = "#60A5FA",
+      color = CHART_COLORS$reference_line,
       alpha = 0.6
     ) +
     scale_x_continuous(
@@ -219,10 +245,10 @@ plot_wr_ci <- function(
         hjust = 0.3,
         size = 6,
         family = "Inter",
-        color = "#606060"
+        color = CHART_COLORS$text_secondary
       ),
       panel.grid.major.y = element_line(
-        color = "#F5F5F5",
+        color = CHART_COLORS$grid_light,
         linewidth = 0.3,
         linetype = "dotted"
       ),
@@ -284,21 +310,26 @@ plot_matrix <- function(
       ci_high = pmin(1, p_hat + margin),
       ci_crosses_50 = !is_mirror & games >= 5 & ci_low <= 0.5 & ci_high >= 0.5,
 
-      # CI indicator: ▲ if CI doesn't cross 50% and WR > 50%, ▼ if CI doesn't cross 50% and WR < 50%
+      # Two-tier CI indicators
+      ci_crosses_45_55 = !is_mirror &
+        games >= 5 &
+        ci_low <= 0.55 &
+        ci_high >= 0.45,
+
       ci_indicator = dplyr::case_when(
         is_mirror | low_n | games == 0 ~ "",
-        ci_crosses_50 ~ "", # No indicator if CI crosses 50%
-        p_hat > 0.5 ~ "▲", # Triangle up for confident above 50%
-        p_hat < 0.5 ~ "▼", # Triangle down for confident below 50%
-        TRUE ~ ""
+        ci_low > 0.5 ~ "▲", # Very favorable (CI entirely above 50%)
+        ci_high < 0.5 ~ "▼", # Very unfavorable (CI entirely below 50%)
+        ci_low > 0.40 & p_hat > 0.5 ~ "△", # Favorable (CI low > 45%, mean > 50%)
+        ci_high < 0.60 & p_hat < 0.5 ~ "▽", # Unfavorable (CI high < 55%, mean < 50%)
+        TRUE ~ "" # Not significant
       ),
 
       label_wr = dplyr::case_when(
         is_mirror ~ "",
         low_n ~ "–",
         is.na(wr) | games == 0 ~ "",
-        # TRUE ~ paste0(round(wr * 100, 0), "%", ci_indicator)
-        TRUE ~ paste0(round(wr * 100, 0), "%")
+        TRUE ~ paste0(round(wr * 100, 0), "%", ci_indicator)
       ),
       label_n = dplyr::case_when(
         is_mirror ~ "",
@@ -331,7 +362,7 @@ plot_matrix <- function(
   # Fill scale with tightened range to avoid saturated extremes
   fill_scale <- scale_fill_gradient2(
     low = "#F87171", # Lighter red
-    mid = "#F3F4F6",
+    mid = "#f0f0f0", # Sophisticated neutral
     high = "#4ADE80", # Lighter green
     midpoint = 0.5,
     limits = c(0.35, 0.65),
@@ -476,17 +507,32 @@ plot_matrix <- function(
         margin = margin(b = 20)
       ),
       plot.caption = element_text(
-        hjust = 0.6,
+        hjust = 0.1,
         size = 9,
         family = "Inter",
-        color = "#606060",
-        margin = margin(t = 20)
+        color = CHART_COLORS$text_secondary,
+        margin = margin(t = 33)
       ),
       plot.background = element_rect(fill = "white", color = NA),
       panel.background = element_rect(fill = "white", color = NA),
-      plot.margin = margin(20, 30, 20, 40)
+      plot.margin = margin(10, 10, 40, 20)
     ) +
-    coord_equal(clip = "off")
+    coord_equal(clip = "off") +
+    # Add legend with white background box
+    annotate(
+      "label",
+      x = max(as.numeric(factor(col_levels))) + 2,
+      y = min(as.numeric(factor(rev(order_levels)))) - 0.5,
+      label = "▲ Very favorable\n△ Favorable\n▽ Unfavorable\n▼ Very unfavorable",
+      hjust = 0.8,
+      vjust = 1.4,
+      size = 2.8,
+      family = "Inter",
+      color = "#1F2937",
+      fill = "white",
+      label.padding = unit(0.5, "lines"),
+      label.size = 0.25
+    )
 }
 
 plot_wr_vs_presence <- function(
@@ -508,12 +554,15 @@ plot_wr_vs_presence <- function(
   max_wr_lo <- max(df$wr_lo, na.rm = TRUE)
 
   # Create color ramp function (green to orange like in WR chart)
-  color_ramp <- grDevices::colorRampPalette(c("#10B981", "#F59E0B"))
+  color_ramp <- grDevices::colorRampPalette(c(
+    CHART_COLORS$gradient_cool,
+    CHART_COLORS$gradient_warm
+  ))
 
   # Map each wr_lo value to a color
   df$point_col <- sapply(df$wr_lo, function(x) {
     if (is.na(x)) {
-      return("#808080")
+      return(CHART_COLORS$na_fallback)
     } # gray for NA
     prop <- (x - min_wr_lo) / (max_wr_lo - min_wr_lo)
     prop <- pmax(0, pmin(1, prop)) # clamp to [0,1]
@@ -564,7 +613,7 @@ plot_wr_vs_presence <- function(
       family = "Inter",
       max.overlaps = Inf,
       segment.size = 0.15,
-      segment.color = "#D0D0D0",
+      segment.color = CHART_COLORS$segment_light,
       box.padding = 0.8,
       point.padding = 0.8,
       force = 5,
@@ -587,7 +636,7 @@ plot_wr_vs_presence <- function(
     geom_hline(
       yintercept = 0.5,
       linetype = "longdash",
-      color = "#60A5FA",
+      color = CHART_COLORS$reference_line,
       alpha = 0.6
     ) +
     labs(
@@ -614,10 +663,10 @@ plot_wr_vs_presence <- function(
         hjust = 0.2,
         size = 5,
         family = "Inter",
-        color = "#606060"
+        color = CHART_COLORS$text_secondary
       ),
       panel.grid.major = element_line(
-        color = "#F5F5F5",
+        color = CHART_COLORS$grid_light,
         linewidth = 0.3
       ),
       panel.grid.minor = element_blank(),
