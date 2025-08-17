@@ -30,6 +30,17 @@ def get_sources(
 
     Returns:
         Dict containing 'sources': list of {tournament_name, date, link, source} and 'summary' with source breakdown statistics
+
+    Workflow Integration:
+    - Use to attach concrete evidence (links) to analyses from other tools (meta_report, matchup_wr, etc.).
+    - Filter by archetype_name to support archetype-specific claims.
+    - Pair with query_database() for deeper per-event breakdowns after you have the links.
+
+    Related Tools:
+    - get_meta_report(), get_matchup_winrate(), get_archetype_trends(), get_tournament_results(), query_database()
+
+    Example:
+    - After computing a winrate spike, call get_sources() over the same date window to list tournaments to cite.
     """
     try:
         start = datetime.fromisoformat(start_date)

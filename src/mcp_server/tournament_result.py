@@ -30,6 +30,17 @@ def get_tournament_results(
 
     Returns:
         Dict with tournament results: winners, top 8 meta breakdown
+
+    Workflow Integration:
+    - Use with get_sources() to gather links for the returned events.
+    - Compare top 8 meta share with presence from get_meta_report() in the same window.
+    - For deck-level details, pivot to query_database() with the tournament IDs.
+
+    Related Tools:
+    - get_sources(), get_meta_report(), query_database()
+
+    Example:
+    - Show winners in a format since the last ban: filter dates using get_format_meta_changes() to bound the window.
     """
     try:
         start = datetime.fromisoformat(start_date)

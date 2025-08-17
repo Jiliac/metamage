@@ -64,6 +64,18 @@ def get_player(player_id: str, ctx: Context = None) -> str:
     """
     Get player profile with recent tournament entries and performance.
     Accepts either a player UUID or player handle (with fuzzy matching).
+
+    Workflow Integration:
+    - Start with search_player() when you only have a name fragment.
+    - Use get_sources() to gather recent tournaments for the formats a player competes in.
+    - For deeper stats (e.g., per-archetype breakdown), use query_database() with the returned player_id.
+
+    Related Tools:
+    - search_player(), get_sources(), query_database(), get_archetype_overview()
+
+    Example:
+    - Identify the player's primary archetypes over the last N days with a custom query in query_database()
+      joining tournament_entries, tournaments, and archetypes by player_id.
     """
     # Try to determine if input is a UUID or handle
     actual_player_id = player_id
@@ -150,6 +162,17 @@ def search_player(player_handle: str, ctx: Context = None) -> str:
     """
     Search for a player by handle using fuzzy matching, then return their profile.
     This is more user-friendly than get_player which requires an exact player ID.
+
+    Workflow Integration:
+    - Use this first with a partial handle; it delegates to get_player() once matched.
+    - After getting the profile, pivot to query_database() for custom splits (by format, archetype, or period).
+    - Combine with get_sources() to list recent events where the player appeared.
+
+    Related Tools:
+    - get_player(), get_sources(), query_database()
+
+    Example:
+    - search_player("kanister") → get profile → run query_database() to compute W/L by archetype in the last 60 days.
     """
     # Find player using fuzzy matching
     player_match = _find_player_fuzzy(player_handle)

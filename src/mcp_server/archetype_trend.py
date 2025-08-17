@@ -25,6 +25,18 @@ def get_archetype_trends(
 
     Returns:
         Dict with weekly trend data: dates, entries, matches, winrates
+
+    Workflow Integration:
+    - Use with get_meta_report() to correlate an archetype’s trend with overall meta shifts.
+    - Combine with get_format_meta_changes() to annotate trend inflection points (bans/set releases).
+    - Drill down into specific time windows with get_archetype_winrate() or query_database().
+
+    Related Tools:
+    - get_meta_report(), get_archetype_winrate(), get_format_meta_changes(), query_database()
+
+    Example:
+    - Find a dip in presence, then use get_sources() for that week range to collect tournament links,
+      and query_database() for card-level or matchup-level explanations.
     """
     try:
         days_back = int(days_back)

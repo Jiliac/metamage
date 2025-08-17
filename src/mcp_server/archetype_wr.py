@@ -20,6 +20,19 @@ def get_archetype_winrate(
     """
     Compute wins/losses/draws and winrate (excluding draws) for a given archetype_id within [start_date, end_date].
     Dates must be ISO 8601 (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS).
+
+    Workflow Integration:
+    - Resolve archetype_id via get_archetype_overview() when starting from a name.
+    - Compare with format context via get_meta_report() or time-slice using get_archetype_trends().
+    - For matchup-specific rates, use get_matchup_winrate().
+
+    Related Tools:
+    - get_archetype_overview(), get_meta_report(), get_archetype_trends(), get_matchup_winrate(), query_database()
+
+    Example:
+    1) arch = get_archetype_overview("Rakdos Scam") → pick ID
+    2) wr = get_archetype_winrate(arch.id, "2025-01-01", "2025-06-30", exclude_mirror=True)
+    3) If needed, validate specific slices with query_database() using the same date bounds.
     """
     try:
         start = datetime.fromisoformat(start_date)

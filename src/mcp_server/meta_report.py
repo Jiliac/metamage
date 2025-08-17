@@ -24,6 +24,20 @@ def get_meta_report(
 
     Returns:
         Dict with archetype stats: presence %, winrate (excl. draws), total matches, entries
+
+    Workflow Integration:
+    - Use this as an entry point to identify top archetypes, then:
+      - get_archetype_overview() / get_archetype_trends() for deeper dives.
+      - get_matchup_winrate() to inspect key pairings.
+      - get_card_presence() for format staples; get_archetype_cards() for archetype staples.
+    - Validate or extend findings with query_database() when you need custom cuts.
+
+    Related Tools:
+    - get_archetype_overview(), get_archetype_trends(), get_matchup_winrate(),
+      get_card_presence(), get_archetype_cards(), query_database(), get_sources()
+
+    Example:
+    - After spotting a rising archetype here, pull sources via get_sources() and include links with your analysis.
     """
     try:
         start = datetime.fromisoformat(start_date)

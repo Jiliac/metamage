@@ -32,6 +32,20 @@ def get_card_presence(
 
     Returns:
         Dict with card stats: name, total copies, decks playing, average copies, presence %
+
+    Workflow Integration:
+    - Start with search_card() to confirm exact card naming when needed.
+    - Compare format-wide adoption here to archetype-specific adoption via get_archetype_cards().
+    - Use query_database() for performance splits (e.g., winrate of decks that play the card).
+
+    Related Tools:
+    - search_card(), get_archetype_cards(), get_meta_report(), query_database()
+
+    Example:
+    - To test a hypothesis about a rising staple:
+      1) get_card_presence(format_id, start, end) → see presence_percent
+      2) cross-check in specific archetypes via get_archetype_cards()
+      3) verify performance with query_database() joins on deck_cards.
     """
     try:
         start = datetime.fromisoformat(start_date)

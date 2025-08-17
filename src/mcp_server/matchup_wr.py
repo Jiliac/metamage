@@ -30,6 +30,18 @@ def get_matchup_winrate(
 
     Returns:
         Dict with matchup stats: wins/losses/draws for archetype1 vs archetype2, winrates
+
+    Workflow Integration:
+    - Use after get_archetype_overview() if you need help matching archetype names.
+    - Cross-check matchup-specific hypotheses from get_meta_report() or get_archetype_trends().
+    - For detailed evidence, use query_database() to extract per-tournament or per-patch matchup rows.
+
+    Related Tools:
+    - get_archetype_overview(), get_meta_report(), get_archetype_trends(), query_database(), get_sources()
+
+    Example:
+    - Compare "Domain Zoo" vs "Jeskai Control" in Modern over the last quarter, then list tournaments via get_sources()
+      to provide links backing the results.
     """
     try:
         start = datetime.fromisoformat(start_date)

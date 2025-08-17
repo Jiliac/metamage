@@ -32,6 +32,16 @@ def query_database(sql: str, limit: int = 1000, ctx: Context = None) -> Dict[str
       - Tool: restrict to SELECT/CTE; block PRAGMA/DDL/DML/transactions.
       - Filesystem: chmod 444 data/tournament.db (read-only) and run under a non-writer user.
       - Ops: optionally serve a read-only replica DB and refresh it offline.
+
+    Workflow Integration:
+      - Use IDs from search_card() (card_id) and get_archetype_overview() (archetype_id) to drive custom analyses.
+      - Validate summaries from get_meta_report(), get_card_presence(), and get_archetype_winrate() with direct SQL.
+      - Combine with get_sources() to fetch links that support your findings.
+
+    Common Templates (describe, then implement with your own SQL):
+      - Card adoption in an archetype and performance split (with vs without a card).
+      - Matchup performance for a specific archetype over a period.
+      - Entry-level aggregates by player, tournament size, or source.
     """
     s = validate_select_only(sql)
     # Add LIMIT if none present (simple guard)

@@ -24,6 +24,25 @@ def search_card(query: str, ctx: Context = None) -> Dict[str, Any]:
             "oracle_text": <oracle text>,
             "mana_cost": <mana cost string>
         }
+
+    Workflow Integration:
+    - Use the returned card_id with:
+      - get_card_presence() to see format-wide adoption.
+      - get_archetype_cards() to analyze usage within a specific archetype.
+      - query_database() for custom adoption, copies-per-deck, or performance splits.
+    - If card_id is None but Scryfall finds the card, you can still use the name to locate it in the DB
+      via query_database() by joining on scryfall_oracle_id.
+
+    Related Tools:
+    - get_archetype_overview() → find archetype_id by name (fuzzy)
+    - get_archetype_cards(), get_card_presence() → adoption summaries
+    - query_database() → advanced/verification queries
+
+    Example Workflow: Card adoption within an archetype over a date window
+    1) card = search_card("Psychic Frog") → card_id
+    2) arch = get_archetype_overview("Domain Zoo") → pick the matched archetype_id
+    3) Use query_database() with a SELECT that counts entries with/without card_id for that archetype_id,
+       and computes W/L/D splits to compare winrates.
     """
     if not isinstance(query, str) or not query.strip():
         raise ValueError("query must be a non-empty string")

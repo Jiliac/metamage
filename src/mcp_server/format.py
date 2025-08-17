@@ -10,6 +10,13 @@ from ..models import Format, MetaChange
 def list_formats(ctx: Context = None) -> str:
     """
     List all available formats with their IDs and names.
+
+    Workflow Integration:
+    - Use this to discover format_id values for other tools.
+    - Pair with get_format_meta_changes() to understand recent context before deeper analysis.
+
+    Related Tools:
+    - get_format_meta_changes(), get_meta_report(), get_sources()
     """
     with get_session() as session:
         formats = session.query(Format).order_by(Format.name).all()
@@ -31,6 +38,13 @@ Use these format IDs in other tools to query specific format data."""
 def get_format_meta_changes(format_id: str, ctx: Context = None) -> str:
     """
     Get all meta changes (bans, set releases) for a format.
+
+    Workflow Integration:
+    - Use alongside get_archetype_trends() to explain trend shifts.
+    - Bound analysis windows for other tools (get_meta_report(), get_card_presence(), etc.) to pre/post change dates.
+
+    Related Tools:
+    - list_formats(), get_meta_report(), get_archetype_trends(), query_database()
     """
     with get_session() as session:
         fmt = session.query(Format).filter(Format.id == format_id).first()

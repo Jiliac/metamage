@@ -32,6 +32,20 @@ def get_archetype_cards(
 
     Returns:
         Dict with card stats: name, total copies, decks playing, average copies, presence %
+
+    Workflow Integration:
+    - Start with get_archetype_overview() to confirm the archetype and format.
+    - Use search_card() first when you need to focus on a particular card, then:
+      - Compare its presence here vs. format-wide via get_card_presence().
+    - For performance splits (with/without a card), combine with query_database().
+
+    Related Tools:
+    - search_card(), get_card_presence(), get_archetype_overview(), query_database()
+
+    Example Workflow: Check if a tech card is standard in an archetype
+    1) cid = search_card("Psychic Frog").card_id
+    2) cards = get_archetype_cards(format_id, "Domain Zoo", start, end, "MAIN")
+    3) If card appears, use query_database() to compare W/L/D for entries with vs without cid.
     """
     try:
         start = datetime.fromisoformat(start_date)
