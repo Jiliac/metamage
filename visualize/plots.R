@@ -177,7 +177,7 @@ plot_wr_ci <- function(
     # Text labels on the right - main WR (bold)
     geom_text(
       aes(
-        x = xmax_original + 0.02,
+        x = xmax_original + 0.015,
         label = paste0(round(wr * 100, 1), "%")
       ),
       hjust = 0,
@@ -189,7 +189,7 @@ plot_wr_ci <- function(
     # Text labels on the right - CI (normal)
     geom_text(
       aes(
-        x = xmax_original + 0.02,
+        x = xmax_original + 0.015,
         label = paste0(
           " (",
           round(wr_lo * 100, 1),
@@ -242,7 +242,7 @@ plot_wr_ci <- function(
       ),
       plot.subtitle = element_text(hjust = 0.5, size = 7, family = "Inter"),
       plot.caption = element_text(
-        hjust = 0.3,
+        hjust = 0.4,
         size = 6,
         family = "Inter",
         color = CHART_COLORS$text_secondary
@@ -500,14 +500,14 @@ plot_matrix <- function(
       axis.text.y = element_blank(),
       panel.grid = element_blank(),
       plot.title = element_text(
-        size = 17,
+        size = 20,
         face = "bold",
         hjust = 0.5,
         family = "Inter",
         margin = margin(b = 20)
       ),
       plot.caption = element_text(
-        hjust = 0.1,
+        hjust = 0.2,
         size = 9,
         family = "Inter",
         color = CHART_COLORS$text_secondary,
@@ -517,20 +517,20 @@ plot_matrix <- function(
       panel.background = element_rect(fill = "white", color = NA),
       plot.margin = margin(10, 10, 40, 20)
     ) +
-    coord_equal(clip = "off") +
+    coord_fixed(ratio = 0.8, clip = "off") +
     # Add legend with white background box
     annotate(
       "label",
-      x = max(as.numeric(factor(col_levels))) + 2,
+      x = max(as.numeric(factor(col_levels))) + 0.7,
       y = min(as.numeric(factor(rev(order_levels)))) - 0.5,
       label = "▲ Very favorable\n△ Favorable\n▽ Unfavorable\n▼ Very unfavorable",
-      hjust = 0.8,
+      hjust = 0,
       vjust = 1.4,
       size = 2.8,
       family = "Inter",
       color = "#1F2937",
       fill = "white",
-      label.padding = unit(0.5, "lines"),
+      label.padding = unit(0.3, "lines"),
       label.size = 0.25
     )
 }
