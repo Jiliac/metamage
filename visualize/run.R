@@ -40,7 +40,11 @@ source("visualize/db.R")
 source("visualize/utils.R")
 source("visualize/analysis.R")
 source("visualize/colors.R")
-source("visualize/plots.R")
+source("visualize/constants.R")
+source("visualize/plot_presence.R")
+source("visualize/plot_wr_ci.R")
+source("visualize/plot_wr_presence.R")
+source("visualize/plot_matrix.R")
 
 # Simple CLI override: key=value pairs
 args <- commandArgs(trailingOnly = TRUE)

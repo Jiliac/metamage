@@ -69,7 +69,8 @@ plot_presence <- function(
         size = 17,
         face = "bold",
         hjust = 0.5,
-        family = "Inter"
+        family = "Inter",
+        margin = margin(b = 10)
       ),
       plot.subtitle = element_text(hjust = 0.5, size = 7, family = "Inter"),
       plot.caption = element_text(

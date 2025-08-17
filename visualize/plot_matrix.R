@@ -249,11 +249,11 @@ plot_matrix <- function(
       axis.text.y = element_blank(),
       panel.grid = element_blank(),
       plot.title = element_text(
-        size = 20,
+        size = 30,
         face = "bold",
-        hjust = 0.5,
+        hjust = 0.55,
         family = "Inter",
-        margin = margin(b = 20)
+        margin = margin(b = 10)
       ),
       plot.caption = element_text(
         hjust = 0.2,
