@@ -234,37 +234,148 @@ plot_wr_ci <- function(
 }
 
 plot_matrix <- function(mat_df, color_map, order_levels) {
+  # Prepare factors
   df <- mat_df %>%
     mutate(
       row_name = factor(row_archetype, levels = order_levels),
       col_name = factor(col_archetype, levels = order_levels)
     )
 
-  ggplot(df, aes(x = col_name, y = row_name, fill = wr)) +
-    geom_tile(color = "white", size = 0.2) +
+  # Row summaries (exclude mirrors)
+  row_sum <- df %>%
+    filter(as.character(row_name) != as.character(col_name)) %>%
+    group_by(row_name) %>%
+    summarise(
+      wins = sum(wins, na.rm = TRUE),
+      losses = sum(losses, na.rm = TRUE),
+      draws = sum(draws, na.rm = TRUE),
+      games = sum(games, na.rm = TRUE),
+      points = wins + 0.5 * draws,
+      wr = ifelse(games > 0, points / games, NA_real_),
+      .groups = "drop"
+    )
+
+  # Build x-axis with two left columns for row header and row WR summary
+  col_levels <- levels(df$col_name)
+  x_levels <- c("NAME", "WR", col_levels)
+  df$col_name2 <- factor(as.character(df$col_name), levels = x_levels)
+
+  # Labels for the matrix cells (blank on mirrors)
+  df_cells <- df %>%
+    mutate(
+      label = dplyr::case_when(
+        as.character(row_name) == as.character(col_name) ~ "",
+        is.na(wr) | games == 0 ~ "",
+        TRUE ~ paste0(round(wr * 100, 0), "%\n", games)
+      ),
+      wr_plot = dplyr::if_else(
+        as.character(row_name) == as.character(col_name),
+        NA_real_,
+        wr
+      )
+    )
+
+  # Left-side header tiles: NAME and WR (with games under)
+  name_tiles <- tibble::tibble(
+    row_name = factor(order_levels, levels = order_levels),
+    col_name2 = factor("NAME", levels = x_levels),
+    title = as.character(order_levels),
+    subtitle = ""
+  )
+
+  wr_tiles <- tibble::tibble(
+    row_name = factor(row_sum$row_name, levels = order_levels),
+    col_name2 = factor("WR", levels = x_levels),
+    title = ifelse(is.na(row_sum$wr), "–", paste0(round(row_sum$wr * 100, 1), "%")),
+    subtitle = paste0(row_sum$games, " g")
+  )
+
+  # Fill scale similar to other charts (subtle red-white-green)
+  fill_scale <- scale_fill_gradient2(
+    low = "#EF4444",
+    mid = "#F3F4F6",
+    high = "#10B981",
+    midpoint = 0.5,
+    limits = c(0.35, 0.65),
+    oob = scales::squish,
+    guide = "none"
+  )
+
+  ggplot() +
+    # Matrix cells
+    geom_tile(
+      data = df_cells,
+      aes(x = col_name2, y = row_name, fill = wr_plot),
+      color = "#E5E7EB",
+      size = 0.25
+    ) +
     geom_text(
-      aes(label = ifelse(is.na(wr), "", paste0(round(wr * 100, 0), "%"))),
-      size = 2.8
+      data = df_cells,
+      aes(x = col_name2, y = row_name, label = label),
+      size = 2.2,
+      lineheight = 0.9,
+      family = "Inter",
+      color = "#111827"
     ) +
-    scale_fill_gradient2(
-      low = "#D73027",
-      mid = "white",
-      high = "#1A9850",
-      midpoint = 0.5,
-      limits = c(0.35, 0.65),
-      oob = squish,
-      guide = "none"
+    # Left name column
+    geom_tile(
+      data = name_tiles,
+      aes(x = col_name2, y = row_name),
+      fill = "white",
+      color = "#E5E7EB",
+      size = 0.25
     ) +
-    scale_x_discrete(position = "top") +
+    geom_text(
+      data = name_tiles,
+      aes(x = col_name2, y = row_name, label = title),
+      hjust = 0,
+      nudge_x = -0.35,
+      size = 2.6,
+      family = "Inter",
+      fontface = "bold",
+      color = "#111827"
+    ) +
+    # Left WR column (with games below)
+    geom_tile(
+      data = wr_tiles,
+      aes(x = col_name2, y = row_name),
+      fill = "white",
+      color = "#E5E7EB",
+      size = 0.25
+    ) +
+    geom_text(
+      data = wr_tiles,
+      aes(x = col_name2, y = row_name, label = title),
+      size = 2.4,
+      family = "Inter",
+      fontface = "bold",
+      color = "#111827",
+      nudge_y = 0.18
+    ) +
+    geom_text(
+      data = wr_tiles,
+      aes(x = col_name2, y = row_name, label = subtitle),
+      size = 1.8,
+      family = "Inter",
+      color = "#6B7280",
+      nudge_y = -0.2
+    ) +
+    fill_scale +
+    scale_x_discrete(position = "top", limits = x_levels, labels = c("", "", col_levels)) +
     labs(
-      title = "Matchup Matrix (row vs column, mirrors included)",
+      title = "Matchup Matrix (row vs column)",
       x = NULL,
       y = NULL
     ) +
-    theme_minimal(base_size = 11) +
+    theme_minimal(base_size = 12, base_family = "Inter") +
     theme(
-      axis.text.x = element_text(angle = 40, hjust = 0, vjust = 0),
-      panel.grid = element_blank()
+      axis.text.x = element_text(angle = 40, hjust = 0, vjust = 0, size = 6, family = "Inter"),
+      axis.text.y = element_blank(),
+      panel.grid = element_blank(),
+      plot.title = element_text(size = 17, face = "bold", hjust = 0.5, family = "Inter"),
+      plot.background = element_rect(fill = "white", color = NA),
+      panel.background = element_rect(fill = "white", color = NA),
+      plot.margin = margin(10, 30, 10, 10)
     ) +
     coord_equal()
 }

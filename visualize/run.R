@@ -122,7 +122,7 @@ wr_pres <- wr %>%
 mat <- fetch_matchups(con, format_id, params$start_date, params$end_date) %>%
   filter(row_archetype %in% top_order, col_archetype %in% top_order)
 
-# Ensure diagonal is explicitly set to 0.5 (visual anchor), even if NA
+# Ensure a full grid; leave mirrors blank
 all_pairs <- tidyr::expand_grid(
   row_archetype = top_order,
   col_archetype = top_order
@@ -130,11 +130,11 @@ all_pairs <- tidyr::expand_grid(
 mat <- all_pairs %>%
   left_join(mat, by = c("row_archetype", "col_archetype")) %>%
   mutate(
+    wins = ifelse(is.na(wins), 0L, wins),
+    losses = ifelse(is.na(losses), 0L, losses),
+    draws = ifelse(is.na(draws), 0L, draws),
     games = ifelse(is.na(games), 0L, games),
-    wr = dplyr::case_when(
-      row_archetype == col_archetype ~ 0.5,
-      TRUE ~ wr
-    )
+    wr = dplyr::if_else(row_archetype == col_archetype, NA_real_, wr)
   )
 
 # Colors
