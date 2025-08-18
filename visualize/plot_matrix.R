@@ -13,7 +13,8 @@ plot_matrix <- function(
   color_map,
   order_levels,
   title = "Matchup Matrix",
-  caption = NULL
+  caption = NULL,
+  pinguin = FALSE
 ) {
   # Prepare factors (reverse row order to put first archetype on top)
   df <- mat_df %>%
@@ -84,6 +85,7 @@ plot_matrix <- function(
         is_mirror ~ "",
         low_n ~ "",
         is.na(wr) | games == 0 ~ "",
+        pinguin ~ paste0("N=", games, " +/-", round((ci_high - ci_low) * 50, 0), "%"),
         TRUE ~ paste0(wins, "-", losses)
       )
     )
@@ -105,7 +107,11 @@ plot_matrix <- function(
       "–",
       paste0(round(row_sum$wr * 100, 1), "%")
     ),
-    subtitle = paste0(row_sum$wins, "-", row_sum$losses)
+    subtitle = if (pinguin) {
+      paste0("N=", row_sum$games)
+    } else {
+      paste0(row_sum$wins, "-", row_sum$losses)
+    }
   )
 
   # Fill scale with tightened range to avoid saturated extremes
