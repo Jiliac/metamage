@@ -1,3 +1,4 @@
+*.csv
 *.zip
 *.db
 *.db-shm

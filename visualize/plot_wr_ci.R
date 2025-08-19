@@ -22,6 +22,32 @@ plot_wr_ci <- function(
       label = name
     )
 
+  ########################################################################
+  # FILTER OUT ARCHETYPES WITH LOW CI BELOW 25% (0.25)
+  # This removes archetypes that have poor win rates with high confidence
+  ########################################################################
+  initial_count <- nrow(df)
+  filtered_archetypes <- df %>% filter(wr_lo < 0.25) %>% pull(archetype_name)
+
+  cat("=====================")
+  if (length(filtered_archetypes) > 0) {
+    cat(
+      "Filtering out",
+      length(filtered_archetypes),
+      "archetypes with low CI below 25%:\n"
+    )
+    cat(paste(filtered_archetypes, collapse = ", "), "\n")
+  } else {
+    cat("No archetypes filtered - all have low CI >= 25%\n")
+  }
+
+  df <- df %>% filter(wr_lo >= 0.25)
+
+  cat("Archetypes before filtering:", initial_count, "\n")
+  cat("Archetypes after filtering:", nrow(df), "\n")
+  cat("=====================")
+  ########################################################################
+
   # CI columns should be added by caller using add_ci() from analysis.R
 
   # Sort by lower bound CI and create new factor levels
@@ -86,7 +112,7 @@ plot_wr_ci <- function(
     # Text labels on the right - main WR (bold)
     geom_text(
       aes(
-        x = xmax_original + 0.015,
+        x = xmax_original + 0.011,
         label = paste0(round(wr * 100, 1), "%")
       ),
       hjust = 0,
@@ -101,9 +127,9 @@ plot_wr_ci <- function(
         x = xmax_original + 0.02,
         label = paste0(
           "(",
-          round(wr_lo * 100, 1),
+          round(wr_lo * 100, 0),
           "–",
-          round(wr_hi * 100, 1),
+          round(wr_hi * 100, 0),
           "%)"
         )
       ),

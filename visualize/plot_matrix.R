@@ -10,11 +10,11 @@ source("visualize/constants.R")
 
 plot_matrix <- function(
   mat_df,
+  global_wr_df,
   color_map,
   order_levels,
   title = "Matchup Matrix",
-  caption = NULL,
-  pinguin = FALSE
+  caption = NULL
 ) {
   # Prepare factors (reverse row order to put first archetype on top)
   df <- mat_df %>%
@@ -23,19 +23,11 @@ plot_matrix <- function(
       col_name = factor(col_archetype, levels = order_levels)
     )
 
-  # Row summaries (exclude mirrors)
-  row_sum <- df %>%
-    filter(as.character(row_name) != as.character(col_name)) %>%
-    group_by(row_name) %>%
-    summarise(
-      wins = sum(wins, na.rm = TRUE),
-      losses = sum(losses, na.rm = TRUE),
-      draws = sum(draws, na.rm = TRUE),
-      games = sum(games, na.rm = TRUE),
-      points = wins + 0.5 * draws,
-      wr = ifelse(games > 0, points / games, NA_real_),
-      .groups = "drop"
-    )
+  # Use global win rates (against ALL opponents, not just matrix opponents)
+  row_sum <- global_wr_df %>%
+    filter(archetype_name %in% order_levels) %>%
+    mutate(row_name = factor(archetype_name, levels = rev(order_levels))) %>%
+    select(row_name, wins, losses, draws, games, wr)
 
   # Build x-axis with two left columns for row header and row WR summary
   col_levels <- levels(df$col_name)
@@ -60,32 +52,24 @@ plot_matrix <- function(
       ci_high = pmin(1, p_hat + margin),
       ci_crosses_50 = !is_mirror & games >= 5 & ci_low <= 0.5 & ci_high >= 0.5,
 
-      # Two-tier CI indicators
-      ci_crosses_45_55 = !is_mirror &
-        games >= 5 &
-        ci_low <= 0.55 &
-        ci_high >= 0.45,
-
-      ci_indicator = dplyr::case_when(
-        is_mirror | low_n | games == 0 ~ "",
-        ci_low > 0.5 ~ "▲", # Very favorable (CI entirely above 50%)
-        ci_high < 0.5 ~ "▼", # Very unfavorable (CI entirely below 50%)
-        ci_low > 0.40 & p_hat > 0.5 ~ "△", # Favorable (CI low > 45%, mean > 50%)
-        ci_high < 0.60 & p_hat < 0.5 ~ "▽", # Unfavorable (CI high < 55%, mean < 50%)
-        TRUE ~ "" # Not significant
+      # Create CI range label
+      label_ci = dplyr::case_when(
+        is_mirror ~ "",
+        low_n ~ "",
+        is.na(wr) | games == 0 ~ "",
+        TRUE ~ paste0(round(ci_low * 100, 0), "-", round(ci_high * 100, 0), "%")
       ),
 
       label_wr = dplyr::case_when(
         is_mirror ~ "",
         low_n ~ "–",
         is.na(wr) | games == 0 ~ "",
-        TRUE ~ paste0(round(wr * 100, 0), "%", ci_indicator)
+        TRUE ~ paste0(round(wr * 100, 0), "%")
       ),
       label_n = dplyr::case_when(
         is_mirror ~ "",
         low_n ~ "",
         is.na(wr) | games == 0 ~ "",
-        pinguin ~ paste0("N=", games, " +/-", round((ci_high - ci_low) * 50, 0), "%"),
         TRUE ~ paste0(wins, "-", losses)
       )
     )
@@ -107,11 +91,7 @@ plot_matrix <- function(
       "–",
       paste0(round(row_sum$wr * 100, 1), "%")
     ),
-    subtitle = if (pinguin) {
-      paste0("N=", row_sum$games)
-    } else {
-      paste0(row_sum$wins, "-", row_sum$losses)
-    }
+    subtitle = paste0(row_sum$wins, "-", row_sum$losses)
   )
 
   # Fill scale with tightened range to avoid saturated extremes
@@ -168,24 +148,33 @@ plot_matrix <- function(
       color = "#D1D5DB",
       size = 4
     ) +
-    # Win rate percentage (larger text) - only for non-mirror cells
+    # CI range (top, grey text) - only for non-mirror cells
+    geom_text(
+      data = df_non_mirror,
+      aes(x = col_name2, y = row_name, label = label_ci),
+      size = 1.6,
+      family = "Inter",
+      color = "#6B7280",
+      nudge_y = 0.28
+    ) +
+    # Win rate percentage (middle, large bold) - only for non-mirror cells
     geom_text(
       data = df_non_mirror,
       aes(x = col_name2, y = row_name, label = label_wr),
-      size = 2.6,
+      size = 2.9,
       family = "Inter",
       color = "#111827",
       fontface = "bold",
-      nudge_y = 0.15
+      nudge_y = 0
     ) +
-    # Wins-losses record (smaller text) - only for non-mirror cells
+    # Wins-losses record (bottom, grey text) - only for non-mirror cells
     geom_text(
       data = df_non_mirror,
       aes(x = col_name2, y = row_name, label = label_n),
       size = 1.7,
       family = "Inter",
       color = "#6B7280",
-      nudge_y = -0.15
+      nudge_y = -0.28
     ) +
     # Left name column (no border)
     geom_tile(
@@ -216,11 +205,11 @@ plot_matrix <- function(
     geom_text(
       data = wr_tiles,
       aes(x = col_name2, y = row_name, label = title),
-      size = 2.6,
+      size = 2.9,
       family = "Inter",
       fontface = "bold",
       color = "#111827",
-      nudge_y = 0.18
+      nudge_y = 0.15
     ) +
     geom_text(
       data = wr_tiles,
@@ -262,30 +251,15 @@ plot_matrix <- function(
         margin = margin(b = 10)
       ),
       plot.caption = element_text(
-        hjust = 0.2,
+        hjust = 0.55,
         size = 9,
         family = "Inter",
         color = CHART_COLORS$text_secondary,
-        margin = margin(t = 33)
+        margin = margin(t = 15)
       ),
       plot.background = element_rect(fill = "white", color = NA),
       panel.background = element_rect(fill = "white", color = NA),
-      plot.margin = margin(10, 10, 40, 20)
+      plot.margin = margin(10, 20, 10, 20)
     ) +
-    coord_fixed(ratio = 0.8, clip = "off") +
-    # Add legend with white background box
-    annotate(
-      "label",
-      x = max(as.numeric(factor(col_levels))) + 0.7,
-      y = min(as.numeric(factor(rev(order_levels)))) - 0.5,
-      label = "▲ Very favorable\n△ Favorable\n▽ Unfavorable\n▼ Very unfavorable",
-      hjust = 0,
-      vjust = 1.4,
-      size = 2.8,
-      family = "Inter",
-      color = "#1F2937",
-      fill = "white",
-      label.padding = unit(0.3, "lines"),
-      label.size = 0.25
-    )
+    coord_fixed(ratio = 0.8, clip = "off")
 }
