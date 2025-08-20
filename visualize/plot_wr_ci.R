@@ -77,17 +77,32 @@ plot_wr_ci <- function(
     color_ramp(100)[round(prop * 99) + 1]
   })
 
-  # Compute x-range from data and add a little padding
-  xmin <- suppressWarnings(min(df$wr_lo, na.rm = TRUE))
-  xmax <- suppressWarnings(max(df$wr_hi, na.rm = TRUE))
-  if (!is.finite(xmin) || !is.finite(xmax)) {
+  # Compute x-range from data but cap the maximum range to keep chart readable
+  xmin_data <- suppressWarnings(min(df$wr_lo, na.rm = TRUE))
+  xmax_data <- suppressWarnings(max(df$wr_hi, na.rm = TRUE))
+
+  if (!is.finite(xmin_data) || !is.finite(xmax_data)) {
     xmin <- 0.4
     xmax <- 0.6
+  } else {
+    # Cap the range to a maximum of 60% to keep chart readable
+    range_data <- xmax_data - xmin_data
+    if (range_data > 0.6) {
+      # Center around 50% with maximum 60% range
+      center <- 0.5
+      xmin <- max(0, center - 0.3)
+      xmax <- min(1, center + 0.3)
+    } else {
+      # Use data range with some padding
+      pad <- max(0.01, range_data * 0.1)
+      xmin <- max(0, xmin_data - pad)
+      xmax <- min(1, xmax_data + pad)
+    }
   }
-  pad <- max(0.01, (xmax - xmin) * 0.05)
-  xmin <- max(0, xmin - pad)
+
+  # Fixed text space allocation
   xmax_original <- xmax
-  xmax <- min(1, xmax + pad + 0.06) # Extra space for text
+  xmax <- min(1, xmax + 0.12) # Fixed 12% for text
 
   ggplot(df, aes(y = fct_rev(label))) +
     # CI whiskers as horizontal segments
@@ -112,7 +127,7 @@ plot_wr_ci <- function(
     # Text labels on the right - main WR (bold)
     geom_text(
       aes(
-        x = xmax_original + 0.011,
+        x = xmax_original + 0.015,
         label = paste0(round(wr * 100, 1), "%")
       ),
       hjust = 0,
@@ -124,7 +139,7 @@ plot_wr_ci <- function(
     # Text labels on the right - CI (normal)
     geom_text(
       aes(
-        x = xmax_original + 0.02,
+        x = xmax_original + 0.015,
         label = paste0(
           "(",
           round(wr_lo * 100, 0),
@@ -134,7 +149,7 @@ plot_wr_ci <- function(
         )
       ),
       hjust = 0,
-      nudge_x = 0.018,
+      nudge_x = 0.035,
       size = 1.6,
       family = "Inter",
       color = "#606060"
@@ -149,11 +164,7 @@ plot_wr_ci <- function(
     scale_x_continuous(
       labels = percent_format(accuracy = 1),
       limits = c(xmin, xmax),
-      breaks = seq(
-        ceiling(xmin * 20) / 20,
-        floor(xmax_original * 20) / 20,
-        by = 0.05
-      ),
+      breaks = scales::pretty_breaks(n = 6),
       expand = expansion(mult = c(0, 0.02))
     ) +
     scale_color_identity(guide = "none") +
