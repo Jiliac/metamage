@@ -162,5 +162,45 @@ filter_archetypes_by_matches <- function(matchup_df, top_n, min_matches = 100) {
   archetype_matches$row_archetype
 }
 
+#' Add tier rankings based on statistical analysis of confidence intervals
+#'
+#' Uses the lower bound of confidence intervals to assign tier rankings.
+#' Tier boundaries are calculated using standard deviations from the mean of lower bounds.
+#'
+#' @param wr_df data frame with win rate data including wr_lo column
+#' @return data frame with tier column added
+add_tiers <- function(wr_df) {
+  if (nrow(wr_df) == 0 || !"wr_lo" %in% colnames(wr_df)) {
+    wr_df$tier <- NA_real_
+    return(wr_df)
+  }
+
+  # Use lower bounds of confidence intervals for tier calculation
+  lower_bounds <- wr_df$wr_lo[!is.na(wr_df$wr_lo)]
+
+  if (length(lower_bounds) < 2) {
+    wr_df$tier <- 1.5 # Default to average tier if insufficient data
+    return(wr_df)
+  }
+
+  # Calculate mean and standard deviation of lower bounds
+  mean_lb <- mean(lower_bounds, na.rm = TRUE)
+  sd_lb <- sd(lower_bounds, na.rm = TRUE)
+
+  # Define tier boundaries based on standard deviations from mean
+  wr_df$tier <- dplyr::case_when(
+    is.na(wr_df$wr_lo) ~ NA_real_,
+    wr_df$wr_lo >= mean_lb + 3 * sd_lb ~ 0.0, # Tier 0: exceptional
+    wr_df$wr_lo >= mean_lb + 2 * sd_lb ~ 0.5, # Tier 0.5: very strong
+    wr_df$wr_lo >= mean_lb + 1 * sd_lb ~ 1.0, # Tier 1: strong
+    wr_df$wr_lo >= mean_lb ~ 1.5, # Tier 1.5: average/playable
+    wr_df$wr_lo >= mean_lb - 1 * sd_lb ~ 2.0, # Tier 2: below average
+    wr_df$wr_lo >= mean_lb - 2 * sd_lb ~ 2.5, # Tier 2.5: weak
+    TRUE ~ 3.0 # Tier 3: very weak
+  )
+
+  wr_df
+}
+
 # null-coalescing helper
 `%||%` <- function(x, y) if (is.null(x)) y else x

@@ -124,6 +124,9 @@ wr_by_player <- fetch_wr_by_archetype_player(
 CI_LEVEL = 0.9
 wr <- add_ci_clustered(wr, wr_by_player, CI_LEVEL)
 
+# Add tier rankings based on confidence intervals
+wr <- add_tiers(wr)
+
 # Merge WR with presence for bubble chart
 wr_pres <- wr %>%
   inner_join(presence, by = c("archetype_name")) %>%
