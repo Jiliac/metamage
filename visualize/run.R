@@ -95,8 +95,13 @@ if (nrow(presence) == 0) {
   stop("No entries found for the selected window and format.")
 }
 
-top_order <- presence$archetype_name[seq_len(min(params$top_n, nrow(presence)))]
-presence_top_other <- collapse_other(presence, params$top_n)
+presence_filtered <- filter_archetypes_by_presence(
+  presence,
+  params$top_n,
+  min_share = 0.01
+)
+top_order <- presence_filtered$archetype_name
+presence_top_other <- collapse_other(presence_filtered, nrow(presence_filtered))
 
 wr <- fetch_wr_by_archetype(
   con,
@@ -135,14 +140,23 @@ wr_pres <- wr %>%
     share
   )
 
-# Create separate order for matrix (top 12)
-matrix_order <- presence$archetype_name[seq_len(min(
-  params$matrix_top_n,
-  nrow(presence)
-))]
+# Fetch all matchups first to determine which archetypes have enough matches
+all_matchups <- fetch_matchups(
+  con,
+  format_id,
+  params$start_date,
+  params$end_date
+)
 
-# Matchups for just the top matrix_top_n archetypes
-mat <- fetch_matchups(con, format_id, params$start_date, params$end_date) %>%
+# Create separate order for matrix (top 12 with >100 matches)
+matrix_order <- filter_archetypes_by_matches(
+  all_matchups,
+  params$matrix_top_n,
+  min_matches = 100
+)
+
+# Matchups for just the filtered matrix archetypes
+mat <- all_matchups %>%
   filter(row_archetype %in% matrix_order, col_archetype %in% matrix_order)
 
 # Ensure a full grid; leave mirrors blank

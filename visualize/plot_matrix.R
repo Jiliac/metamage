@@ -259,7 +259,7 @@ plot_matrix <- function(
       ),
       plot.background = element_rect(fill = "white", color = NA),
       panel.background = element_rect(fill = "white", color = NA),
-      plot.margin = margin(10, 20, 10, 20)
+      plot.margin = margin(10, 30, 10, 30)
     ) +
     coord_fixed(ratio = 0.8, clip = "off")
 }

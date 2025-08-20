@@ -26,26 +26,26 @@ plot_wr_ci <- function(
   # FILTER OUT ARCHETYPES WITH LOW CI BELOW 25% (0.25)
   # This removes archetypes that have poor win rates with high confidence
   ########################################################################
-  initial_count <- nrow(df)
-  filtered_archetypes <- df %>% filter(wr_lo < 0.25) %>% pull(archetype_name)
-
-  cat("=====================")
-  if (length(filtered_archetypes) > 0) {
-    cat(
-      "Filtering out",
-      length(filtered_archetypes),
-      "archetypes with low CI below 25%:\n"
-    )
-    cat(paste(filtered_archetypes, collapse = ", "), "\n")
-  } else {
-    cat("No archetypes filtered - all have low CI >= 25%\n")
-  }
-
-  df <- df %>% filter(wr_lo >= 0.25)
-
-  cat("Archetypes before filtering:", initial_count, "\n")
-  cat("Archetypes after filtering:", nrow(df), "\n")
-  cat("=====================")
+  # initial_count <- nrow(df)
+  # filtered_archetypes <- df %>% filter(wr_lo < 0.25) %>% pull(archetype_name)
+  #
+  # cat("=====================")
+  # if (length(filtered_archetypes) > 0) {
+  #   cat(
+  #     "Filtering out",
+  #     length(filtered_archetypes),
+  #     "archetypes with low CI below 25%:\n"
+  #   )
+  #   cat(paste(filtered_archetypes, collapse = ", "), "\n")
+  # } else {
+  #   cat("No archetypes filtered - all have low CI >= 25%\n")
+  # }
+  #
+  # df <- df %>% filter(wr_lo >= 0.25)
+  #
+  # cat("Archetypes before filtering:", initial_count, "\n")
+  # cat("Archetypes after filtering:", nrow(df), "\n")
+  # cat("=====================")
   ########################################################################
 
   # CI columns should be added by caller using add_ci() from analysis.R

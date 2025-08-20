@@ -126,5 +126,41 @@ add_ci_clustered <- function(wr_df, per_player_df, level = 0.95) {
   wr_df
 }
 
+#' Filter archetypes by presence threshold and top N
+#'
+#' @param presence_df data frame with archetype presence data (must have share column)
+#' @param top_n maximum number of archetypes to return
+#' @param min_share minimum share threshold (default 0.01 for 1%)
+#' @return filtered data frame with archetype names meeting criteria
+filter_archetypes_by_presence <- function(
+  presence_df,
+  top_n,
+  min_share = 0.01
+) {
+  presence_df %>%
+    dplyr::filter(share > min_share) %>%
+    dplyr::slice_head(n = top_n)
+}
+
+#' Filter archetypes by minimum matches and top N
+#'
+#' @param matchup_df data frame with matchup data (must have wins, losses columns)
+#' @param top_n maximum number of archetypes to return
+#' @param min_matches minimum total matches threshold (default 100)
+#' @return vector of archetype names meeting criteria
+filter_archetypes_by_matches <- function(matchup_df, top_n, min_matches = 100) {
+  archetype_matches <- matchup_df %>%
+    dplyr::group_by(row_archetype) %>%
+    dplyr::summarise(
+      total_matches = sum(wins + losses, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    dplyr::filter(total_matches > min_matches) %>%
+    dplyr::arrange(dplyr::desc(total_matches)) %>%
+    dplyr::slice_head(n = top_n)
+
+  archetype_matches$row_archetype
+}
+
 # null-coalescing helper
 `%||%` <- function(x, y) if (is.null(x)) y else x
