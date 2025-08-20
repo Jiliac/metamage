@@ -56,5 +56,6 @@ outputs <- list(
   meta_matrix = file.path(params$output_dir, "meta_matrix.png"),
   meta_presence = file.path(params$output_dir, "meta_presence.png"),
   meta_wr_ci = file.path(params$output_dir, "meta_wr_ci.png"),
-  meta_wr_presence = file.path(params$output_dir, "meta_wr_presence.png")
+  meta_wr_presence = file.path(params$output_dir, "meta_wr_presence.png"),
+  meta_tiers = file.path(params$output_dir, "meta_tiers.png")
 )

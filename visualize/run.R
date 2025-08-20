@@ -46,6 +46,7 @@ source("visualize/plot_presence.R")
 source("visualize/plot_wr_ci.R")
 source("visualize/plot_wr_presence.R")
 source("visualize/plot_matrix.R")
+source("visualize/plot_tiers.R")
 
 # Simple CLI override: key=value pairs
 args <- commandArgs(trailingOnly = TRUE)
@@ -121,11 +122,14 @@ wr_by_player <- fetch_wr_by_archetype_player(
   filter(archetype_name %in% top_order)
 
 # Add clustered (by player) CI with Wilson fallback
-CI_LEVEL = 0.9
+CI_LEVEL = 0.95
 wr <- add_ci_clustered(wr, wr_by_player, CI_LEVEL)
 
 # Add tier rankings based on confidence intervals
 wr <- add_tiers(wr)
+
+# Print tier assignments
+# print_tier_summary(wr)
 
 # Merge WR with presence for bubble chart
 wr_pres <- wr %>%
@@ -233,6 +237,16 @@ p_bubble <- plot_wr_vs_presence(
     params$end_date
   )
 )
+p_tiers <- plot_tiers(
+  wr,
+  title = paste0(params$format_name, " Tier Rankings"),
+  caption = paste0(
+    "Source: MTGO & Melee tournaments  •  ",
+    params$start_date,
+    " → ",
+    params$end_date
+  )
+)
 
 # Save outputs
 ggsave(
@@ -267,9 +281,18 @@ ggsave(
   units = "px",
   dpi = 300
 )
+ggsave(
+  outputs$meta_tiers,
+  p_tiers,
+  width = params$bar_width,
+  height = params$bar_height,
+  units = "px",
+  dpi = 300
+)
 
 message("Saved:")
 message(" - ", outputs$meta_matrix)
 message(" - ", outputs$meta_presence)
 message(" - ", outputs$meta_wr_ci)
 message(" - ", outputs$meta_wr_presence)
+message(" - ", outputs$meta_tiers)

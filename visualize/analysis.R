@@ -202,5 +202,51 @@ add_tiers <- function(wr_df) {
   wr_df
 }
 
+#' Print tier rankings summary
+#'
+#' @param wr_df data frame with win rate data including tier column
+print_tier_summary <- function(wr_df) {
+  if (nrow(wr_df) == 0 || !"tier" %in% colnames(wr_df)) {
+    message("No tier data available.")
+    return(invisible())
+  }
+
+  message("Tier Rankings:")
+  tier_summary <- wr_df %>%
+    dplyr::select(archetype_name, wr, wr_lo, wr_hi, tier) %>%
+    dplyr::arrange(tier, dplyr::desc(wr)) %>%
+    dplyr::mutate(
+      wr_pct = paste0(round(wr * 100, 1), "%"),
+      ci_range = paste0(round(wr_lo * 100, 1), "-", round(wr_hi * 100, 1), "%"),
+      tier_label = dplyr::case_when(
+        tier == 0.0 ~ "Tier 0",
+        tier == 0.5 ~ "Tier 0.5",
+        tier == 1.0 ~ "Tier 1",
+        tier == 1.5 ~ "Tier 1.5",
+        tier == 2.0 ~ "Tier 2",
+        tier == 2.5 ~ "Tier 2.5",
+        tier == 3.0 ~ "Tier 3",
+        TRUE ~ paste("Tier", tier)
+      )
+    )
+
+  for (tier_val in sort(unique(tier_summary$tier))) {
+    tier_archetypes <- tier_summary %>% dplyr::filter(tier == tier_val)
+    tier_label <- tier_archetypes$tier_label[1]
+    message(sprintf("%s:", tier_label))
+    for (i in 1:nrow(tier_archetypes)) {
+      arch <- tier_archetypes[i, ]
+      message(sprintf(
+        "  %s: %s (CI: %s)",
+        arch$archetype_name,
+        arch$wr_pct,
+        arch$ci_range
+      ))
+    }
+  }
+
+  invisible()
+}
+
 # null-coalescing helper
 `%||%` <- function(x, y) if (is.null(x)) y else x
