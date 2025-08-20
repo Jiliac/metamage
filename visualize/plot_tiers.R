@@ -58,7 +58,7 @@ plot_tiers <- function(
   pad <- max(0.01, (xmax - xmin) * 0.05)
   xmin <- max(0, xmin - pad)
   xmax_original <- xmax
-  xmax <- min(1, xmax + pad + 0.08) # Extra space for text
+  xmax <- min(1, xmax + pad + 0.04) # Reduced space for text
 
   ggplot(df, aes(y = fct_rev(label))) +
     # Points colored by tier
@@ -147,7 +147,7 @@ plot_tiers <- function(
       panel.grid.minor = element_blank(),
       panel.background = element_rect(fill = "white", color = NA),
       plot.background = element_rect(fill = "white", color = NA),
-      plot.margin = margin(10, 30, 10, 10)
+      plot.margin = margin(10, 15, 10, 10)
     ) +
     coord_cartesian(clip = "on")
 }

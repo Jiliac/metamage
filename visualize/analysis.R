@@ -196,8 +196,12 @@ add_tiers <- function(wr_df) {
     wr_df$wr_lo >= mean_lb ~ 1.5, # Tier 1.5: average/playable
     wr_df$wr_lo >= mean_lb - 1 * sd_lb ~ 2.0, # Tier 2: below average
     wr_df$wr_lo >= mean_lb - 2 * sd_lb ~ 2.5, # Tier 2.5: weak
-    TRUE ~ 3.0 # Tier 3: very weak
+    wr_df$wr_lo >= mean_lb - 3 * sd_lb ~ 3.0, # Tier 3: very weak
+    TRUE ~ NA_real_ # Filter out anything below Tier 3
   )
+
+  # Remove archetypes below Tier 3
+  wr_df <- wr_df %>% dplyr::filter(!is.na(tier))
 
   wr_df
 }
