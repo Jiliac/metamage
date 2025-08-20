@@ -13,10 +13,7 @@ plot_wr_ci <- function(
   order_levels,
   title = "Win Rates",
   subtitle = NULL,
-  caption = NULL,
-  x_min = 0.35,
-  x_max = 0.75,
-  tick_by = 0.05
+  caption = NULL
 ) {
   df <- wr_df %>%
     mutate(name = factor(archetype_name, levels = order_levels)) %>%
@@ -80,14 +77,17 @@ plot_wr_ci <- function(
     color_ramp(100)[round(prop * 99) + 1]
   })
 
-  # Use fixed x-axis bounds and a dedicated label panel on the right
-  xmin <- x_min
-  xmax <- x_max
-  x_range <- xmax - xmin
-  label_panel_end <- xmax
-  label_panel_start <- xmax - 0.10 * x_range
-  gutter_wr <- 0.01 * x_range
-  gutter_ci <- 0.03 * x_range
+  # Compute x-range from data and add a little padding
+  xmin <- suppressWarnings(min(df$wr_lo, na.rm = TRUE))
+  xmax <- suppressWarnings(max(df$wr_hi, na.rm = TRUE))
+  if (!is.finite(xmin) || !is.finite(xmax)) {
+    xmin <- 0.4
+    xmax <- 0.6
+  }
+  pad <- max(0.01, (xmax - xmin) * 0.05)
+  xmin <- max(0, xmin - pad)
+  xmax_original <- xmax
+  xmax <- min(1, xmax + pad + 0.06) # Extra space for text
 
   ggplot(df, aes(y = fct_rev(label))) +
     # CI whiskers as horizontal segments
@@ -101,8 +101,8 @@ plot_wr_ci <- function(
     # White background rectangles for text labels
     geom_rect(
       aes(
-        xmin = label_panel_start,
-        xmax = label_panel_end,
+        xmin = xmax_original + 0.01,
+        xmax = xmax,
         ymin = as.numeric(fct_rev(label)) - 0.4,
         ymax = as.numeric(fct_rev(label)) + 0.4
       ),
@@ -112,7 +112,7 @@ plot_wr_ci <- function(
     # Text labels on the right - main WR (bold)
     geom_text(
       aes(
-        x = label_panel_start + gutter_wr,
+        x = xmax_original + 0.011,
         label = paste0(round(wr * 100, 1), "%")
       ),
       hjust = 0,
@@ -124,7 +124,7 @@ plot_wr_ci <- function(
     # Text labels on the right - CI (normal)
     geom_text(
       aes(
-        x = label_panel_start + gutter_ci,
+        x = xmax_original + 0.02,
         label = paste0(
           "(",
           round(wr_lo * 100, 0),
@@ -134,7 +134,7 @@ plot_wr_ci <- function(
         )
       ),
       hjust = 0,
-      nudge_x = 0,
+      nudge_x = 0.018,
       size = 1.6,
       family = "Inter",
       color = "#606060"
@@ -149,8 +149,12 @@ plot_wr_ci <- function(
     scale_x_continuous(
       labels = percent_format(accuracy = 1),
       limits = c(xmin, xmax),
-      breaks = seq(xmin, xmax, by = tick_by),
-      expand = expansion(mult = c(0, 0))
+      breaks = seq(
+        ceiling(xmin * 20) / 20,
+        floor(xmax_original * 20) / 20,
+        by = 0.05
+      ),
+      expand = expansion(mult = c(0, 0.02))
     ) +
     scale_color_identity(guide = "none") +
     labs(
