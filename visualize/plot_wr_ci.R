@@ -80,11 +80,7 @@ plot_wr_ci <- function(
     scale_x_continuous(
       labels = percent_format(accuracy = 1),
       limits = c(xmin, xmax),
-      breaks = seq(
-        ceiling(xmin * 20) / 20,
-        floor(xmax * 20) / 20,
-        by = 0.05
-      ),
+      breaks = scales::pretty_breaks(n = 6),
       expand = expansion(mult = c(0, 0)) # No expansion
     ) +
     scale_color_identity(guide = "none") +
@@ -139,7 +135,7 @@ plot_wr_ci <- function(
           y = 1 - (i - 0.5) / nrow(df), # Calculate y position
           hjust = 0,
           gp = grid::gpar(
-            fontsize = 6,
+            fontsize = 5,
             fontfamily = "Inter",
             fontface = "bold",
             col = CHART_COLORS$text_primary
@@ -162,7 +158,7 @@ plot_wr_ci <- function(
           y = 1 - (i - 0.5) / nrow(df),
           hjust = 0,
           gp = grid::gpar(
-            fontsize = 6,
+            fontsize = 5,
             fontfamily = "Inter",
             col = "#606060"
           )
