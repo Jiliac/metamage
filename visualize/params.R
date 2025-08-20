@@ -47,7 +47,12 @@ params <- list(
   presence_width = 1400,
   presence_height = 1400,
   bubble_width = 1000,
-  bubble_height = 1000
+  bubble_height = 1000,
+
+  # Win-rate chart axis configuration
+  wr_x_min = as.numeric(env_or("WR_X_MIN", "0.35")),
+  wr_x_max = as.numeric(env_or("WR_X_MAX", "0.75")),
+  wr_tick_by = as.numeric(env_or("WR_TICK_BY", "0.05"))
 )
 
 # Derived output files

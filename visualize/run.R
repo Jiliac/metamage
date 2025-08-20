@@ -211,7 +211,10 @@ p_wr_ci <- plot_wr_ci(
     params$start_date,
     " → ",
     params$end_date
-  )
+  ),
+  x_min = params$wr_x_min,
+  x_max = params$wr_x_max,
+  tick_by = params$wr_tick_by
 )
 p_matrix <- plot_matrix(
   mat,
