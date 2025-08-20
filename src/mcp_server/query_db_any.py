@@ -26,6 +26,9 @@ def query_database(sql: str, limit: int = 1000, ctx: Context = None) -> Dict[str
         - Only SELECT/WITH queries allowed (no PRAGMA, DDL, DML, etc.)
         - All UUIDs stored as 36-character strings
         - Use proper JOIN syntax for relationships (see schema in instructions)
+        - DateTime fields store full timestamps (e.g., '2025-08-18 01:00:00.000000')
+          Use date ranges: t.date >= '2025-08-18' AND t.date < '2025-08-19'
+          NOT equality: t.date = '2025-08-18' (will not match)
 
     SQLite read-only hardening cheat sheet:
       - Connection: open with URI mode=ro and set PRAGMA query_only=ON.
