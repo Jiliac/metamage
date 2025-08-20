@@ -22,34 +22,6 @@ plot_wr_ci <- function(
       label = name
     )
 
-  ########################################################################
-  # FILTER OUT ARCHETYPES WITH LOW CI BELOW 25% (0.25)
-  # This removes archetypes that have poor win rates with high confidence
-  ########################################################################
-  # initial_count <- nrow(df)
-  # filtered_archetypes <- df %>% filter(wr_lo < 0.25) %>% pull(archetype_name)
-  #
-  # cat("=====================")
-  # if (length(filtered_archetypes) > 0) {
-  #   cat(
-  #     "Filtering out",
-  #     length(filtered_archetypes),
-  #     "archetypes with low CI below 25%:\n"
-  #   )
-  #   cat(paste(filtered_archetypes, collapse = ", "), "\n")
-  # } else {
-  #   cat("No archetypes filtered - all have low CI >= 25%\n")
-  # }
-  #
-  # df <- df %>% filter(wr_lo >= 0.25)
-  #
-  # cat("Archetypes before filtering:", initial_count, "\n")
-  # cat("Archetypes after filtering:", nrow(df), "\n")
-  # cat("=====================")
-  ########################################################################
-
-  # CI columns should be added by caller using add_ci() from analysis.R
-
   # Sort by lower bound CI and create new factor levels
   df <- df %>%
     arrange(desc(wr_lo)) %>%
@@ -71,25 +43,25 @@ plot_wr_ci <- function(
   df$line_col <- sapply(df$wr_lo, function(x) {
     if (is.na(x)) {
       return(CHART_COLORS$na_fallback)
-    } # gray for NA
+    }
     prop <- (x - min_wr_lo) / (max_wr_lo - min_wr_lo)
-    prop <- pmax(0, pmin(1, prop)) # clamp to [0,1]
+    prop <- pmax(0, pmin(1, prop))
     color_ramp(100)[round(prop * 99) + 1]
   })
 
-  # Compute x-range from data and add a little padding
+  # Compute x-range from data with minimal padding
   xmin <- suppressWarnings(min(df$wr_lo, na.rm = TRUE))
   xmax <- suppressWarnings(max(df$wr_hi, na.rm = TRUE))
   if (!is.finite(xmin) || !is.finite(xmax)) {
     xmin <- 0.4
     xmax <- 0.6
   }
-  pad <- max(0.01, (xmax - xmin) * 0.05)
+  pad <- max(0.01, (xmax - xmin) * 0.02) # Reduced padding
   xmin <- max(0, xmin - pad)
-  xmax_original <- xmax
-  xmax <- min(1, xmax + pad + 0.06) # Extra space for text
+  xmax <- min(1, xmax + pad) # Don't extend x-axis for labels
 
-  ggplot(df, aes(y = fct_rev(label))) +
+  # Create the plot
+  p <- ggplot(df, aes(y = fct_rev(label))) +
     # CI whiskers as horizontal segments
     geom_segment(
       aes(x = wr_lo, xend = wr_hi, yend = fct_rev(label), color = line_col),
@@ -98,47 +70,6 @@ plot_wr_ci <- function(
     ) +
     # Point estimate
     geom_point(aes(x = wr, color = line_col), size = 1.2) +
-    # White background rectangles for text labels
-    geom_rect(
-      aes(
-        xmin = xmax_original + 0.01,
-        xmax = xmax,
-        ymin = as.numeric(fct_rev(label)) - 0.4,
-        ymax = as.numeric(fct_rev(label)) + 0.4
-      ),
-      fill = "white",
-      color = NA
-    ) +
-    # Text labels on the right - main WR (bold)
-    geom_text(
-      aes(
-        x = xmax_original + 0.011,
-        label = paste0(round(wr * 100, 1), "%")
-      ),
-      hjust = 0,
-      size = 1.6,
-      family = "Inter",
-      fontface = "bold",
-      color = CHART_COLORS$text_primary
-    ) +
-    # Text labels on the right - CI (normal)
-    geom_text(
-      aes(
-        x = xmax_original + 0.02,
-        label = paste0(
-          "(",
-          round(wr_lo * 100, 0),
-          "–",
-          round(wr_hi * 100, 0),
-          "%)"
-        )
-      ),
-      hjust = 0,
-      nudge_x = 0.018,
-      size = 1.6,
-      family = "Inter",
-      color = "#606060"
-    ) +
     # 50% reference line
     geom_vline(
       xintercept = 0.5,
@@ -151,10 +82,10 @@ plot_wr_ci <- function(
       limits = c(xmin, xmax),
       breaks = seq(
         ceiling(xmin * 20) / 20,
-        floor(xmax_original * 20) / 20,
+        floor(xmax * 20) / 20,
         by = 0.05
       ),
-      expand = expansion(mult = c(0, 0.02))
+      expand = expansion(mult = c(0, 0)) # No expansion
     ) +
     scale_color_identity(guide = "none") +
     labs(
@@ -190,7 +121,54 @@ plot_wr_ci <- function(
       panel.grid.minor = element_blank(),
       panel.background = element_rect(fill = "white", color = NA),
       plot.background = element_rect(fill = "white", color = NA),
-      plot.margin = margin(10, 30, 10, 10)
+      # Adjust margins: top, right, bottom, left
+      # Increase right margin significantly to make room for labels
+      plot.margin = margin(10, 80, 10, 10) # Increased right margin from 30 to 80
     ) +
-    coord_cartesian(clip = "on")
+    coord_cartesian(clip = "off") # Allow drawing outside plot area
+
+  # Add annotations for win rate labels outside the plot area
+  # We'll add these as separate layers using annotation_custom
+  for (i in 1:nrow(df)) {
+    # Main WR percentage (bold)
+    p <- p +
+      annotation_custom(
+        grob = grid::textGrob(
+          label = paste0(round(df$wr[i] * 100, 1), "%"),
+          x = 1.02, # Position relative to plot area (1 = right edge)
+          y = 1 - (i - 0.5) / nrow(df), # Calculate y position
+          hjust = 0,
+          gp = grid::gpar(
+            fontsize = 6,
+            fontfamily = "Inter",
+            fontface = "bold",
+            col = CHART_COLORS$text_primary
+          )
+        )
+      )
+
+    # CI range (normal)
+    p <- p +
+      annotation_custom(
+        grob = grid::textGrob(
+          label = paste0(
+            "(",
+            round(df$wr_lo[i] * 100, 0),
+            "–",
+            round(df$wr_hi[i] * 100, 0),
+            "%)"
+          ),
+          x = 1.12, # Further right for CI
+          y = 1 - (i - 0.5) / nrow(df),
+          hjust = 0,
+          gp = grid::gpar(
+            fontsize = 6,
+            fontfamily = "Inter",
+            col = "#606060"
+          )
+        )
+      )
+  }
+
+  return(p)
 }
