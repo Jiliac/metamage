@@ -84,13 +84,31 @@ def get_sources(
 
     sources_data = [dict(r._mapping) for r in rows]
 
-    # Calculate source breakdown
-    source_counts = {}
-    for row in sources_data:
-        source = row.get("source", "UNKNOWN")
-        source_counts[source] = source_counts.get(source, 0) + 1
+    # Calculate accurate source breakdown from ALL tournaments in date range
+    source_stats_sql = """
+        SELECT
+            t.source,
+            COUNT(DISTINCT t.id) as count
+        FROM tournaments t
+        JOIN tournament_entries te ON te.tournament_id = t.id
+        LEFT JOIN archetypes a ON te.archetype_id = a.id
+        WHERE t.format_id = :format_id
+          AND t.date >= :start AND t.date <= :end
+          AND (:arch_name IS NULL OR LOWER(a.name) = LOWER(:arch_name))
+        GROUP BY t.source
+    """
 
-    total_tournaments = len(sources_data)
+    with engine.connect() as conn:
+        source_rows = conn.execute(text(source_stats_sql), params).fetchall()
+
+    source_counts = {}
+    total_tournaments = 0
+    for row in source_rows:
+        source = row.source
+        count = row.count
+        source_counts[source] = count
+        total_tournaments += count
+
     source_percentages = {}
     if total_tournaments > 0:
         for source, count in source_counts.items():

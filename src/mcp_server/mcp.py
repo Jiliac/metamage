@@ -16,6 +16,7 @@ mcp = FastMCP(
           - get_archetype_cards(format_id, archetype_name, start_date, end_date, board?, limit?): cards in specific archetype
           - get_archetype_trends(format_id, archetype_name, days_back?): weekly presence/winrate trends
           - get_tournament_results(format_id, start_date, end_date, min_players?, limit?): winners and top 8 breakdown
+          - get_sources(format_id, start_date, end_date, archetype_name?, limit?): recent tournaments with links and source breakdown
 
         ## Resources
           - mtg://formats/{format_id}: format overview with recent tournaments and meta snapshot
