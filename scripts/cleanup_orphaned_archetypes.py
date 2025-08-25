@@ -12,7 +12,7 @@ from pathlib import Path
 # Add the src directory to the path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from models import get_engine, get_session_factory, Archetype, TournamentEntry
+from models import get_engine, Archetype
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text
 
