@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 
 from .logger import logger
+from .bluesky import bluesky_client
 
 
 # Bot setup
@@ -55,12 +56,45 @@ async def on_ready():
                                 logger.info(
                                     f"  [HISTORY] Attachment: {attachment.filename}: {attachment.url}"
                                 )
+
+                        # Bridge historical messages to Bluesky too
+                        await process_message(message)
                 except Exception as e:
                     logger.error(f"Error reading history: {e}")
                 break
 
     if not found_channel:
         logger.warning(f"Channel '{TARGET_CHANNEL}' not found or not accessible")
+
+
+async def process_message(message):
+    """Process a Discord message and post it to Bluesky"""
+    logger.info(f"Processing message from {message.author}: {message.content}")
+
+    # Format the message for Bluesky
+    # Include author info in the post
+    bluesky_text = f"{message.content}"
+    if len(bluesky_text) > 300:  # Bluesky character limit
+        bluesky_text = bluesky_text[:297] + "..."
+
+    # Handle images
+    image_urls = []
+    if message.attachments:
+        for attachment in message.attachments:
+            if attachment.content_type and attachment.content_type.startswith("image/"):
+                image_urls.append(attachment.url)
+                logger.info(f"Found image: {attachment.filename}")
+
+    # Post to Bluesky
+    if image_urls:
+        success = await bluesky_client.post_with_images(bluesky_text, image_urls)
+    else:
+        success = await bluesky_client.post_text(bluesky_text)
+
+    if success:
+        logger.info("✅ Successfully bridged message to Bluesky")
+    else:
+        logger.error("❌ Failed to bridge message to Bluesky")
 
 
 @bot.event
@@ -80,3 +114,6 @@ async def on_message(message):
             logger.info(f"Attachments: {len(message.attachments)}")
             for attachment in message.attachments:
                 logger.info(f"  - {attachment.filename}: {attachment.url}")
+
+        # Bridge to Bluesky
+        await process_message(message)
