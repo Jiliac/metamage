@@ -7,6 +7,51 @@ suppressPackageStartupMessages({
 
 source("visualize/constants.R")
 
+# Custom piecewise transformation for presence charts
+piecewise_compress_trans <- function(threshold = 0.10, compress_power = 0.3) {
+  # Transform function
+  transform_func <- function(x) {
+    ifelse(
+      x <= threshold,
+      x, # Linear below threshold
+      threshold + (x - threshold)^compress_power
+    ) # Compressed above threshold
+  }
+
+  # Inverse transform function
+  inverse_func <- function(y) {
+    ifelse(
+      y <= threshold,
+      y, # Linear below threshold
+      threshold + (y - threshold)^(1 / compress_power)
+    ) # Inverse above threshold
+  }
+
+  # Create breaks function that handles the transformation
+  breaks_func <- function(x) {
+    # Get some reasonable breaks
+    linear_breaks <- pretty(x[x <= threshold], n = 3)
+    if (any(x > threshold)) {
+      # Add a few breaks in the compressed region
+      max_val <- max(x)
+      compressed_breaks <- c(0.12, 0.15, max_val)
+      compressed_breaks <- compressed_breaks[compressed_breaks <= max_val]
+      all_breaks <- c(linear_breaks, compressed_breaks)
+    } else {
+      all_breaks <- linear_breaks
+    }
+    return(sort(unique(all_breaks)))
+  }
+
+  trans_new(
+    name = "piecewise_compress",
+    transform = transform_func,
+    inverse = inverse_func,
+    breaks = breaks_func,
+    domain = c(0, Inf)
+  )
+}
+
 plot_presence <- function(
   pres_df,
   color_map,
@@ -47,7 +92,8 @@ plot_presence <- function(
       hjust = -0.15,
       size = 2.5
     ) +
-    scale_x_sqrt(
+    scale_x_continuous(
+      trans = piecewise_compress_trans(threshold = 0.10, compress_power = 2),
       labels = percent_format(accuracy = 1),
       limits = c(0, xmax * 1.12),
       expand = expansion(mult = c(0, 0.08))

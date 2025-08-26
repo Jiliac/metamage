@@ -230,7 +230,7 @@ plot_matrix <- function(
     geom_text(
       data = wr_tiles,
       aes(x = col_name2, y = row_name, label = subtitle),
-      size = 1.5,
+      size = 1.4,
       family = "Inter",
       color = "#6B7280",
       nudge_y = -0.2
@@ -245,9 +245,10 @@ plot_matrix <- function(
       name = "Confidence (by matches)",
       limits = c(0, 1),
       breaks = c(0, 0.5, 1),
-      labels = c("High", "Medium", "Low"),
+      labels = c("Low", "Medium", "High"),
       guide = guide_legend(
         title.position = "top",
+        title.hjust = 0.5,
         direction = "horizontal",
         override.aes = list(
           fill = "#4ADE80",
