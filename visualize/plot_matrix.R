@@ -154,7 +154,8 @@ plot_matrix <- function(
       data = df_non_mirror_strong,
       aes(x = col_name2, y = row_name, alpha = overlay_alpha),
       fill = "white",
-      color = NA
+      color = NA,
+      show.legend = TRUE
     ) +
     # Grey circles for mirror cells
     geom_point(
@@ -240,7 +241,20 @@ plot_matrix <- function(
       limits = x_levels,
       labels = c("", "Winrate vs\nMetagame", col_levels)
     ) +
-    scale_alpha_identity(guide = "none") +
+    scale_alpha_continuous(
+      name = "Confidence (by matches)",
+      limits = c(0, 1),
+      breaks = c(0, 0.5, 1),
+      labels = c("High", "Medium", "Low"),
+      guide = guide_legend(
+        title.position = "top",
+        direction = "horizontal",
+        override.aes = list(
+          fill = "#4ADE80",
+          color = NA
+        )
+      )
+    ) +
     labs(
       title = title,
       caption = caption,
@@ -274,7 +288,10 @@ plot_matrix <- function(
       ),
       plot.background = element_rect(fill = "white", color = NA),
       panel.background = element_rect(fill = "white", color = NA),
-      plot.margin = margin(10, 30, 10, 30)
+      plot.margin = margin(10, 30, 10, 30),
+      legend.position = "bottom",
+      legend.title = element_text(size = 8, family = "Inter"),
+      legend.text = element_text(size = 8, family = "Inter")
     ) +
     coord_fixed(ratio = 0.8, clip = "off")
 }
