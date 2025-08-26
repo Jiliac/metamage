@@ -11,6 +11,7 @@ source("visualize/constants.R")
 plot_matrix <- function(
   mat_df,
   global_wr_df,
+  presence_df,
   color_map,
   order_levels,
   title = "Matchup Matrix",
@@ -28,6 +29,15 @@ plot_matrix <- function(
     filter(archetype_name %in% order_levels) %>%
     mutate(row_name = factor(archetype_name, levels = rev(order_levels))) %>%
     select(row_name, wins, losses, draws, games, wr)
+
+  # Join presence data
+  row_presence <- presence_df %>%
+    filter(archetype_name %in% order_levels) %>%
+    mutate(row_name = factor(archetype_name, levels = rev(order_levels))) %>%
+    select(row_name, entries, share)
+
+  row_sum <- row_sum %>%
+    left_join(row_presence, by = "row_name")
 
   # Build x-axis with two left columns for row header and row WR summary
   col_levels <- levels(df$col_name)
@@ -91,7 +101,12 @@ plot_matrix <- function(
       "–",
       paste0(round(row_sum$wr * 100, 1), "%")
     ),
-    subtitle = paste0(row_sum$wins, "-", row_sum$losses)
+    subtitle = paste0(
+      row_sum$entries,
+      " games (",
+      round(row_sum$share * 100, 1),
+      "%)"
+    )
   )
 
   # Fill scale with tightened range to avoid saturated extremes
@@ -214,7 +229,7 @@ plot_matrix <- function(
     geom_text(
       data = wr_tiles,
       aes(x = col_name2, y = row_name, label = subtitle),
-      size = 1.8,
+      size = 1.5,
       family = "Inter",
       color = "#6B7280",
       nudge_y = -0.2

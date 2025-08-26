@@ -216,6 +216,7 @@ p_wr_ci <- plot_wr_ci(
 p_matrix <- plot_matrix(
   mat,
   wr %>% filter(archetype_name %in% matrix_order),
+  presence %>% filter(archetype_name %in% matrix_order),
   color_map,
   matrix_order,
   title = paste0(params$format_name, " Matchups"),
