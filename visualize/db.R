@@ -31,10 +31,11 @@ fetch_presence <- function(con, format_id, start_date, end_date) {
   sql <- glue::glue_sql(
     "
     SELECT a.name AS archetype_name,
-           COUNT(DISTINCT e.id) AS entries
+           COUNT(m.id) AS entries
     FROM tournaments t
     JOIN tournament_entries e ON e.tournament_id = t.id
     JOIN archetypes a ON a.id = e.archetype_id
+    JOIN matches m ON m.entry_id = e.id
     WHERE t.format_id = {format_id}
       AND t.date >= {start_date}
       AND t.date <= {end_date}

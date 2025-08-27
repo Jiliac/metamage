@@ -103,7 +103,7 @@ plot_matrix <- function(
     ),
     subtitle = paste0(
       row_sum$entries,
-      " games (",
+      " matches (",
       round(row_sum$share * 100, 1),
       "%)"
     )
@@ -230,7 +230,7 @@ plot_matrix <- function(
     geom_text(
       data = wr_tiles,
       aes(x = col_name2, y = row_name, label = subtitle),
-      size = 1.4,
+      size = 1.2,
       family = "Inter",
       color = "#6B7280",
       nudge_y = -0.2
