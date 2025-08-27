@@ -47,6 +47,7 @@ class FocusedChannel(Base, TimestampMixin):
         String(20), nullable=False, unique=True, index=True
     )  # Discord channel ID
     channel_name = Column(String(100), nullable=False)  # Human-readable channel name
+    format = Column(String(20), nullable=False)  # MTG format (modern, pioneer, etc.)
     is_active = Column(
         Boolean, nullable=False, default=True
     )  # Whether to monitor this channel
@@ -58,15 +59,6 @@ class FocusedChannel(Base, TimestampMixin):
     __table_args__ = (
         UniqueConstraint("guild_id", "channel_id", name="uq_guild_channel"),
     )
-
-    @property
-    def format(self):
-        """Extract the format from the channel name (first word before hyphen)."""
-        return (
-            self.channel_name.split("-")[0]
-            if "-" in self.channel_name
-            else self.channel_name
-        )
 
     def __repr__(self):
         return f"<FocusedChannel(guild_id={self.guild_id}, channel_name='{self.channel_name}')>"
