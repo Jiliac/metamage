@@ -37,7 +37,9 @@ tournament_entries (id, tournament_id, player_id, archetype_id, wins, losses, dr
 matches (id, entry_id, opponent_entry_id, result, mirror, pair_id)
 deck_cards (id, entry_id, card_id, count, board) -- board: MAIN|SIDE
 archetypes (id, format_id, name, color)
-cards (id, name, scryfall_oracle_id)
+cards (id, name, scryfall_oracle_id, is_land, colors, first_printed_set_id, first_printed_date)
+card_colors (id, card_id, color) -- color: W/U/B/R/G for efficient color queries  
+sets (id, code, name, set_type, released_at) -- MTG set information
 players (id, handle, normalized_handle)
 ```
 
@@ -47,6 +49,16 @@ players (id, handle, normalized_handle)
 - Use specific tools for common queries, query_database() for complex analysis
 - Always include date ranges to avoid full table scans
 - Format dates as 'YYYY-MM-DD' or 'YYYY-MM-DDTHH:MM:SS'
+
+### Color-Based Analysis:
+- Use card_colors table for efficient color queries (e.g., "all red cards")
+- Entry color analysis: JOIN deck_cards -> card_colors to get deck colors
+- Example: Mono-red decks vs multi-color prevalence in meta
+
+### Set-Based Analysis:  
+- Track original printing vs reprints using first_printed_set_id
+- Analyze new set impact by comparing before/after release dates
+- Set release correlation with meta changes using sets.released_at
 
 ## Response Format:
 - Keep responses concise but informative (Discord has a 2000 character limit)

@@ -7,8 +7,9 @@ Integrates with Scryfall API to fetch canonical card names and oracle IDs.
 
 import time
 import requests
-from typing import Dict, List, Any, Set, Optional
+from typing import Dict, List, Any, Optional
 from sqlalchemy.orm import Session
+from datetime import datetime
 
 import sys
 from pathlib import Path
@@ -16,6 +17,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from models.reference import Card
+from models.reference import Set as SetModel, CardColor
 
 
 class CardCache:
@@ -23,7 +25,7 @@ class CardCache:
 
     def __init__(self):
         self.cache: Dict[str, Card] = {}  # normalized_name -> Card
-        self.processed: Set[str] = set()  # Track what we've seen this session
+        self.processed: set[str] = set()  # Track what we've seen this session
         self.scryfall_cache: Dict[str, Dict[str, Any]] = {}  # Cache API responses
 
     def get(self, normalized_name: str) -> Optional[Card]:
@@ -114,7 +116,77 @@ def fetch_scryfall_data(card_name: str, cache: CardCache) -> Optional[Dict[str, 
         return None
 
 
-def extract_unique_card_names(entries: List[Dict[str, Any]]) -> Set[str]:
+def fetch_all_printings_for_oracle_id(
+    oracle_id: str, cache: CardCache
+) -> Optional[List[Dict[str, Any]]]:
+    """
+    Fetch all printings for a card by oracle_id from Scryfall.
+    Returns list sorted by release date (earliest first).
+    """
+    cache_key = f"printings_{oracle_id}"
+    cached_printings = cache.get_scryfall_data(cache_key)
+    if cached_printings is not None:
+        return cached_printings
+
+    url = "https://api.scryfall.com/cards/search"
+    params = {
+        "q": f"oracle_id:{oracle_id}",
+        "unique": "prints",
+        "order": "released",
+        "dir": "asc",
+    }
+
+    try:
+        time.sleep(0.05)  # Rate limiting
+        response = requests.get(url, params=params, timeout=10)
+
+        if response.status_code == 200:
+            data = response.json()
+            printings = data.get("data", [])
+            cache.cache_scryfall_data(cache_key, printings)
+            return printings
+        elif response.status_code == 404:
+            cache.cache_scryfall_data(cache_key, None)
+            return None
+        else:
+            print(
+                f"  ⚠️ Scryfall printings API error for oracle_id {oracle_id}: HTTP {response.status_code}"
+            )
+            return None
+
+    except requests.RequestException as e:
+        print(f"  ⚠️ Network error fetching printings for oracle_id {oracle_id}: {e}")
+        return None
+
+
+def get_or_create_set(
+    session: Session, set_code: str, set_name: str, set_type: str, released_at: str
+) -> SetModel:
+    """
+    Get existing set or create new one.
+    """
+    set_obj = session.query(SetModel).filter(SetModel.code == set_code.upper()).first()
+    if set_obj:
+        return set_obj
+
+    try:
+        released_date = datetime.strptime(released_at, "%Y-%m-%d")
+    except ValueError:
+        print(f"  ⚠️ Invalid date format for set {set_code}: {released_at}")
+        released_date = datetime.now()
+
+    set_obj = SetModel(
+        code=set_code.upper(),
+        name=set_name,
+        set_type=set_type,
+        released_at=released_date,
+    )
+    session.add(set_obj)
+    session.flush()  # Get the ID
+    return set_obj
+
+
+def extract_unique_card_names(entries: List[Dict[str, Any]]) -> set[str]:
     """
     Extract unique card names from tournament entries.
 
@@ -196,10 +268,48 @@ def get_or_create_card(
         cache.add(normalized_name, existing)  # map querying name to existing Card
         return existing, False
 
-    # 4) Create new card with canonical name and oracle_id
-    card = Card(name=canonical_name, scryfall_oracle_id=oracle_id, is_land=is_land)
+    # 4) Extract colors and set information
+    colors = scryfall_data.get("colors", [])
+    colors_str = "".join(sorted(colors)) if colors else ""
+
+    # 5) Try to get earliest printing info
+    earliest_set = None
+    first_printed_date = None
+
+    if oracle_id:
+        printings = fetch_all_printings_for_oracle_id(oracle_id, cache)
+        if printings:
+            earliest_printing = printings[0]  # Already sorted by release date
+            set_code = earliest_printing.get("set", "").upper()
+            set_name = earliest_printing.get("set_name", "")
+            set_type = earliest_printing.get("set_type", "")
+            released_at = earliest_printing.get("released_at", "")
+
+            if set_code and released_at:
+                try:
+                    earliest_set = get_or_create_set(
+                        session, set_code, set_name, set_type, released_at
+                    )
+                    first_printed_date = datetime.strptime(released_at, "%Y-%m-%d")
+                except Exception as e:
+                    print(f"  ⚠️ Error processing set data for '{canonical_name}': {e}")
+
+    # 6) Create new card with all enriched data
+    card = Card(
+        name=canonical_name,
+        scryfall_oracle_id=oracle_id,
+        is_land=is_land,
+        colors=colors_str,
+        first_printed_set_id=earliest_set.id if earliest_set else None,
+        first_printed_date=first_printed_date,
+    )
     session.add(card)
     session.flush()  # Get the ID
+
+    # 7) Create CardColor entries
+    for color in colors:
+        card_color = CardColor(card_id=card.id, color=color)
+        session.add(card_color)
 
     # Cache only the querying name -> card mapping
     cache.add(normalized_name, card)

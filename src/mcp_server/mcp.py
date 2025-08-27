@@ -24,16 +24,18 @@ mcp = FastMCP(
           - mtg://archetypes/{archetype_name}: archetype overview with recent performance and key cards
 
         ## Database Schema
-        Tables: formats, players, cards, archetypes, tournaments, tournament_entries, deck_cards, matches, meta_changes
+        Tables: formats, players, cards, card_colors, sets, archetypes, tournaments, tournament_entries, deck_cards, matches, meta_changes
 
         Key table structures:
         - formats: id (uuid), name (citext)
+        - sets: id (uuid), code (3-letter set code like "ROE", "2XM"), name, set_type, released_at (date)
+        - cards: id (uuid), name (citext), scryfall_oracle_id, is_land (boolean), colors (string like "WUB"), first_printed_set_id (FK to sets), first_printed_date (date)
+        - card_colors: id (uuid), card_id (FK), color (single char: W/U/B/R/G) - for efficient color-based queries
         - archetypes: id (uuid), format_id (FK), name (citext), color (text)
         - tournaments: id (uuid), name, date (datetime), format_id (FK), source (MTGO|MELEE|OTHER), link
         - tournament_entries: id (uuid), tournament_id (FK), player_id (FK), archetype_id (FK), wins, losses, draws, rank
         - matches: id (uuid), entry_id (FK), opponent_entry_id (FK), result (WIN|LOSS|DRAW), mirror (boolean), pair_id
         - deck_cards: id (uuid), entry_id (FK), card_id (FK), count, board (MAIN|SIDE)
-        - cards: id (uuid), name (citext), scryfall_oracle_id
         - players: id (uuid), handle, normalized_handle (citext)
         - meta_changes: id (uuid), format_id (FK), date, change_type (BAN|SET_RELEASE), description, set_code
 
@@ -45,6 +47,8 @@ mcp = FastMCP(
         - archetypes.format_id -> formats.id
         - deck_cards.entry_id -> tournament_entries.id
         - deck_cards.card_id -> cards.id
+        - card_colors.card_id -> cards.id
+        - cards.first_printed_set_id -> sets.id
 
         Note: matches table has both sides of each match (entry vs opponent), linked by pair_id.
         To avoid double-counting, filter by entry_id < opponent_entry_id or group by pair_id.

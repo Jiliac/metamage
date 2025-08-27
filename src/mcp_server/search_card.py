@@ -57,10 +57,12 @@ def search_card(query: str, ctx: Context = None) -> Dict[str, Any]:
         rows = conn.execute(
             text(
                 """
-                SELECT id, name, scryfall_oracle_id
-                FROM cards
-                WHERE name LIKE :pattern
-                ORDER BY CASE WHEN name = :exact THEN 0 ELSE 1 END, LENGTH(name)
+                SELECT c.id, c.name, c.scryfall_oracle_id, c.colors, c.is_land,
+                       s.code as set_code, s.name as set_name, c.first_printed_date
+                FROM cards c
+                LEFT JOIN sets s ON c.first_printed_set_id = s.id
+                WHERE c.name LIKE :pattern
+                ORDER BY CASE WHEN c.name = :exact THEN 0 ELSE 1 END, LENGTH(c.name)
                 """
             ),
             {"pattern": pattern, "exact": q.lower()},
@@ -96,22 +98,58 @@ def search_card(query: str, ctx: Context = None) -> Dict[str, Any]:
                 if row:
                     db_card_id = row[0]
 
+        # Include local DB info if available
+        db_colors = None
+        db_is_land = None
+        db_set_info = None
+        if rows:
+            first = rows[0]._mapping
+            db_colors = first.get("colors")
+            db_is_land = first.get("is_land")
+            if first.get("set_code"):
+                db_set_info = {
+                    "code": first.get("set_code"),
+                    "name": first.get("set_name"),
+                    "first_printed": first.get("first_printed_date").isoformat()
+                    if first.get("first_printed_date")
+                    else None,
+                }
+
         return {
             "card_id": db_card_id,
             "name": scryfall.get("name"),
             "type": scryfall.get("type_line"),
             "oracle_text": scryfall.get("oracle_text"),
             "mana_cost": scryfall.get("mana_cost"),
+            "colors": db_colors or "".join(sorted(scryfall.get("colors", []))),
+            "is_land": db_is_land
+            if db_is_land is not None
+            else ("Land" in scryfall.get("type_line", "")),
+            "first_printed_set": db_set_info,
         }
 
     # Fallback: if Scryfall failed but DB matched, return partial info
     if db_card_id:
+        first = rows[0]._mapping
+        db_set_info = None
+        if first.get("set_code"):
+            db_set_info = {
+                "code": first.get("set_code"),
+                "name": first.get("set_name"),
+                "first_printed": first.get("first_printed_date").isoformat()
+                if first.get("first_printed_date")
+                else None,
+            }
+
         return {
             "card_id": db_card_id,
-            "name": rows[0]._mapping["name"],
+            "name": first["name"],
             "type": None,
             "oracle_text": None,
             "mana_cost": None,
+            "colors": first.get("colors"),
+            "is_land": first.get("is_land"),
+            "first_printed_set": db_set_info,
         }
 
     raise ValueError("Card not found in local DB and Scryfall lookup failed")

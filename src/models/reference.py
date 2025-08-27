@@ -53,6 +53,24 @@ class Format(Base, TimestampMixin):
         return f"<Format(id={self.id}, name='{self.name}')>"
 
 
+class Set(Base, TimestampMixin):
+    __tablename__ = "sets"
+
+    id = uuid_pk()
+    code = Column(
+        String(10), nullable=False, unique=True, index=True
+    )  # e.g., "ROE", "2XM"
+    name = Column(String(200), nullable=False)  # e.g., "Rise of the Eldrazi"
+    set_type = Column(String(50), nullable=True)  # e.g., "expansion", "masters"
+    released_at = Column(DateTime, nullable=False, index=True)
+
+    # Relationships
+    cards = relationship("Card", back_populates="first_printed_set")
+
+    def __repr__(self):
+        return f"<Set(id={self.id}, code='{self.code}', name='{self.name}')>"
+
+
 class Player(Base, TimestampMixin):
     __tablename__ = "players"
 
@@ -76,12 +94,49 @@ class Card(Base, TimestampMixin):
         String(36), unique=True, nullable=False, index=True
     )  # UUID
     is_land = Column(Boolean, nullable=False, default=False)
+    colors = Column(String(5), nullable=True)  # e.g., "WUB", "R", "" for colorless
+    first_printed_set_id = Column(
+        String(36),
+        ForeignKey("sets.id", name="fk_card_first_printed_set"),
+        nullable=True,
+        index=True,
+    )
+    first_printed_date = Column(DateTime, nullable=True, index=True)
 
     # Relationships
     deck_cards = relationship("DeckCard", back_populates="card")
+    card_colors = relationship(
+        "CardColor", back_populates="card", cascade="all, delete-orphan"
+    )
+    first_printed_set = relationship("Set", back_populates="cards")
 
     def __repr__(self):
         return f"<Card(id={self.id}, name='{self.name}')>"
+
+
+class CardColor(Base, TimestampMixin):
+    __tablename__ = "card_colors"
+
+    id = uuid_pk()
+    card_id = Column(
+        String(36),
+        ForeignKey("cards.id", name="fk_card_colors_card", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    color = Column(String(1), nullable=False)  # W, U, B, R, G
+
+    # Relationships
+    card = relationship("Card", back_populates="card_colors")
+
+    # Constraints
+    __table_args__ = (
+        UniqueConstraint("card_id", "color", name="uq_card_color"),
+        Index("idx_card_color", "card_id", "color"),
+    )
+
+    def __repr__(self):
+        return f"<CardColor(card_id={self.card_id}, color='{self.color}')>"
 
 
 class Archetype(Base, TimestampMixin):
