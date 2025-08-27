@@ -3,6 +3,8 @@ import httpx
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 import mimetypes
+from PIL import Image
+import io
 
 from .logger import logger
 
@@ -88,6 +90,51 @@ class BlueskyClient:
             logger.error(f"Error posting to Bluesky: {e}")
             return False
 
+    def compress_image(self, image_data: bytes, max_size_kb: int = 950) -> bytes:
+        """Compress image to stay under size limit"""
+        try:
+            # Open image
+            img = Image.open(io.BytesIO(image_data))
+
+            # Convert to RGB if necessary (for JPEG)
+            if img.mode in ("RGBA", "LA", "P"):
+                img = img.convert("RGB")
+
+            # Start with quality 85
+            quality = 85
+
+            while quality > 10:
+                # Compress image
+                output = io.BytesIO()
+                img.save(output, format="JPEG", quality=quality, optimize=True)
+                compressed_data = output.getvalue()
+
+                # Check size
+                size_kb = len(compressed_data) / 1024
+                if size_kb <= max_size_kb:
+                    logger.info(
+                        f"Compressed image from {len(image_data) / 1024:.1f}KB to {size_kb:.1f}KB (quality={quality})"
+                    )
+                    return compressed_data
+
+                # Reduce quality and try again
+                quality -= 10
+
+            # If still too large, resize the image
+            logger.info("Still too large, resizing image")
+            width, height = img.size
+            img = img.resize(
+                (int(width * 0.8), int(height * 0.8)), Image.Resampling.LANCZOS
+            )
+
+            output = io.BytesIO()
+            img.save(output, format="JPEG", quality=75, optimize=True)
+            return output.getvalue()
+
+        except Exception as e:
+            logger.error(f"Error compressing image: {e}")
+            return image_data  # Return original if compression fails
+
     async def upload_image(
         self, image_data: bytes, filename: str
     ) -> Optional[Dict[str, Any]]:
@@ -97,6 +144,12 @@ class BlueskyClient:
                 return None
 
         try:
+            # Check if image needs compression (Bluesky limit is ~1MB)
+            size_kb = len(image_data) / 1024
+            if size_kb > 950:  # Compress if larger than 950KB to be safe
+                logger.info(f"Image {filename} is {size_kb:.1f}KB, compressing...")
+                image_data = self.compress_image(image_data)
+
             # Determine MIME type
             mime_type, _ = mimetypes.guess_type(filename)
             if not mime_type or not mime_type.startswith("image/"):

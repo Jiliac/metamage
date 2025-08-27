@@ -17,6 +17,7 @@ dependencies = [
     "langchain>=0.3.27",
     "python-dotenv>=1.0.0",
     "langchain-xai>=0.2.5",
+    "pillow>=11.3.0",
 ]
 
 [dependency-groups]
