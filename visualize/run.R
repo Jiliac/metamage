@@ -203,6 +203,7 @@ p_presence <- plot_presence(
 )
 p_wr_ci <- plot_wr_ci(
   wr,
+  presence,
   color_map,
   top_order,
   title = paste0(params$format_name, " Win Rates"),
