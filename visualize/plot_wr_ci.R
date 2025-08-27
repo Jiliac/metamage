@@ -9,7 +9,6 @@ source("visualize/constants.R")
 
 plot_wr_ci <- function(
   wr_df,
-  presence_df,
   color_map,
   order_levels,
   title = "Win Rates",
@@ -23,14 +22,9 @@ plot_wr_ci <- function(
       label = name
     )
 
-  # Join presence data and sort by presence (descending)
-  presence_for_join <- presence_df %>%
-    select(archetype_name, share) %>%
-    rename(presence_share = share)
-
+  # Sort by lower bound CI and create new factor levels
   df <- df %>%
-    left_join(presence_for_join, by = "archetype_name") %>%
-    arrange(desc(presence_share)) %>%
+    arrange(desc(wr_lo)) %>%
     mutate(
       label = factor(label, levels = unique(label))
     )
