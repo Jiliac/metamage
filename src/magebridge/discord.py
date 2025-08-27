@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import discord
 from discord.ext import commands
 import json
@@ -55,7 +55,7 @@ async def ensure_focused_channels():
             # Add default channel if none exist
             for guild in bot.guilds:
                 for channel in guild.channels:
-                    if channel.name == "modern-data-analysis" and hasattr(
+                    if channel.name.endswith("-data-analysis") and hasattr(
                         channel, "history"
                     ):
                         focused_channel = FocusedChannel(
@@ -90,17 +90,17 @@ async def process_historical_messages():
                 logger.warning(f"Channel {focused_channel.channel_name} not found")
                 continue
 
-            # Get the last processed message time for this channel
-            last_pass = (
-                session.query(Pass)
-                .filter_by(pass_type=f"history_{focused_channel.channel_id}")
-                .order_by(Pass.start_time.desc())
-                .first()
-            )
+            start_date = datetime(2025, 8, 20, tzinfo=timezone.utc)
 
-            start_date = datetime(2025, 8, 15)
-            if last_pass and last_pass.last_processed_time:
-                start_date = last_pass.last_processed_time
+            # Get the last processed message time for this channel
+            # last_pass = (
+            #     session.query(Pass)
+            #     .filter_by(pass_type=f"history_{focused_channel.channel_id}")
+            #     .order_by(Pass.start_time.desc())
+            #     .first()
+            # )
+            # if last_pass and last_pass.last_processed_time:
+            #     start_date = last_pass.last_processed_time
 
             # Create a new pass record
             current_pass = Pass(
@@ -145,15 +145,30 @@ async def process_historical_messages():
                             else None,
                         )
                         session.add(discord_post)
-
-                        # Bridge to social media (commented out for now)
-                        # await process_message_for_social(message, discord_post)
+                        session.commit()
 
                         messages_processed += 1
                         latest_time = max(latest_time, message.created_at)
 
                         logger.info(
-                            f"[HISTORY] {message.created_at}: {message.author.display_name}: {message.id}"
+                            f"[HISTORY] Created post: {message.created_at}: {message.author.display_name}: {message.id}"
+                        )
+                    else:
+                        discord_post = existing
+
+                    # Check if successful social media post exists for this Discord post
+                    successful_social_exists = (
+                        session.query(SocialMessage)
+                        .filter_by(discord_post_id=discord_post.id, success=True)
+                        .first()
+                    )
+
+                    if not successful_social_exists:
+                        await process_message_for_social(
+                            message, discord_post, focused_channel, session
+                        )
+                        logger.info(
+                            f"[HISTORY] Posted to social: {message.created_at}: {message.author.display_name}: {message.id}"
                         )
 
                 # Update pass record
@@ -225,7 +240,9 @@ async def process_message(message):
         logger.info(f"Saved Discord message {message.id} to database")
 
         # Now process for social media
-        await process_message_for_social(message, discord_post, session)
+        await process_message_for_social(
+            message, discord_post, focused_channel, session
+        )
 
     except Exception as e:
         logger.error(f"Error processing message {message.id}: {e}")
@@ -234,14 +251,13 @@ async def process_message(message):
         session.close()
 
 
-async def process_message_for_social(message, discord_post, session):
+async def process_message_for_social(message, discord_post, focused_channel, session):
     """Process a Discord message for social media posting"""
     logger.info(f"Processing message from {message.author}: {message.content}")
 
-    # Format the message for Bluesky
-    bluesky_text = f"{message.content}"
-    if len(bluesky_text) > 300:  # Bluesky character limit
-        bluesky_text = bluesky_text[:297] + "..."
+    # Generate custom text for Bluesky based on format
+    format_name = focused_channel.format.capitalize()
+    bluesky_text = f"{format_name} meta update #mtg #{focused_channel.format}"
 
     # Handle images
     image_urls = []

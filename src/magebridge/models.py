@@ -59,6 +59,15 @@ class FocusedChannel(Base, TimestampMixin):
         UniqueConstraint("guild_id", "channel_id", name="uq_guild_channel"),
     )
 
+    @property
+    def format(self):
+        """Extract the format from the channel name (first word before hyphen)."""
+        return (
+            self.channel_name.split("-")[0]
+            if "-" in self.channel_name
+            else self.channel_name
+        )
+
     def __repr__(self):
         return f"<FocusedChannel(guild_id={self.guild_id}, channel_name='{self.channel_name}')>"
 
