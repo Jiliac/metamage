@@ -93,14 +93,14 @@ async def process_historical_messages():
             start_date = datetime(2025, 8, 20, tzinfo=timezone.utc)
 
             # Get the last processed message time for this channel
-            # last_pass = (
-            #     session.query(Pass)
-            #     .filter_by(pass_type=f"history_{focused_channel.channel_id}")
-            #     .order_by(Pass.start_time.desc())
-            #     .first()
-            # )
-            # if last_pass and last_pass.last_processed_time:
-            #     start_date = last_pass.last_processed_time
+            last_pass = (
+                session.query(Pass)
+                .filter_by(pass_type=f"history_{focused_channel.channel_id}")
+                .order_by(Pass.start_time.desc())
+                .first()
+            )
+            if last_pass and last_pass.last_processed_time:
+                start_date = last_pass.last_processed_time
 
             # Create a new pass record
             current_pass = Pass(
