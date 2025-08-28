@@ -138,13 +138,52 @@ class MTGChatAgent:
                     messages.append(("assistant", prev_assistant))
                 messages.append(("user", user_input))
 
-                response = await self.agent.ainvoke(
+                # Stream the agent execution to see internal steps
+                assistant_message = ""
+                async for event in self.agent.astream(
                     {"messages": messages}, config={"recursion_limit": 50}
-                )
+                ):
+                    # Handle different types of events
+                    if "agent" in event:
+                        # Agent is thinking/responding
+                        agent_messages = event["agent"].get("messages", [])
+                        if agent_messages:
+                            latest_message = agent_messages[-1]
+                            if (
+                                hasattr(latest_message, "content")
+                                and latest_message.content
+                            ):
+                                content = latest_message.content
+                                # Show all agent thoughts, save final response
+                                print(f"💭 Agent: {content}")
+                                assistant_message = content
+                            else:
+                                print("Agent with no content ???")
 
-                # Extract and display response
-                assistant_message = response["messages"][-1].content
-                print(f"\n🤖 Assistant: {assistant_message}")
+                    elif "tools" in event:
+                        # Agent is calling tools
+                        tool_messages = event["tools"].get("messages", [])
+                        for tool_msg in tool_messages:
+                            print(f"📊 Tool Result: {tool_msg}")
+                            # if hasattr(tool_msg, "tool_calls"):
+                            #     for tool_call in tool_msg.tool_calls:
+                            #         print(f"🔧 Tool Call: {tool_call['name']}")
+                            #         print(f"   Full Args: {tool_call.get('args', {})}")
+                            # elif hasattr(tool_msg, "content") and tool_msg.content:
+                            #     # Full tool response
+                            #     print(f"📊 Tool Result: {tool_msg.content}")
+
+                    else:
+                        # Handle any other event types we discover
+                        for key, value in event.items():
+                            if key not in ["agent", "tools"]:
+                                print(f"❓ Unknown event '{key}': {value}")
+
+                # Display final response if we got one
+                if assistant_message:
+                    print(f"\n🤖 Assistant: {assistant_message}")
+                else:
+                    print("\n🤖 Assistant: [No final response captured]")
 
                 # Store in history
                 self.conversation_history.append((user_input, assistant_message))
