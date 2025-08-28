@@ -1,3 +1,4 @@
+from typing import Dict, Any
 from sqlalchemy import text
 
 from .utils import engine
@@ -68,7 +69,7 @@ def _find_archetype_fuzzy(archetype_name: str):
 
 @log_tool_calls
 @mcp.tool
-def get_archetype_overview(archetype_name: str, ctx: Context = None) -> str:
+def get_archetype_overview(archetype_name: str, ctx: Context = None) -> Dict[str, Any]:
     """
     Get archetype overview with recent performance and key cards.
     Uses fuzzy matching to find archetypes by partial name.
@@ -98,7 +99,9 @@ def get_archetype_overview(archetype_name: str, ctx: Context = None) -> str:
     arch_match = _find_archetype_fuzzy(archetype_name)
 
     if not arch_match:
-        return f"Archetype '{archetype_name}' not found. Try a different name or check spelling."
+        return {
+            "error": f"Archetype '{archetype_name}' not found. Try a different name or check spelling."
+        }
 
     # Use the found archetype name for the main query
     found_name = arch_match["name"]
@@ -106,8 +109,10 @@ def get_archetype_overview(archetype_name: str, ctx: Context = None) -> str:
     # Get archetype info with recent performance
     sql = """
         SELECT 
+            a.id as archetype_id,
             a.name as archetype_name,
             f.name as format_name,
+            f.id as format_id,
             COUNT(DISTINCT te.id) as recent_entries,
             COUNT(DISTINCT t.id) as tournaments_played,
             ROUND(
@@ -120,7 +125,7 @@ def get_archetype_overview(archetype_name: str, ctx: Context = None) -> str:
         LEFT JOIN tournaments t ON te.tournament_id = t.id AND t.date >= date('now', '-30 days')
         LEFT JOIN matches m ON te.id = m.entry_id AND m.entry_id < m.opponent_entry_id
         WHERE LOWER(a.name) = LOWER(:archetype_name)
-        GROUP BY a.id, a.name, f.name
+        GROUP BY a.id, a.name, f.name, f.id
     """
 
     with engine.connect() as conn:
@@ -150,23 +155,22 @@ def get_archetype_overview(archetype_name: str, ctx: Context = None) -> str:
     with engine.connect() as conn:
         cards = conn.execute(text(cards_sql), {"archetype_name": found_name}).fetchall()
 
-    cards_summary = "\n".join(
-        [
-            f"  {c.card_name}: {c.avg_copies} avg copies ({c.decks_playing} decks)"
+    return {
+        "archetype_id": arch_info["archetype_id"],
+        "archetype_name": arch_info["archetype_name"],
+        "format_id": arch_info["format_id"],
+        "format_name": arch_info["format_name"],
+        "recent_performance": {
+            "tournament_entries": arch_info["recent_entries"] or 0,
+            "tournaments_played": arch_info["tournaments_played"] or 0,
+            "winrate_percent": arch_info["winrate_no_draws"],
+        },
+        "key_cards": [
+            {
+                "name": c.card_name,
+                "avg_copies": c.avg_copies,
+                "decks_playing": c.decks_playing,
+            }
             for c in cards
-        ]
-    )
-
-    return f"""# Archetype: {arch_info["archetype_name"]}
-
-## Format & Recent Performance (Last 30 Days)
-- **Format**: {arch_info["format_name"]}
-- **Tournament Entries**: {arch_info["recent_entries"] or 0}
-- **Tournaments**: {arch_info["tournaments_played"] or 0}
-- **Winrate**: {arch_info["winrate_no_draws"] or "N/A"}%
-
-## Key Cards (Main Deck)
-{cards_summary or "No recent deck data available"}
-
-*Use get_archetype_cards() for complete card analysis*
-"""
+        ],
+    }
