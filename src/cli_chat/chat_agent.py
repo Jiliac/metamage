@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
 from langchain_openai import ChatOpenAI
 from langchain_xai import ChatXAI
-from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
+from langgraph.prebuilt import create_react_agent
 
 from .mcp_client import create_mcp_client
 from .system_prompt import get_metamage_system_prompt
@@ -22,8 +22,7 @@ class MTGChatAgent:
     """CLI chat agent for MTG tournament analysis."""
 
     def __init__(self, provider="claude"):
-        self.llm = None
-        self.tools = None
+        self.agent = None
         self.conversation_history = []
         self.provider = provider
 
@@ -57,30 +56,29 @@ class MTGChatAgent:
             # Create MCP client and get tools
             print("📡 Connecting to MCP server...")
             tools, format_context = await create_mcp_client()
-            self.tools = tools
 
             # Create LLM based on provider
             if self.provider == "claude":
                 print("🧠 Initializing Claude Sonnet...")
-                base_llm = ChatAnthropic(
+                llm = ChatAnthropic(
                     model="claude-sonnet-4-20250514",
                     max_tokens=4096,
                 )
             elif self.provider == "opus":
                 print("🧠 Initializing Claude Opus...")
-                base_llm = ChatAnthropic(
+                llm = ChatAnthropic(
                     model="claude-opus-4-1-20250805",
                     max_tokens=4096,
                 )
             elif self.provider == "xai":
                 print("🧠 Initializing xAI Grok...")
-                base_llm = ChatXAI(
+                llm = ChatXAI(
                     model="grok-2-1212",
                     max_tokens=4096,
                 )
             elif self.provider == "gpt5":
                 print("🧠 Initializing OpenAI GPT-5...")
-                base_llm = ChatOpenAI(
+                llm = ChatOpenAI(
                     model="gpt-5",
                     max_tokens=4096,
                 )
@@ -88,14 +86,12 @@ class MTGChatAgent:
                 print(f"❌ Error: Unknown provider '{self.provider}'")
                 return False
 
-            # Bind tools to LLM directly
-            print("🔧 Binding tools to LLM...")
-            self.llm = base_llm.bind_tools(tools)
+            # Create ReAct agent with MCP tools
+            print("🤖 Creating ReAct agent...")
+            system_prompt = get_metamage_system_prompt() + format_context
+            self.agent = create_react_agent(llm, tools, prompt=system_prompt)
 
-            # Store system prompt with format context
-            self.system_prompt = get_metamage_system_prompt() + format_context
-
-            print("✅ LLM setup complete!")
+            print("✅ Agent setup complete!")
             return True
 
         except Exception as e:
@@ -132,20 +128,22 @@ class MTGChatAgent:
                     print("🧹 Conversation history cleared.")
                     continue
 
-                # Process query with LLM directly
+                # Process query with agent
                 print("🤔 Analyzing...")
 
                 # Build full message history
-                messages = [HumanMessage(content=self.system_prompt)]
+                messages = []
                 for prev_user, prev_assistant in self.conversation_history:
-                    messages.append(HumanMessage(content=prev_user))
-                    messages.append(AIMessage(content=prev_assistant))
-                messages.append(HumanMessage(content=user_input))
+                    messages.append(("user", prev_user))
+                    messages.append(("assistant", prev_assistant))
+                messages.append(("user", user_input))
 
-                # Manual tool calling loop
-                assistant_message = await self._run_tool_calling_loop(messages)
+                response = await self.agent.ainvoke(
+                    {"messages": messages}, config={"recursion_limit": 50}
+                )
 
-                # Display final response
+                # Extract and display response
+                assistant_message = response["messages"][-1].content
                 print(f"\n🤖 Assistant: {assistant_message}")
 
                 # Store in history
@@ -157,60 +155,6 @@ class MTGChatAgent:
             except Exception as e:
                 print(f"\n❌ Error: {e}")
                 print("Please try again or type /quit to exit.")
-
-    async def _run_tool_calling_loop(self, messages):
-        """Run manual tool calling loop with detailed logging."""
-        max_iterations = 10
-        iteration = 0
-
-        while iteration < max_iterations:
-            iteration += 1
-            print(f"\n🔄 Iteration {iteration}")
-
-            # Call LLM
-            print("💭 LLM thinking...")
-            response = await self.llm.ainvoke(messages)
-
-            # Show LLM response
-            if response.content:
-                print(f"🧠 LLM Response: {response.content}")
-
-            # Check for tool calls
-            if not response.tool_calls:
-                print("✅ No more tool calls - conversation complete")
-                return response.content
-
-            # Execute tool calls
-            messages.append(response)  # Add LLM response to history
-
-            for tool_call in response.tool_calls:
-                print(f"\n🔧 Tool Call: {tool_call['name']}")
-                print(f"   Args: {tool_call['args']}")
-
-                # Find and execute the tool
-                tool_result = None
-                for tool in self.tools:
-                    if tool.name == tool_call["name"]:
-                        try:
-                            tool_result = await tool.ainvoke(tool_call["args"])
-                            print(f"📊 Tool Result: {tool_result}")
-                            break
-                        except Exception as e:
-                            tool_result = f"Error: {e}"
-                            print(f"❌ Tool Error: {e}")
-                            break
-
-                if tool_result is None:
-                    tool_result = f"Tool '{tool_call['name']}' not found"
-                    print(f"❌ {tool_result}")
-
-                # Add tool result to message history
-                messages.append(
-                    ToolMessage(content=str(tool_result), tool_call_id=tool_call["id"])
-                )
-
-        print(f"\n⚠️ Reached max iterations ({max_iterations})")
-        return "I've reached the maximum number of reasoning steps. Please try a simpler question."
 
     def show_help(self):
         """Display help information."""
