@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <main className="container mx-auto px-6 py-16 flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] text-center">
+      <main className="container mx-auto px-6 pt-20 pb-16 flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] text-center">
         <div className="mb-8">
           <h1 className="text-6xl font-bold text-white mb-4">
             Meta<span className="text-cyan-400">Mage</span>
