@@ -7,6 +7,10 @@ from sqlalchemy import pool
 
 from alembic import context
 
+# add your model's MetaData object here
+# for 'autogenerate' support
+from ops_models.models import Base
+
 # Add src directory to path to import our models
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
@@ -18,10 +22,6 @@ config = context.config
 # This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
-
-# add your model's MetaData object here
-# for 'autogenerate' support
-from magebridge.models import Base
 
 target_metadata = Base.metadata
 
