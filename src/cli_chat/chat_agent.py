@@ -98,6 +98,43 @@ class MTGChatAgent:
             print(f"❌ Error setting up agent: {e}")
             return False
 
+    async def stream_agent(self, messages):
+        """Stream the agent execution and return final assistant message.
+
+        This was refactored out of chat_loop to allow future growth.
+        """
+        assistant_message = ""
+        async for event in self.agent.astream(
+            {"messages": messages}, config={"recursion_limit": 50}
+        ):
+            # Handle different types of events
+            if "agent" in event:
+                # Agent is thinking/responding
+                agent_messages = event["agent"].get("messages", [])
+                if agent_messages:
+                    latest_message = agent_messages[-1]
+                    if hasattr(latest_message, "content") and latest_message.content:
+                        content = latest_message.content
+                        # Show all agent thoughts, save final response
+                        print(f"💭 Agent: {content}")
+                        assistant_message = content
+                    else:
+                        print("Agent with no content ???")
+
+            elif "tools" in event:
+                # Agent is calling tools
+                tool_messages = event["tools"].get("messages", [])
+                for tool_msg in tool_messages:
+                    print(f"📊 Tool Result: {tool_msg}")
+
+            else:
+                # Handle any other event types we discover
+                for key, value in event.items():
+                    if key not in ["agent", "tools"]:
+                        print(f"❓ Unknown event '{key}': {value}")
+
+        return assistant_message
+
     async def chat_loop(self):
         """Main chat loop for interacting with the agent."""
         print("\n" + "=" * 50)
@@ -138,39 +175,7 @@ class MTGChatAgent:
                     messages.append(("assistant", prev_assistant))
                 messages.append(("user", user_input))
 
-                # Stream the agent execution to see internal steps
-                assistant_message = ""
-                async for event in self.agent.astream(
-                    {"messages": messages}, config={"recursion_limit": 50}
-                ):
-                    # Handle different types of events
-                    if "agent" in event:
-                        # Agent is thinking/responding
-                        agent_messages = event["agent"].get("messages", [])
-                        if agent_messages:
-                            latest_message = agent_messages[-1]
-                            if (
-                                hasattr(latest_message, "content")
-                                and latest_message.content
-                            ):
-                                content = latest_message.content
-                                # Show all agent thoughts, save final response
-                                print(f"💭 Agent: {content}")
-                                assistant_message = content
-                            else:
-                                print("Agent with no content ???")
-
-                    elif "tools" in event:
-                        # Agent is calling tools
-                        tool_messages = event["tools"].get("messages", [])
-                        for tool_msg in tool_messages:
-                            print(f"📊 Tool Result: {tool_msg}")
-
-                    else:
-                        # Handle any other event types we discover
-                        for key, value in event.items():
-                            if key not in ["agent", "tools"]:
-                                print(f"❓ Unknown event '{key}': {value}")
+                assistant_message = await self.stream_agent(messages)
 
                 # Display final response if we got one
                 if assistant_message:
