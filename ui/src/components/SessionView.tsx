@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { SessionData, Message } from '@/types/chat'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 interface SessionViewProps {
   initialSession: SessionData
@@ -55,9 +57,17 @@ function MessageComponent({ message }: { message: Message }) {
       </CardHeader>
 
       <CardContent className="pt-0">
-        <div className="text-slate-300 whitespace-pre-wrap mb-3">
-          {message.content}
-        </div>
+        {message.messageType === 'agent_final' ? (
+          <div className="prose mb-3">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {message.content}
+            </ReactMarkdown>
+          </div>
+        ) : (
+          <div className="text-slate-300 whitespace-pre-wrap mb-3">
+            {message.content}
+          </div>
+        )}
 
         {message.toolCalls && message.toolCalls.length > 0 && (
           <div className="space-y-2">
@@ -146,7 +156,7 @@ export default function SessionView({ initialSession }: SessionViewProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="container mx-auto px-6 py-8">
+      <div className="container mx-auto px-6 py-8 max-w-4xl">
         <div className="mb-6">
           <Link
             href="/sessions"

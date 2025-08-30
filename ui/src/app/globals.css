@@ -120,3 +120,65 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  .prose {
+    @apply max-w-none;
+  }
+  
+  .prose h1 {
+    @apply text-2xl font-bold mb-4 text-white;
+  }
+  
+  .prose h2 {
+    @apply text-xl font-bold mb-3 text-white;
+  }
+  
+  .prose h3 {
+    @apply text-lg font-bold mb-2 text-white;
+  }
+  
+  .prose p {
+    @apply mb-3 text-slate-300 leading-relaxed;
+  }
+  
+  .prose strong {
+    @apply font-bold text-white;
+  }
+  
+  .prose ul, .prose ol {
+    @apply mb-4 pl-6;
+  }
+  
+  .prose li {
+    @apply mb-2 text-slate-300;
+  }
+  
+  .prose ul li {
+    @apply list-disc;
+  }
+  
+  .prose ol li {
+    @apply list-decimal;
+  }
+  
+  .prose a {
+    @apply text-cyan-400 hover:text-cyan-300 underline;
+  }
+  
+  .prose code {
+    @apply text-cyan-300 bg-slate-800 px-1 py-0.5 rounded text-sm;
+  }
+  
+  .prose pre {
+    @apply bg-slate-900 p-4 rounded overflow-x-auto mb-4;
+  }
+  
+  .prose pre code {
+    @apply bg-transparent p-0;
+  }
+  
+  .prose blockquote {
+    @apply border-l-4 border-slate-600 pl-4 italic text-slate-400 mb-4;
+  }
+}
