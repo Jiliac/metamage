@@ -43,7 +43,10 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    # Import here to use our database URL logic
+    from ops_model.base import _build_ops_database_url
+    
+    url = _build_ops_database_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -62,21 +65,27 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    # Import here to use our database engine logic
+    from ops_model.base import get_ops_engine, _build_ops_database_url
+    
+    connectable = get_ops_engine()
+    database_url = _build_ops_database_url()
+    is_sqlite = not database_url.startswith("postgresql://")
 
     with connectable.connect() as connection:
-        # Configure SQLite-specific options for better compatibility
-        context.configure(
-            connection=connection, 
-            target_metadata=target_metadata,
-            render_as_batch=True,  # Use batch operations for SQLite
-            compare_type=True,     # Enable type comparison
-            compare_server_default=True  # Enable server default comparison
-        )
+        # Configure database-specific options
+        context_config = {
+            "connection": connection,
+            "target_metadata": target_metadata,
+            "compare_type": True,
+            "compare_server_default": True
+        }
+        
+        # SQLite-specific configuration
+        if is_sqlite:
+            context_config["render_as_batch"] = True  # Use batch operations for SQLite
+        
+        context.configure(**context_config)
 
         with context.begin_transaction():
             context.run_migrations()

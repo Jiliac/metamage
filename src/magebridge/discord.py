@@ -5,7 +5,7 @@ import json
 
 from .logger import logger
 from .bluesky import bluesky_client
-from .db import get_bridge_session_factory
+from ..ops_model.base import get_ops_session_factory
 from ..ops_model.models import FocusedChannel, DiscordPost, SocialMessage, Pass
 
 
@@ -16,8 +16,7 @@ intents.messages = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Database session factory
-SessionFactory = get_bridge_session_factory()
+# Database session factory will be created when needed
 
 
 @bot.event
@@ -44,6 +43,7 @@ async def on_ready():
 
 async def ensure_focused_channels():
     """Ensure we have focused channels set up in the database."""
+    SessionFactory = get_ops_session_factory()
     session = SessionFactory()
     try:
         # Check if we have any focused channels
@@ -58,10 +58,14 @@ async def ensure_focused_channels():
                     if channel.name.endswith("-data-analysis") and hasattr(
                         channel, "history"
                     ):
+                        # Extract format from channel name (e.g., "modern-data-analysis" -> "modern")
+                        format_name = channel.name.replace("-data-analysis", "")
+
                         focused_channel = FocusedChannel(
                             guild_id=str(guild.id),
                             channel_id=str(channel.id),
                             channel_name=channel.name,
+                            format=format_name,
                             is_active=True,
                         )
                         session.add(focused_channel)
@@ -79,6 +83,7 @@ async def ensure_focused_channels():
 
 async def process_historical_messages():
     """Process historical messages from all focused channels."""
+    SessionFactory = get_ops_session_factory()
     session = SessionFactory()
     try:
         # Get all active focused channels
@@ -199,6 +204,7 @@ async def process_historical_messages():
 
 async def process_message(message):
     """Process a Discord message and post it to Bluesky"""
+    SessionFactory = get_ops_session_factory()
     session = SessionFactory()
     try:
         # First, save the Discord message to database
@@ -305,6 +311,7 @@ async def on_message(message):
         return
 
     # Check if message is from a focused channel
+    SessionFactory = get_ops_session_factory()
     session = SessionFactory()
     try:
         focused_channel = (

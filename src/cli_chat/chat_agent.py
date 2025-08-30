@@ -165,13 +165,6 @@ class MTGChatAgent:
                         tool_messages = event["tools"].get("messages", [])
                         for tool_msg in tool_messages:
                             print(f"📊 Tool Result: {tool_msg}")
-                            # if hasattr(tool_msg, "tool_calls"):
-                            #     for tool_call in tool_msg.tool_calls:
-                            #         print(f"🔧 Tool Call: {tool_call['name']}")
-                            #         print(f"   Full Args: {tool_call.get('args', {})}")
-                            # elif hasattr(tool_msg, "content") and tool_msg.content:
-                            #     # Full tool response
-                            #     print(f"📊 Tool Result: {tool_msg.content}")
 
                     else:
                         # Handle any other event types we discover

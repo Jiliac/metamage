@@ -51,7 +51,7 @@ def _build_ops_database_url() -> str:
     postgres_url = os.getenv("POSTGRES_URL")
     if postgres_url:
         return postgres_url
-    
+
     # Fall back to SQLite
     env_path = os.getenv("OPS_DB_PATH") or os.getenv("BRIDGE_DB_PATH")
     db_path = (
@@ -65,7 +65,7 @@ def _build_ops_database_url() -> str:
 def get_ops_engine():
     """Create and configure database engine with optimizations."""
     database_url = _build_ops_database_url()
-    
+
     # Configure based on database type
     if database_url.startswith("postgresql://"):
         # PostgreSQL configuration
