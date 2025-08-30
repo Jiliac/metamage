@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { SessionData, Message } from '@/types/chat'
+import { SessionData, Message, ToolCall } from '@/types/chat'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import ReactMarkdown from 'react-markdown'
@@ -9,142 +9,45 @@ interface SessionViewProps {
   initialSession: SessionData
 }
 
-function MessageComponent({ message }: { message: Message }) {
-  const getMessageIcon = () => {
-    switch (message.messageType) {
-      case 'user':
-        return '💬'
-      case 'agent_thought':
-        return '💭'
-      case 'agent_final':
-        return '🤖'
-      default:
-        return '📝'
+type Turn = {
+  user: Message
+  agentMessages: Message[]
+  toolCalls: ToolCall[]
+  startedAt: string
+}
+
+function labelizeToolName(name: string) {
+  return name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+function groupIntoTurns(messages: Message[]): Turn[] {
+  const turns: Turn[] = []
+  let current: Turn | null = null
+
+  for (const m of messages) {
+    if (m.messageType === 'user') {
+      if (current) turns.push(current)
+      current = {
+        user: m,
+        agentMessages: [],
+        toolCalls: m.toolCalls ?? [],
+        startedAt: m.createdAt,
+      }
+    } else {
+      if (!current) continue
+      if (m.toolCalls?.length) current.toolCalls.push(...m.toolCalls)
+      if (m.messageType === 'agent_thought' || m.messageType === 'agent_final') {
+        current.agentMessages.push(m)
+      }
     }
   }
-
-  const getMessageBg = () => {
-    switch (message.messageType) {
-      case 'user':
-        return 'bg-blue-900/20 border-blue-700'
-      case 'agent_thought':
-        return 'bg-purple-900/20 border-purple-700'
-      case 'agent_final':
-        return 'bg-cyan-900/20 border-cyan-700'
-      default:
-        return 'bg-slate-800/50 border-slate-700'
-    }
-  }
-
-  return (
-    <Card className={`${getMessageBg()}`}>
-      <CardHeader className="pb-3">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">{getMessageIcon()}</span>
-          <CardTitle className="text-base font-semibold text-white capitalize">
-            {message.messageType.replace('_', ' ')}
-          </CardTitle>
-          <Badge variant="outline" className="text-slate-400 border-slate-600">
-            #{message.sequenceOrder}
-          </Badge>
-          <span className="text-xs text-slate-500 ml-auto">
-            {new Date(message.createdAt).toLocaleTimeString()}
-          </span>
-        </div>
-      </CardHeader>
-
-      <CardContent className="pt-0">
-        {message.messageType === 'agent_final' ? (
-          <div className="prose mb-3">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {message.content}
-            </ReactMarkdown>
-          </div>
-        ) : (
-          <div className="text-slate-300 whitespace-pre-wrap mb-3">
-            {message.content}
-          </div>
-        )}
-
-        {message.toolCalls && message.toolCalls.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-slate-400">
-              Tool Calls:
-            </h4>
-            {message.toolCalls.map(toolCall => (
-              <Card
-                key={toolCall.id}
-                className="bg-slate-900/50 border-slate-700"
-              >
-                <CardHeader className="pb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-yellow-400">🔧</span>
-                    <Badge
-                      variant="secondary"
-                      className="font-mono text-yellow-300 bg-yellow-900/20 border-yellow-700"
-                    >
-                      {toolCall.toolName}
-                    </Badge>
-                    <span className="text-xs text-slate-500">
-                      ({toolCall.callId})
-                    </span>
-                  </div>
-                </CardHeader>
-
-                <CardContent>
-                  <details className="mb-2">
-                    <summary className="cursor-pointer text-slate-400 hover:text-slate-300">
-                      Input Parameters
-                    </summary>
-                    <pre className="text-xs text-slate-400 mt-2 overflow-x-auto">
-                      {JSON.stringify(toolCall.inputParams, null, 2)}
-                    </pre>
-                  </details>
-
-                  {toolCall.toolResult && (
-                    <div
-                      className={`p-2 rounded ${!toolCall.toolResult.success && 'bg-red-900/20'}`}
-                    >
-                      {!toolCall.toolResult.success && (
-                        <div className="flex items-center gap-2 mb-1">
-                          <span>❌</span>
-                          <Badge variant="destructive" className="text-xs">
-                            Error
-                          </Badge>
-                        </div>
-                      )}
-
-                      {toolCall.toolResult.errorMessage && (
-                        <p className="text-red-400 text-xs mb-2">
-                          {toolCall.toolResult.errorMessage}
-                        </p>
-                      )}
-
-                      <details>
-                        <summary className="cursor-pointer text-slate-400 hover:text-slate-300 text-xs">
-                          Result Content
-                        </summary>
-                        <pre className="text-xs text-slate-400 mt-1 overflow-x-auto max-h-32 overflow-y-auto">
-                          {JSON.stringify(
-                            toolCall.toolResult.resultContent,
-                            null,
-                            2
-                          )}
-                        </pre>
-                      </details>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
+  if (current) turns.push(current)
+  return turns
 }
 
 export default function SessionView({ initialSession }: SessionViewProps) {
+  const turns = groupIntoTurns(initialSession.messages)
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <div className="container mx-auto px-6 py-8 max-w-4xl pt-20">
@@ -166,7 +69,7 @@ export default function SessionView({ initialSession }: SessionViewProps) {
           </div>
 
           <div className="flex items-center gap-4 text-sm text-slate-400">
-            <span>{initialSession.messages.length} messages</span>
+            <span>{turns.length} requests</span>
             <span>
               Started {new Date(initialSession.createdAt).toLocaleString()}
             </span>
@@ -174,9 +77,79 @@ export default function SessionView({ initialSession }: SessionViewProps) {
         </div>
 
         <div className="space-y-4">
-          {initialSession.messages.map(message => (
-            <MessageComponent key={message.id} message={message} />
-          ))}
+          {turns.map((turn, idx) => {
+            const agentMarkdown =
+              turn.agentMessages.length > 0
+                ? turn.agentMessages.map(m => m.content).join('\n\n')
+                : ''
+
+            return (
+              <Card key={turn.user.id} className="bg-slate-800/50 border-slate-700">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">💬</span>
+                    <CardTitle className="text-base font-semibold text-white">
+                      User
+                    </CardTitle>
+                    <Badge
+                      variant="outline"
+                      className="text-slate-400 border-slate-600"
+                    >
+                      #{idx + 1}
+                    </Badge>
+                    <span className="text-xs text-slate-500 ml-auto">
+                      {new Date(turn.startedAt).toLocaleTimeString()}
+                    </span>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="pt-0">
+                  <div className="text-slate-300 whitespace-pre-wrap mb-4">
+                    {turn.user.content}
+                  </div>
+
+                  {turn.toolCalls.length > 0 && (
+                    <div className="mb-4">
+                      <div className="text-sm font-semibold text-slate-400 mb-2">
+                        Tools used
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {turn.toolCalls.map(tc => (
+                          <Badge
+                            key={tc.id}
+                            variant="secondary"
+                            className="font-mono text-yellow-300 bg-yellow-900/20 border border-yellow-700"
+                            title={tc.toolName}
+                          >
+                            {labelizeToolName(tc.toolName)}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-lg">🤖</span>
+                      <span className="text-white font-semibold">Assistant</span>
+                    </div>
+
+                    {agentMarkdown ? (
+                      <div className="prose">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {agentMarkdown}
+                        </ReactMarkdown>
+                      </div>
+                    ) : (
+                      <div className="text-slate-400 text-sm italic">
+                        Working on it…
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       </div>
     </div>
