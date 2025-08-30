@@ -14,7 +14,7 @@ class ChatSession(Base, TimestampMixin):
 
     # Relationships
     messages = relationship(
-        "ChatMessage", back_populates="session", cascade="all, delete-orphan"
+        "ChatMessage", back_populates="session", passive_deletes=True
     )
 
     def __repr__(self):
@@ -29,7 +29,9 @@ class ChatMessage(Base, TimestampMixin):
     id = uuid_pk()
     session_id = Column(
         String(36),
-        ForeignKey("chat_sessions.id", name="fk_chat_message_session"),
+        ForeignKey(
+            "chat_sessions.id", name="fk_chat_message_session", ondelete="CASCADE"
+        ),
         nullable=False,
         index=True,
     )
@@ -42,7 +44,7 @@ class ChatMessage(Base, TimestampMixin):
     # Relationships
     session = relationship("ChatSession", back_populates="messages")
     tool_calls = relationship(
-        "ToolCall", back_populates="message", cascade="all, delete-orphan"
+        "ToolCall", back_populates="message", passive_deletes=True
     )
 
     def __repr__(self):
@@ -57,7 +59,7 @@ class ToolCall(Base, TimestampMixin):
     id = uuid_pk()
     message_id = Column(
         String(36),
-        ForeignKey("chat_messages.id", name="fk_tool_call_message"),
+        ForeignKey("chat_messages.id", name="fk_tool_call_message", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -73,7 +75,7 @@ class ToolCall(Base, TimestampMixin):
         "ToolResult",
         back_populates="tool_call",
         uselist=False,
-        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     def __repr__(self):
@@ -88,7 +90,7 @@ class ToolResult(Base, TimestampMixin):
     id = uuid_pk()
     tool_call_id = Column(
         String(36),
-        ForeignKey("tool_calls.id", name="fk_tool_result_call"),
+        ForeignKey("tool_calls.id", name="fk_tool_result_call", ondelete="CASCADE"),
         nullable=False,
         unique=True,  # 1-to-1 relationship
         index=True,

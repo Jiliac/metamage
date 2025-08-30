@@ -40,7 +40,7 @@ def upgrade() -> None:
     sa.Column('sequence_order', sa.Integer(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.ForeignKeyConstraint(['session_id'], ['chat_sessions.id'], name='fk_chat_message_session'),
+    sa.ForeignKeyConstraint(['session_id'], ['chat_sessions.id'], name='fk_chat_message_session', ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_chat_messages_sequence_order'), 'chat_messages', ['sequence_order'], unique=False)
@@ -55,7 +55,7 @@ def upgrade() -> None:
     sa.Column('call_id', sa.String(length=100), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.ForeignKeyConstraint(['message_id'], ['chat_messages.id'], name='fk_tool_call_message'),
+    sa.ForeignKeyConstraint(['message_id'], ['chat_messages.id'], name='fk_tool_call_message', ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('tool_calls', schema=None) as batch_op:
@@ -71,7 +71,7 @@ def upgrade() -> None:
     sa.Column('error_message', sa.Text(), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.ForeignKeyConstraint(['tool_call_id'], ['tool_calls.id'], name='fk_tool_result_call'),
+    sa.ForeignKeyConstraint(['tool_call_id'], ['tool_calls.id'], name='fk_tool_result_call', ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('tool_results', schema=None) as batch_op:
@@ -93,4 +93,9 @@ def downgrade() -> None:
         batch_op.drop_index(batch_op.f('ix_tool_calls_call_id'))
 
     op.drop_table('tool_calls')
+    
+    op.drop_index(op.f('ix_chat_messages_session_id'), 'chat_messages')
+    op.drop_index(op.f('ix_chat_messages_sequence_order'), 'chat_messages')
+    op.drop_table('chat_messages')
+    op.drop_table('chat_sessions')
     # ### end Alembic commands ###

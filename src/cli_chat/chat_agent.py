@@ -122,29 +122,47 @@ class MTGChatAgent:
                 if agent_messages:
                     latest_message = agent_messages[-1]
                     if hasattr(latest_message, "content") and latest_message.content:
-                        content = latest_message.content
+                        content_items = latest_message.content
 
-                        # Log agent thought and get message ID for tool call linking
-                        if self.session_id:
-                            current_message_id = self.logger.log_agent_thought(
-                                self.session_id, str(content)
-                            )
+                        # Extract text content and tool calls separately
+                        text_parts = []
+                        tool_calls = []
+                        readable_content = ""
 
-                        # Parse and log tool calls if present
-                        if hasattr(latest_message.content, "__iter__"):
-                            for item in latest_message.content:
-                                if hasattr(item, "type") and item.type == "tool_use":
-                                    if current_message_id:
-                                        self.logger.log_tool_call(
-                                            current_message_id,
-                                            item.name,
-                                            item.input,
-                                            item.id,
-                                        )
+                        for item in content_items:
+                            if isinstance(item, dict) and "type" in item:
+                                if item["type"] == "text":
+                                    text_parts.append(item.get("text", str(item)))
+                                elif item["type"] == "tool_use":
+                                    tool_calls.append(item)
 
-                        # Show all agent thoughts, save final response
-                        print(f"💭 Agent: {content}")
-                        assistant_message = content
+                        if text_parts:
+                            readable_content = " ".join(text_parts)
+                            # Log agent thought with readable text only
+                            if self.session_id and readable_content.strip():
+                                current_message_id = self.logger.log_agent_thought(
+                                    self.session_id, readable_content
+                                )
+                        elif isinstance(content_items, str):
+                            # Handle when message itself is a string
+                            assistant_message = content_items
+                        elif not tool_calls:
+                            print(f"ISSUE: {content_items}\t\t{tool_calls}")
+
+                        # Log tool calls separately
+                        for tool_call in tool_calls:
+                            if current_message_id:
+                                self.logger.log_tool_call(
+                                    current_message_id,
+                                    tool_call.get("name"),
+                                    tool_call.get("input"),
+                                    tool_call.get("id"),
+                                )
+
+                        # Show readable content to user
+                        if readable_content.strip():
+                            print(f"💭 Agent: {readable_content}")
+                            assistant_message = readable_content
                     else:
                         print("Agent with no content ???")
 
@@ -155,16 +173,28 @@ class MTGChatAgent:
                     print(f"📊 Tool Result: {tool_msg}")
 
                     # Log tool results
-                    if hasattr(tool_msg, "tool_call_id") and self.session_id:
+                    tool_call_id_value = None
+                    if hasattr(tool_msg, "tool_call_id"):
+                        tool_call_id_value = tool_msg.tool_call_id
+                    elif isinstance(tool_msg, dict) and "tool_call_id" in tool_msg:
+                        tool_call_id_value = tool_msg["tool_call_id"]
+
+                    if tool_call_id_value and self.session_id:
                         tool_call_id = self.logger.find_tool_call_by_call_id(
-                            tool_msg.tool_call_id
+                            tool_call_id_value
                         )
                         if tool_call_id:
+                            content = None
+                            if hasattr(tool_msg, "content"):
+                                content = str(tool_msg.content)
+                            elif isinstance(tool_msg, dict) and "content" in tool_msg:
+                                content = str(tool_msg["content"])
+                            else:
+                                content = str(tool_msg)
+
                             self.logger.log_tool_result(
                                 tool_call_id,
-                                str(tool_msg.content)
-                                if hasattr(tool_msg, "content")
-                                else str(tool_msg),
+                                content,
                                 success=True,
                             )
 
