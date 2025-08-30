@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { SessionData, Message, ToolCall } from '@/types/chat'
+import { SessionData, Message } from '@/types/chat'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import ReactMarkdown from 'react-markdown'
@@ -79,11 +79,6 @@ export default function SessionView({ initialSession }: SessionViewProps) {
 
         <div className="space-y-4">
           {turns.map((turn, idx) => {
-            const agentMarkdown =
-              turn.agentMessages.length > 0
-                ? turn.agentMessages.map(m => m.content).join('\n\n')
-                : ''
-
             return (
               <Card
                 key={turn.user.id}
@@ -117,10 +112,14 @@ export default function SessionView({ initialSession }: SessionViewProps) {
                   <div className="mt-4">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-lg">🤖</span>
-                      <span className="text-white font-semibold">Assistant</span>
+                      <span className="text-white font-semibold">
+                        Assistant
+                      </span>
                     </div>
 
-                    {turn.agentMessages.filter(m => m.messageType === 'agent_thought').length > 0 ? (
+                    {turn.agentMessages.filter(
+                      m => m.messageType === 'agent_thought'
+                    ).length > 0 ? (
                       <div className="space-y-3">
                         {turn.agentMessages
                           .filter(m => m.messageType === 'agent_thought')
@@ -153,15 +152,20 @@ export default function SessionView({ initialSession }: SessionViewProps) {
                           ))}
                       </div>
                     ) : (
-                      <div className="text-slate-400 text-sm italic">Working on it…</div>
+                      <div className="text-slate-400 text-sm italic">
+                        Working on it…
+                      </div>
                     )}
 
-                    {turn.agentMessages.find(m => m.messageType === 'agent_final') && (
+                    {turn.agentMessages.find(
+                      m => m.messageType === 'agent_final'
+                    ) && (
                       <div className="prose mt-4">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                           {
-                            turn.agentMessages.find(m => m.messageType === 'agent_final')!
-                              .content
+                            turn.agentMessages.find(
+                              m => m.messageType === 'agent_final'
+                            )!.content
                           }
                         </ReactMarkdown>
                       </div>
