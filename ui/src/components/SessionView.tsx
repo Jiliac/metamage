@@ -3,6 +3,8 @@
 import { useSessionUpdates } from '@/hooks/useSessionUpdates'
 import Link from 'next/link'
 import { SessionData, Message } from '@/types/chat'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 
 interface SessionViewProps {
   initialSession: SessionData
@@ -36,72 +38,84 @@ function MessageComponent({ message }: { message: Message }) {
   }
 
   return (
-    <div className={`border rounded-lg p-4 ${getMessageBg()}`}>
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-lg">{getMessageIcon()}</span>
-        <span className="font-semibold text-white capitalize">
-          {message.messageType.replace('_', ' ')}
-        </span>
-        <span className="text-sm text-slate-400">
-          #{message.sequenceOrder}
-        </span>
-        <span className="text-xs text-slate-500 ml-auto">
-          {new Date(message.createdAt).toLocaleTimeString()}
-        </span>
-      </div>
+    <Card className={`${getMessageBg()}`}>
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">{getMessageIcon()}</span>
+          <CardTitle className="text-base font-semibold text-white capitalize">
+            {message.messageType.replace('_', ' ')}
+          </CardTitle>
+          <Badge variant="outline" className="text-slate-400 border-slate-600">
+            #{message.sequenceOrder}
+          </Badge>
+          <span className="text-xs text-slate-500 ml-auto">
+            {new Date(message.createdAt).toLocaleTimeString()}
+          </span>
+        </div>
+      </CardHeader>
 
-      <div className="text-slate-300 whitespace-pre-wrap mb-3">
-        {message.content}
-      </div>
+      <CardContent className="pt-0">
+        <div className="text-slate-300 whitespace-pre-wrap mb-3">
+          {message.content}
+        </div>
 
-      {message.toolCalls && message.toolCalls.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-sm font-semibold text-slate-400">Tool Calls:</h4>
-          {message.toolCalls.map((toolCall) => (
-            <div key={toolCall.id} className="bg-slate-900/50 rounded-lg p-3 text-sm">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-yellow-400">🔧</span>
-                <span className="font-mono text-yellow-300">{toolCall.toolName}</span>
-                <span className="text-xs text-slate-500">({toolCall.callId})</span>
-              </div>
+        {message.toolCalls && message.toolCalls.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold text-slate-400">Tool Calls:</h4>
+            {message.toolCalls.map((toolCall) => (
+              <Card key={toolCall.id} className="bg-slate-900/50 border-slate-700">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-yellow-400">🔧</span>
+                    <Badge variant="secondary" className="font-mono text-yellow-300 bg-yellow-900/20 border-yellow-700">
+                      {toolCall.toolName}
+                    </Badge>
+                    <span className="text-xs text-slate-500">({toolCall.callId})</span>
+                  </div>
+                </CardHeader>
 
-              <details className="mb-2">
-                <summary className="cursor-pointer text-slate-400 hover:text-slate-300">
-                  Input Parameters
-                </summary>
-                <pre className="text-xs text-slate-400 mt-2 overflow-x-auto">
-                  {JSON.stringify(toolCall.inputParams, null, 2)}
-                </pre>
-              </details>
-
-              {toolCall.toolResult && (
-                <div className={`p-2  ${!toolCall.toolResult.success && 'rounded bg-red-900/20'}`}>
-                  {!toolCall.toolResult.success && (<div className="flex items-center gap-2 mb-1">
-                    <span>❌</span>
-                    <span className="text-xs font-semibold">Error</span>
-                  </div>)}
-
-                  {toolCall.toolResult.errorMessage && (
-                    <p className="text-red-400 text-xs mb-2">
-                      {toolCall.toolResult.errorMessage}
-                    </p>
-                  )}
-
-                  <details>
-                    <summary className="cursor-pointer text-slate-400 hover:text-slate-300 text-xs">
-                      Result Content
+                <CardContent>
+                  <details className="mb-2">
+                    <summary className="cursor-pointer text-slate-400 hover:text-slate-300">
+                      Input Parameters
                     </summary>
-                    <pre className="text-xs text-slate-400 mt-1 overflow-x-auto max-h-32 overflow-y-auto">
-                      {JSON.stringify(toolCall.toolResult.resultContent, null, 2)}
+                    <pre className="text-xs text-slate-400 mt-2 overflow-x-auto">
+                      {JSON.stringify(toolCall.inputParams, null, 2)}
                     </pre>
                   </details>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+
+                  {toolCall.toolResult && (
+                    <div className={`p-2 rounded ${!toolCall.toolResult.success && 'bg-red-900/20'}`}>
+                      {!toolCall.toolResult.success && (
+                        <div className="flex items-center gap-2 mb-1">
+                          <span>❌</span>
+                          <Badge variant="destructive" className="text-xs">Error</Badge>
+                        </div>
+                      )}
+
+                      {toolCall.toolResult.errorMessage && (
+                        <p className="text-red-400 text-xs mb-2">
+                          {toolCall.toolResult.errorMessage}
+                        </p>
+                      )}
+
+                      <details>
+                        <summary className="cursor-pointer text-slate-400 hover:text-slate-300 text-xs">
+                          Result Content
+                        </summary>
+                        <pre className="text-xs text-slate-400 mt-1 overflow-x-auto max-h-32 overflow-y-auto">
+                          {JSON.stringify(toolCall.toolResult.resultContent, null, 2)}
+                        </pre>
+                      </details>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
