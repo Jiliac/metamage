@@ -79,10 +79,6 @@ export default async function SessionsPage() {
                       Session {session.id.substring(0, 8)}...
                     </h3>
                     <div className="flex items-center gap-4 text-sm text-slate-400">
-                      <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 bg-cyan-400 rounded-full"></span>
-                        {session.provider.toUpperCase()}
-                      </span>
                       <span>{session.messageCount} messages</span>
                       <span>
                         {new Date(session.createdAt).toLocaleDateString()}
@@ -90,7 +86,7 @@ export default async function SessionsPage() {
                     </div>
                   </div>
                 </div>
-                
+
                 {session.lastMessage && (
                   <p className="text-slate-300 text-sm line-clamp-2">
                     {session.lastMessage}
