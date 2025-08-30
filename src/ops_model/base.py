@@ -39,11 +39,20 @@ def get_ops_database_path() -> str:
 
 def _build_ops_database_url() -> str:
     """
-    Build an absolute SQLite URL for the internal Ops database.
+    Build database URL for the internal Ops database.
 
-    Honors OPS_DB_PATH if set (preferred), otherwise BRIDGE_DB_PATH for backward compat,
-    else falls back to data/ops.db.
+    Priority order:
+    1. POSTGRES_URL (for Neon/PostgreSQL)
+    2. OPS_DB_PATH (custom SQLite path)
+    3. BRIDGE_DB_PATH (backward compatibility)
+    4. Default: data/ops.db (SQLite fallback)
     """
+    # Check for PostgreSQL URL first
+    postgres_url = os.getenv("POSTGRES_URL")
+    if postgres_url:
+        return postgres_url
+    
+    # Fall back to SQLite
     env_path = os.getenv("OPS_DB_PATH") or os.getenv("BRIDGE_DB_PATH")
     db_path = (
         os.path.abspath(env_path)
@@ -54,28 +63,43 @@ def _build_ops_database_url() -> str:
 
 
 def get_ops_engine():
-    """Create and configure SQLite engine with optimizations for the Ops database."""
-    engine = create_engine(
-        _build_ops_database_url(),
-        echo=False,
-        connect_args={
-            "check_same_thread": False,  # Allow multi-threading
-            "timeout": 20,  # Connection timeout
-        },
-        pool_pre_ping=True,
-        pool_recycle=300,
-    )
+    """Create and configure database engine with optimizations."""
+    database_url = _build_ops_database_url()
+    
+    # Configure based on database type
+    if database_url.startswith("postgresql://"):
+        # PostgreSQL configuration
+        engine = create_engine(
+            database_url,
+            echo=False,
+            pool_pre_ping=True,
+            pool_recycle=3600,  # Longer for cloud databases
+            pool_size=10,
+            max_overflow=20,
+        )
+    else:
+        # SQLite configuration
+        engine = create_engine(
+            database_url,
+            echo=False,
+            connect_args={
+                "check_same_thread": False,  # Allow multi-threading
+                "timeout": 20,  # Connection timeout
+            },
+            pool_pre_ping=True,
+            pool_recycle=300,
+        )
 
-    # Enable WAL mode and foreign keys for SQLite
-    @event.listens_for(engine, "connect")
-    def set_sqlite_pragma(dbapi_connection, connection_record):
-        cursor = dbapi_connection.cursor()
-        cursor.execute("PRAGMA journal_mode=WAL")
-        cursor.execute("PRAGMA foreign_keys=ON")
-        cursor.execute("PRAGMA synchronous=NORMAL")
-        cursor.execute("PRAGMA cache_size=10000")
-        cursor.execute("PRAGMA temp_store=memory")
-        cursor.close()
+        # Enable WAL mode and foreign keys for SQLite only
+        @event.listens_for(engine, "connect")
+        def set_sqlite_pragma(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.execute("PRAGMA synchronous=NORMAL")
+            cursor.execute("PRAGMA cache_size=10000")
+            cursor.execute("PRAGMA temp_store=memory")
+            cursor.close()
 
     return engine
 

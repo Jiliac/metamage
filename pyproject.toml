@@ -18,6 +18,8 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "langchain-xai>=0.2.5",
     "pillow>=11.3.0",
+    "psycopg2-binary>=2.9.9",
+    "httpx>=0.28.0",
 ]
 
 [dependency-groups]
