@@ -6,7 +6,7 @@ import json
 from .logger import logger
 from .bluesky import bluesky_client
 from .db import get_bridge_session_factory
-from .models import FocusedChannel, DiscordPost, SocialMessage, Pass
+from ..ops_model.models import FocusedChannel, DiscordPost, SocialMessage, Pass
 
 
 # Bot setup

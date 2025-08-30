@@ -7,12 +7,12 @@ from sqlalchemy import pool
 
 from alembic import context
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-from ops_models.models import Base
-
 # Add src directory to path to import our models
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+# add your model's MetaData object here
+# for 'autogenerate' support
+from ops_model.models import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
