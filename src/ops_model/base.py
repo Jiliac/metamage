@@ -45,7 +45,11 @@ def _build_ops_database_url() -> str:
     else falls back to data/ops.db.
     """
     env_path = os.getenv("OPS_DB_PATH") or os.getenv("BRIDGE_DB_PATH")
-    db_path = os.path.abspath(env_path) if env_path else os.path.abspath(get_ops_database_path())
+    db_path = (
+        os.path.abspath(env_path)
+        if env_path
+        else os.path.abspath(get_ops_database_path())
+    )
     return f"sqlite:///{db_path}"
 
 
@@ -56,7 +60,7 @@ def get_ops_engine():
         echo=False,
         connect_args={
             "check_same_thread": False,  # Allow multi-threading
-            "timeout": 20,               # Connection timeout
+            "timeout": 20,  # Connection timeout
         },
         pool_pre_ping=True,
         pool_recycle=300,
