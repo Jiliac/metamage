@@ -1,6 +1,3 @@
-'use client'
-
-import { useSessionUpdates } from '@/hooks/useSessionUpdates'
 import Link from 'next/link'
 import { SessionData, Message } from '@/types/chat'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -148,12 +145,6 @@ function MessageComponent({ message }: { message: Message }) {
 }
 
 export default function SessionView({ initialSession }: SessionViewProps) {
-  const { messages, error } = useSessionUpdates({
-    sessionId: initialSession.id,
-    initialMessages: initialSession.messages,
-    pollingInterval: 5000, // 5 seconds for more responsive updates
-  })
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <div className="container mx-auto px-6 py-8 max-w-4xl pt-20">
@@ -175,19 +166,15 @@ export default function SessionView({ initialSession }: SessionViewProps) {
           </div>
 
           <div className="flex items-center gap-4 text-sm text-slate-400">
-            <span>{messages.length} messages</span>
+            <span>{initialSession.messages.length} messages</span>
             <span>
               Started {new Date(initialSession.createdAt).toLocaleString()}
             </span>
           </div>
-
-          {error && (
-            <div className="mt-2 text-red-400 text-sm">Error: {error}</div>
-          )}
         </div>
 
         <div className="space-y-4">
-          {messages.map(message => (
+          {initialSession.messages.map(message => (
             <MessageComponent key={message.id} message={message} />
           ))}
         </div>
