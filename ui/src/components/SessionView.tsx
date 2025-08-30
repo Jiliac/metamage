@@ -36,7 +36,10 @@ function groupIntoTurns(messages: Message[]): Turn[] {
     } else {
       if (!current) continue
       if (m.toolCalls?.length) current.toolCalls.push(...m.toolCalls)
-      if (m.messageType === 'agent_thought' || m.messageType === 'agent_final') {
+      if (
+        m.messageType === 'agent_thought' ||
+        m.messageType === 'agent_final'
+      ) {
         current.agentMessages.push(m)
       }
     }
@@ -84,7 +87,10 @@ export default function SessionView({ initialSession }: SessionViewProps) {
                 : ''
 
             return (
-              <Card key={turn.user.id} className="bg-slate-800/50 border-slate-700">
+              <Card
+                key={turn.user.id}
+                className="bg-slate-800/50 border-slate-700"
+              >
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">💬</span>
@@ -131,7 +137,9 @@ export default function SessionView({ initialSession }: SessionViewProps) {
                   <div className="mt-4">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-lg">🤖</span>
-                      <span className="text-white font-semibold">Assistant</span>
+                      <span className="text-white font-semibold">
+                        Assistant
+                      </span>
                     </div>
 
                     {agentMarkdown ? (
