@@ -29,10 +29,7 @@ export async function GET(
     })
 
     if (!session) {
-      return NextResponse.json(
-        { error: 'Session not found' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
 
     const formattedSession = {
@@ -40,26 +37,29 @@ export async function GET(
       provider: session.provider,
       createdAt: session.createdAt.toISOString(),
       updatedAt: session.updatedAt.toISOString(),
-      messages: session.messages.map((message) => ({
+      messages: session.messages.map(message => ({
         id: message.id,
         messageType: message.messageType,
         content: message.content,
         sequenceOrder: message.sequenceOrder,
         createdAt: message.createdAt.toISOString(),
         ...(includeToolCalls && {
-          toolCalls: message.toolCalls.map((toolCall) => ({
+          toolCalls: message.toolCalls.map(toolCall => ({
             id: toolCall.id,
             toolName: toolCall.toolName,
             inputParams: toolCall.inputParams,
             callId: toolCall.callId,
             createdAt: toolCall.createdAt.toISOString(),
-            toolResult: includeToolCalls && toolCall.toolResult ? {
-              id: toolCall.toolResult.id,
-              resultContent: toolCall.toolResult.resultContent,
-              success: toolCall.toolResult.success,
-              errorMessage: toolCall.toolResult.errorMessage,
-              createdAt: toolCall.toolResult.createdAt.toISOString(),
-            } : null,
+            toolResult:
+              includeToolCalls && toolCall.toolResult
+                ? {
+                    id: toolCall.toolResult.id,
+                    resultContent: toolCall.toolResult.resultContent,
+                    success: toolCall.toolResult.success,
+                    errorMessage: toolCall.toolResult.errorMessage,
+                    createdAt: toolCall.toolResult.createdAt.toISOString(),
+                  }
+                : null,
           })),
         }),
       })),

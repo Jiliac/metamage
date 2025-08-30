@@ -12,7 +12,9 @@ export async function GET(
 
     // Build where clause for filtering by timestamp if provided
     const { id } = await params
-    const whereClause: { sessionId: string; createdAt?: { gt: Date } } = { sessionId: id }
+    const whereClause: { sessionId: string; createdAt?: { gt: Date } } = {
+      sessionId: id,
+    }
     if (since) {
       whereClause.createdAt = {
         gt: new Date(since),
@@ -33,26 +35,29 @@ export async function GET(
       },
     })
 
-    const formattedMessages = messages.map((message) => ({
+    const formattedMessages = messages.map(message => ({
       id: message.id,
       messageType: message.messageType,
       content: message.content,
       sequenceOrder: message.sequenceOrder,
       createdAt: message.createdAt.toISOString(),
       ...(includeToolCalls && {
-        toolCalls: message.toolCalls.map((toolCall) => ({
+        toolCalls: message.toolCalls.map(toolCall => ({
           id: toolCall.id,
           toolName: toolCall.toolName,
           inputParams: toolCall.inputParams,
           callId: toolCall.callId,
           createdAt: toolCall.createdAt.toISOString(),
-          toolResult: includeToolCalls && toolCall.toolResult ? {
-            id: toolCall.toolResult.id,
-            resultContent: toolCall.toolResult.resultContent,
-            success: toolCall.toolResult.success,
-            errorMessage: toolCall.toolResult.errorMessage,
-            createdAt: toolCall.toolResult.createdAt.toISOString(),
-          } : null,
+          toolResult:
+            includeToolCalls && toolCall.toolResult
+              ? {
+                  id: toolCall.toolResult.id,
+                  resultContent: toolCall.toolResult.resultContent,
+                  success: toolCall.toolResult.success,
+                  errorMessage: toolCall.toolResult.errorMessage,
+                  createdAt: toolCall.toolResult.createdAt.toISOString(),
+                }
+              : null,
         })),
       }),
     }))

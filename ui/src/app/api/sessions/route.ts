@@ -36,7 +36,7 @@ export async function GET(request: Request) {
       skip: offset,
     })
 
-    const formattedSessions = sessions.map((session) => ({
+    const formattedSessions = sessions.map(session => ({
       id: session.id,
       provider: session.provider,
       createdAt: session.createdAt.toISOString(),

@@ -1,0 +1,8 @@
+node_modules
+.next
+out
+build
+*.lock
+public/
+.env*
+next-env.d.ts

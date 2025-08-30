@@ -61,16 +61,26 @@ function MessageComponent({ message }: { message: Message }) {
 
         {message.toolCalls && message.toolCalls.length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-slate-400">Tool Calls:</h4>
-            {message.toolCalls.map((toolCall) => (
-              <Card key={toolCall.id} className="bg-slate-900/50 border-slate-700">
+            <h4 className="text-sm font-semibold text-slate-400">
+              Tool Calls:
+            </h4>
+            {message.toolCalls.map(toolCall => (
+              <Card
+                key={toolCall.id}
+                className="bg-slate-900/50 border-slate-700"
+              >
                 <CardHeader className="pb-2">
                   <div className="flex items-center gap-2">
                     <span className="text-yellow-400">🔧</span>
-                    <Badge variant="secondary" className="font-mono text-yellow-300 bg-yellow-900/20 border-yellow-700">
+                    <Badge
+                      variant="secondary"
+                      className="font-mono text-yellow-300 bg-yellow-900/20 border-yellow-700"
+                    >
                       {toolCall.toolName}
                     </Badge>
-                    <span className="text-xs text-slate-500">({toolCall.callId})</span>
+                    <span className="text-xs text-slate-500">
+                      ({toolCall.callId})
+                    </span>
                   </div>
                 </CardHeader>
 
@@ -85,11 +95,15 @@ function MessageComponent({ message }: { message: Message }) {
                   </details>
 
                   {toolCall.toolResult && (
-                    <div className={`p-2 rounded ${!toolCall.toolResult.success && 'bg-red-900/20'}`}>
+                    <div
+                      className={`p-2 rounded ${!toolCall.toolResult.success && 'bg-red-900/20'}`}
+                    >
                       {!toolCall.toolResult.success && (
                         <div className="flex items-center gap-2 mb-1">
                           <span>❌</span>
-                          <Badge variant="destructive" className="text-xs">Error</Badge>
+                          <Badge variant="destructive" className="text-xs">
+                            Error
+                          </Badge>
                         </div>
                       )}
 
@@ -104,7 +118,11 @@ function MessageComponent({ message }: { message: Message }) {
                           Result Content
                         </summary>
                         <pre className="text-xs text-slate-400 mt-1 overflow-x-auto max-h-32 overflow-y-auto">
-                          {JSON.stringify(toolCall.toolResult.resultContent, null, 2)}
+                          {JSON.stringify(
+                            toolCall.toolResult.resultContent,
+                            null,
+                            2
+                          )}
                         </pre>
                       </details>
                     </div>
@@ -120,12 +138,11 @@ function MessageComponent({ message }: { message: Message }) {
 }
 
 export default function SessionView({ initialSession }: SessionViewProps) {
-  const { messages, error } =
-    useSessionUpdates({
-      sessionId: initialSession.id,
-      initialMessages: initialSession.messages,
-      pollingInterval: 5000, // 5 seconds for more responsive updates
-    })
+  const { messages, error } = useSessionUpdates({
+    sessionId: initialSession.id,
+    initialMessages: initialSession.messages,
+    pollingInterval: 5000, // 5 seconds for more responsive updates
+  })
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -140,24 +157,27 @@ export default function SessionView({ initialSession }: SessionViewProps) {
 
           <div className="flex items-center gap-4 mb-2">
             <h1 className="text-3xl font-bold text-white">
-              Session <span className="text-cyan-400">{initialSession.id.substring(0, 8)}</span>
+              Session{' '}
+              <span className="text-cyan-400">
+                {initialSession.id.substring(0, 8)}
+              </span>
             </h1>
           </div>
 
           <div className="flex items-center gap-4 text-sm text-slate-400">
             <span>{messages.length} messages</span>
-            <span>Started {new Date(initialSession.createdAt).toLocaleString()}</span>
+            <span>
+              Started {new Date(initialSession.createdAt).toLocaleString()}
+            </span>
           </div>
 
           {error && (
-            <div className="mt-2 text-red-400 text-sm">
-              Error: {error}
-            </div>
+            <div className="mt-2 text-red-400 text-sm">Error: {error}</div>
           )}
         </div>
 
         <div className="space-y-4">
-          {messages.map((message) => (
+          {messages.map(message => (
             <MessageComponent key={message.id} message={message} />
           ))}
         </div>

@@ -18,7 +18,9 @@ export function useSessionUpdates({
   includeToolCalls = true,
 }: UseSessionUpdatesOptions) {
   const [messages, setMessages] = useState<Message[]>(initialMessages)
-  const [lastChecked, setLastChecked] = useState<string>(new Date().toISOString())
+  const [lastChecked, setLastChecked] = useState<string>(
+    new Date().toISOString()
+  )
   const [isPolling, setIsPolling] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -29,27 +31,33 @@ export function useSessionUpdates({
         includeToolCalls: includeToolCalls.toString(),
       })
 
-      const response = await fetch(`/api/sessions/${sessionId}/messages?${params}`)
-      
+      const response = await fetch(
+        `/api/sessions/${sessionId}/messages?${params}`
+      )
+
       if (!response.ok) {
         throw new Error('Failed to fetch new messages')
       }
 
       const data = await response.json()
-      
+
       if (data.messages && data.messages.length > 0) {
         setMessages(prev => {
           // Merge new messages with existing ones, avoiding duplicates
           const existingIds = new Set(prev.map(m => m.id))
-          const newMessages = data.messages.filter((m: Message) => !existingIds.has(m.id))
-          
+          const newMessages = data.messages.filter(
+            (m: Message) => !existingIds.has(m.id)
+          )
+
           if (newMessages.length > 0) {
-            return [...prev, ...newMessages].sort((a, b) => a.sequenceOrder - b.sequenceOrder)
+            return [...prev, ...newMessages].sort(
+              (a, b) => a.sequenceOrder - b.sequenceOrder
+            )
           }
           return prev
         })
       }
-      
+
       setLastChecked(data.timestamp)
       setError(null)
     } catch (err) {

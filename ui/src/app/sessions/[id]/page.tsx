@@ -15,10 +15,10 @@ export const revalidate = 30
 // Generate static paths for all existing sessions at build time
 export async function generateStaticParams() {
   const sessions = await prisma.chatSession.findMany({
-    select: { id: true }
+    select: { id: true },
   })
-  
-  return sessions.map((session) => ({
+
+  return sessions.map(session => ({
     id: session.id,
   }))
 }
@@ -48,22 +48,24 @@ async function getSessionData(id: string): Promise<SessionData | null> {
     id: session.id,
     provider: session.provider,
     createdAt: session.createdAt.toISOString(),
-    messages: session.messages.map((message) => ({
+    messages: session.messages.map(message => ({
       id: message.id,
       messageType: message.messageType,
       content: message.content,
       sequenceOrder: message.sequenceOrder,
       createdAt: message.createdAt.toISOString(),
-      toolCalls: message.toolCalls.map((toolCall) => ({
+      toolCalls: message.toolCalls.map(toolCall => ({
         id: toolCall.id,
         toolName: toolCall.toolName,
         inputParams: toolCall.inputParams,
         callId: toolCall.callId,
-        toolResult: toolCall.toolResult ? {
-          resultContent: toolCall.toolResult.resultContent,
-          success: toolCall.toolResult.success,
-          errorMessage: toolCall.toolResult.errorMessage,
-        } : null,
+        toolResult: toolCall.toolResult
+          ? {
+              resultContent: toolCall.toolResult.resultContent,
+              success: toolCall.toolResult.success,
+              errorMessage: toolCall.toolResult.errorMessage,
+            }
+          : null,
       })),
     })),
   }

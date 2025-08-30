@@ -18,11 +18,14 @@ export default function Home() {
         <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700 max-w-md w-full">
           <CardContent className="p-8 text-center">
             <div className="text-4xl mb-4">🃏</div>
-            <h2 className="text-2xl font-semibold text-white mb-4">Hello World</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">
+              Hello World
+            </h2>
             <p className="text-slate-400 mb-6">
-              Welcome to your MTG tournament analysis dashboard. This NextJS app will display chat logs and tournament insights.
+              Welcome to your MTG tournament analysis dashboard. This NextJS app
+              will display chat logs and tournament insights.
             </p>
-            
+
             <div className="space-y-2 text-sm text-slate-500">
               <div className="flex justify-between">
                 <span>Framework:</span>
@@ -46,12 +49,10 @@ export default function Home() {
 
         <div className="mt-8">
           <Button asChild size="lg" className="bg-cyan-600 hover:bg-cyan-700">
-            <Link href="/sessions">
-              View Chat Sessions →
-            </Link>
+            <Link href="/sessions">View Chat Sessions →</Link>
           </Button>
         </div>
       </main>
     </div>
-  );
+  )
 }

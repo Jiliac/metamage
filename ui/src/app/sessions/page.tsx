@@ -2,7 +2,6 @@ import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
-
 // This page uses ISR to regenerate every 60 seconds
 export const revalidate = 60
 
@@ -34,7 +33,7 @@ async function getSessionsWithCounts() {
     },
   })
 
-  return sessions.map((session) => ({
+  return sessions.map(session => ({
     id: session.id,
     provider: session.provider,
     createdAt: session.createdAt.toISOString(),
@@ -63,14 +62,17 @@ export default async function SessionsPage() {
             <Card className="bg-slate-800/50 border-slate-700">
               <CardContent className="p-8 text-center">
                 <div className="text-4xl mb-4">🃏</div>
-                <CardTitle className="text-xl text-white mb-2">No Sessions Yet</CardTitle>
+                <CardTitle className="text-xl text-white mb-2">
+                  No Sessions Yet
+                </CardTitle>
                 <p className="text-slate-400">
-                  Start a chat with your MTG analysis agent to see sessions here.
+                  Start a chat with your MTG analysis agent to see sessions
+                  here.
                 </p>
               </CardContent>
             </Card>
           ) : (
-            sessions.map((session) => (
+            sessions.map(session => (
               <Link key={session.id} href={`/sessions/${session.id}`}>
                 <Card className="bg-slate-800/50 hover:bg-slate-800/70 border-slate-700 hover:border-slate-600 transition-all duration-200 cursor-pointer">
                   <CardHeader>
