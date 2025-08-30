@@ -9,6 +9,7 @@ from .base import (
     get_ops_database_path,
 )
 from .models import FocusedChannel, DiscordPost, SocialMessage, Pass
+from .chat_models import ChatSession, ChatMessage, ToolCall, ToolResult
 
 __all__ = [
     # Base and utils
@@ -24,4 +25,9 @@ __all__ = [
     "DiscordPost",
     "SocialMessage",
     "Pass",
+    # Chat models
+    "ChatSession",
+    "ChatMessage",
+    "ToolCall",
+    "ToolResult",
 ]

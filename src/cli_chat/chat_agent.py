@@ -13,6 +13,7 @@ from langgraph.prebuilt import create_react_agent
 
 from .mcp_client import create_mcp_client
 from .system_prompt import get_metamage_system_prompt
+from .chat_logger import ChatLogger
 
 
 load_dotenv()
@@ -25,6 +26,8 @@ class MTGChatAgent:
         self.agent = None
         self.conversation_history = []
         self.provider = provider
+        self.logger = ChatLogger()
+        self.session_id = None
 
     async def setup(self):
         """Initialize the agent with MCP tools and selected LLM provider."""
@@ -92,6 +95,9 @@ class MTGChatAgent:
             self.agent = create_react_agent(llm, tools, prompt=system_prompt)
 
             print("✅ Agent setup complete!")
+
+            # Create chat session for logging
+            self.session_id = self.logger.create_session(self.provider)
             return True
 
         except Exception as e:
@@ -104,6 +110,8 @@ class MTGChatAgent:
         This was refactored out of chat_loop to allow future growth.
         """
         assistant_message = ""
+        current_message_id = None  # Track current agent message for tool call linking
+
         async for event in self.agent.astream(
             {"messages": messages}, config={"recursion_limit": 50}
         ):
@@ -115,6 +123,25 @@ class MTGChatAgent:
                     latest_message = agent_messages[-1]
                     if hasattr(latest_message, "content") and latest_message.content:
                         content = latest_message.content
+
+                        # Log agent thought and get message ID for tool call linking
+                        if self.session_id:
+                            current_message_id = self.logger.log_agent_thought(
+                                self.session_id, str(content)
+                            )
+
+                        # Parse and log tool calls if present
+                        if hasattr(latest_message.content, "__iter__"):
+                            for item in latest_message.content:
+                                if hasattr(item, "type") and item.type == "tool_use":
+                                    if current_message_id:
+                                        self.logger.log_tool_call(
+                                            current_message_id,
+                                            item.name,
+                                            item.input,
+                                            item.id,
+                                        )
+
                         # Show all agent thoughts, save final response
                         print(f"💭 Agent: {content}")
                         assistant_message = content
@@ -126,6 +153,20 @@ class MTGChatAgent:
                 tool_messages = event["tools"].get("messages", [])
                 for tool_msg in tool_messages:
                     print(f"📊 Tool Result: {tool_msg}")
+
+                    # Log tool results
+                    if hasattr(tool_msg, "tool_call_id") and self.session_id:
+                        tool_call_id = self.logger.find_tool_call_by_call_id(
+                            tool_msg.tool_call_id
+                        )
+                        if tool_call_id:
+                            self.logger.log_tool_result(
+                                tool_call_id,
+                                str(tool_msg.content)
+                                if hasattr(tool_msg, "content")
+                                else str(tool_msg),
+                                success=True,
+                            )
 
             else:
                 # Handle any other event types we discover
@@ -155,6 +196,10 @@ class MTGChatAgent:
 
                 # Handle special commands
                 if user_input.lower() in ["/quit", "/exit"]:
+                    # Show session stats before exiting
+                    if self.session_id:
+                        stats = self.logger.get_session_stats(self.session_id)
+                        print(f"\n📊 Session Stats: {stats}")
                     print("👋 Goodbye!")
                     break
                 elif user_input.lower() == "/help":
@@ -168,6 +213,10 @@ class MTGChatAgent:
                 # Process query with agent
                 print("🤔 Analyzing...")
 
+                # Log user message
+                if self.session_id:
+                    self.logger.log_user_message(self.session_id, user_input)
+
                 # Build full message history
                 messages = []
                 for prev_user, prev_assistant in self.conversation_history:
@@ -180,6 +229,12 @@ class MTGChatAgent:
                 # Display final response if we got one
                 if assistant_message:
                     print(f"\n🤖 Assistant: {assistant_message}")
+
+                    # Log final response
+                    if self.session_id:
+                        self.logger.log_final_response(
+                            self.session_id, assistant_message
+                        )
                 else:
                     print("\n🤖 Assistant: [No final response captured]")
 

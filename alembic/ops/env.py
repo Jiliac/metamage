@@ -1,11 +1,15 @@
 from logging.config import fileConfig
 import sys
 from pathlib import Path
+from dotenv import load_dotenv
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
+
+# Load environment variables first
+load_dotenv()
 
 # Add src directory to path to import our models
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
