@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -38,8 +40,13 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="mt-8 text-slate-400 text-sm">
-          Ready to build your chat logs interface
+        <div className="mt-8">
+          <Link
+            href="/sessions"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-medium rounded-lg transition-colors"
+          >
+            View Chat Sessions →
+          </Link>
         </div>
       </main>
     </div>

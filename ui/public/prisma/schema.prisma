@@ -1,0 +1,76 @@
+// Prisma schema for MetaMage Chat Logs
+// Matches SQLAlchemy models in src/ops_model/chat_models.py
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ChatSession {
+  id        String   @id @default(uuid())
+  provider  String   @db.VarChar(20) // claude, xai, opus, gpt5
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  messages ChatMessage[]
+
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id            String   @id @default(uuid())
+  sessionId     String   @map("session_id") @db.VarChar(36)
+  messageType   String   @map("message_type") @db.VarChar(20) // user, agent_thought, agent_final
+  content       String   @db.Text
+  sequenceOrder Int      @map("sequence_order")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  toolCalls ToolCall[]
+
+  @@index([sessionId])
+  @@index([sequenceOrder])
+  @@map("chat_messages")
+}
+
+model ToolCall {
+  id           String @id @default(uuid())
+  messageId    String @map("message_id") @db.VarChar(36)
+  toolName     String @map("tool_name") @db.VarChar(100)
+  inputParams  Json   @map("input_params") // JSONB in PostgreSQL
+  callId       String @map("call_id") @db.VarChar(100) // Agent's internal call ID
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  message    ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  toolResult ToolResult?
+
+  @@index([messageId])
+  @@index([toolName])
+  @@index([callId])
+  @@map("tool_calls")
+}
+
+model ToolResult {
+  id            String   @id @default(uuid())
+  toolCallId    String   @unique @map("tool_call_id") @db.VarChar(36)
+  resultContent Json     @map("result_content") // JSONB in PostgreSQL
+  success       Boolean  @default(true)
+  errorMessage  String?  @map("error_message") @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  toolCall ToolCall @relation(fields: [toolCallId], references: [id], onDelete: Cascade)
+
+  @@index([toolCallId])
+  @@map("tool_results")
+}
