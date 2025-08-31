@@ -28,13 +28,17 @@ function labelizeToolName(name: string) {
   return name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
+function capitalizeWords(text: string) {
+  return text.replace(/\b\w/g, c => c.toUpperCase())
+}
+
 function summarizeToolCall(tc: ToolCall): string {
   const p = (tc.inputParams || {}) as Record<string, unknown>
   switch (tc.toolName) {
     case 'list_formats':
       return 'All formats'
     case 'get_archetype_overview':
-      return p.archetype_name ? `Archetype: ${p.archetype_name}` : ''
+      return p.archetype_name ? `${p.archetype_name}` : ''
     case 'get_archetype_winrate':
       return [
         p.archetype_id ? `ID: ${String(p.archetype_id).slice(0, 8)}…` : null,
@@ -63,11 +67,11 @@ function summarizeToolCall(tc: ToolCall): string {
         .filter(Boolean)
         .join(' • ')
     case 'search_card':
-      return p.query ? `Query: "${p.query}"` : ''
+      return p.query ? `"${p.query}"` : ''
     case 'get_player':
-      return p.player_id ? `Player: ${p.player_id}` : ''
+      return p.player_id ? `${p.player_id}` : ''
     case 'search_player':
-      return p.player_handle ? `Handle: ${p.player_handle}` : ''
+      return p.player_handle ? `${p.player_handle}` : ''
     default:
       return ''
   }
@@ -106,11 +110,15 @@ function renderSuccinctContent(tc: ToolCall) {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <strong>Archetype:</strong>{' '}
-              {String((result as Record<string, unknown>).archetype_name)}
+              {capitalizeWords(
+                String((result as Record<string, unknown>).archetype_name)
+              )}
             </div>
             <div>
               <strong>Format:</strong>{' '}
-              {String((result as Record<string, unknown>).format_name)}
+              {capitalizeWords(
+                String((result as Record<string, unknown>).format_name)
+              )}
             </div>
             <div>
               <strong>Entries (30d):</strong>{' '}
@@ -130,8 +138,10 @@ function renderSuccinctContent(tc: ToolCall) {
               <ul className="list-disc pl-5 text-slate-300">
                 {cards.slice(0, 8).map((c, i) => (
                   <li key={i}>
-                    {String((c as Record<string, unknown>).name)} — avg{' '}
-                    {String((c as Record<string, unknown>).avg_copies)} in{' '}
+                    {capitalizeWords(
+                      String((c as Record<string, unknown>).name)
+                    )}{' '}
+                    — {String((c as Record<string, unknown>).avg_copies)} in{' '}
                     {String((c as Record<string, unknown>).decks_playing)} decks
                   </li>
                 ))}
@@ -346,9 +356,9 @@ export function ToolCallItem({ tc }: { tc: ToolCall }) {
           <div className="flex min-w-0 items-center gap-2">
             <span className="text-slate-400">🛠️</span>
             <span className="font-medium text-slate-100">
-              {labelizeToolName(tc.toolName)}
+              {labelizeToolName(tc.toolName)}:
             </span>
-            <span className="text-xs text-slate-400 truncate">
+            <span className="text-sm font-semibold text-slate-200 truncate ml-2">
               {summarizeToolCall(tc)}
             </span>
           </div>
