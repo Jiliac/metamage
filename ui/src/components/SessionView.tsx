@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { SessionData, Message } from '@/types/chat'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -76,93 +75,75 @@ export default function SessionView({ initialSession }: SessionViewProps) {
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
           {turns.map(turn => {
             return (
-              <Card
-                key={turn.user.id}
-                className="bg-slate-800/50 border-slate-700"
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">💬</span>
-                    <CardTitle className="text-base font-semibold text-white">
-                      User
-                    </CardTitle>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="pt-0">
-                  <div className="text-slate-300 whitespace-pre-wrap mb-4">
-                    {turn.user.content}
-                  </div>
-
-                  {/* Tool calls are displayed inline after each agent thought. */}
-
-                  <div className="mt-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-lg">🤖</span>
-                      <span className="text-white font-semibold">
-                        Assistant
-                      </span>
+              <div key={turn.user.id} className="space-y-4">
+                {/* User message - right aligned */}
+                <div className="flex justify-end mr-4 my-7">
+                  <div className="bg-slate-700 rounded-2xl px-5 py-4 max-w-3xl">
+                    <div className="text-slate-100 whitespace-pre-wrap">
+                      {turn.user.content}
                     </div>
+                  </div>
+                </div>
 
-                    {turn.agentMessages.filter(
-                      m => m.messageType === 'agent_thought'
-                    ).length > 0 ? (
-                      <div className="space-y-3">
-                        {turn.agentMessages
-                          .filter(m => m.messageType === 'agent_thought')
-                          .map(m => (
-                            <div key={m.id}>
-                              <div className="prose mb-2">
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                  {m.content}
-                                </ReactMarkdown>
-                              </div>
+                {/* Assistant response - left aligned, no border */}
+                <div className="space-y-3">
+                  {turn.agentMessages.filter(
+                    m => m.messageType === 'agent_thought'
+                  ).length > 0 ? (
+                    <div className="space-y-3">
+                      {turn.agentMessages
+                        .filter(m => m.messageType === 'agent_thought')
+                        .map(m => (
+                          <div key={m.id}>
+                            <div className="prose mb-2">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {m.content}
+                              </ReactMarkdown>
+                            </div>
 
-                              {m.toolCalls?.map(tc => (
-                                <div
-                                  key={tc.id}
-                                  className="rounded-lg border border-slate-700 bg-slate-900/40 px-4 py-2 my-2 text-slate-200"
-                                  title={tc.toolName}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-slate-400">🛠️</span>
-                                      <span className="font-medium">
-                                        {labelizeToolName(tc.toolName)}
-                                      </span>
-                                    </div>
-                                    {/* <span className="text-slate-500">▾</span> */}
+                            {m.toolCalls?.map(tc => (
+                              <div
+                                key={tc.id}
+                                className="rounded-lg border border-slate-700 bg-slate-900/40 px-4 py-2 my-3 text-slate-200"
+                                title={tc.toolName}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-slate-400">🛠️</span>
+                                    <span className="font-medium">
+                                      {labelizeToolName(tc.toolName)}
+                                    </span>
                                   </div>
                                 </div>
-                              ))}
-                            </div>
-                          ))}
-                      </div>
-                    ) : (
-                      <div className="text-slate-400 text-sm italic">
-                        Working on it…
-                      </div>
-                    )}
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <div className="text-slate-400 text-sm italic">
+                      Working on it…
+                    </div>
+                  )}
 
-                    {turn.agentMessages.find(
-                      m => m.messageType === 'agent_final'
-                    ) && (
-                      <div className="prose mt-4">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                          {
-                            turn.agentMessages.find(
-                              m => m.messageType === 'agent_final'
-                            )!.content
-                          }
-                        </ReactMarkdown>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                  {turn.agentMessages.find(
+                    m => m.messageType === 'agent_final'
+                  ) && (
+                    <div className="prose">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {
+                          turn.agentMessages.find(
+                            m => m.messageType === 'agent_final'
+                          )!.content
+                        }
+                      </ReactMarkdown>
+                    </div>
+                  )}
+                </div>
+              </div>
             )
           })}
         </div>
