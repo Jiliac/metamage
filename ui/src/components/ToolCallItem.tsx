@@ -17,7 +17,6 @@ const SUCCINCT_TOOLS = new Set<string>([
   'get_sources',
   'search_card',
   'get_player',
-  'search_player',
 ])
 
 function isSuccinctTool(name: string) {

@@ -58,6 +58,88 @@ def _find_player_fuzzy(player_handle: str):
     return None
 
 
+def _get_player_profile(player_id_or_handle: str) -> str:
+    """
+    Internal helper for get_player/search_player; not a tool and not logged.
+    """
+    # Try to determine if input is a UUID or handle
+    actual_player_id = player_id_or_handle
+
+    # If it doesn't look like a UUID (36 chars with dashes), treat as handle
+    if len(player_id_or_handle) != 36 or player_id_or_handle.count("-") != 4:
+        player_match = _find_player_fuzzy(player_id_or_handle)
+        if not player_match:
+            return f"Player '{player_id_or_handle}' not found. Try a different name or check spelling."
+        actual_player_id = player_match["id"]
+
+    cutoff = datetime.utcnow() - timedelta(days=90)
+    with get_session() as session:
+        player_info = (
+            session.query(
+                Player.handle.label("handle"),
+                func.count(distinct(TournamentEntry.id)).label("total_entries"),
+                func.count(distinct(Tournament.id)).label("tournaments_played"),
+                func.avg(
+                    TournamentEntry.wins
+                    + TournamentEntry.losses
+                    + TournamentEntry.draws
+                ).label("avg_rounds"),
+                func.max(Tournament.date).label("last_tournament"),
+            )
+            .outerjoin(TournamentEntry, Player.id == TournamentEntry.player_id)
+            .outerjoin(Tournament, TournamentEntry.tournament_id == Tournament.id)
+            .filter(Player.id == actual_player_id, Tournament.date >= cutoff)
+            .group_by(Player.id, Player.handle)
+            .first()
+        )
+
+    if not player_info:
+        return f"Player {actual_player_id} not found"
+
+    # Normalize mapping access for formatted output
+    player_info = dict(player_info._mapping)
+
+    # Get recent results
+    with get_session() as session:
+        results = (
+            session.query(
+                Tournament.name.label("tournament_name"),
+                Tournament.date.label("date"),
+                Archetype.name.label("archetype_name"),
+                TournamentEntry.wins,
+                TournamentEntry.losses,
+                TournamentEntry.draws,
+                TournamentEntry.rank,
+            )
+            .join(Tournament, TournamentEntry.tournament_id == Tournament.id)
+            .join(Archetype, TournamentEntry.archetype_id == Archetype.id)
+            .filter(
+                TournamentEntry.player_id == actual_player_id, Tournament.date >= cutoff
+            )
+            .order_by(Tournament.date.desc())
+            .limit(5)
+            .all()
+        )
+
+    results_summary = "\n".join(
+        [
+            f"  {r.tournament_name} ({r.date}): {r.archetype_name} - {r.wins}-{r.losses}-{r.draws} (Rank {r.rank or 'N/A'})"
+            for r in results
+        ]
+    )
+
+    return f"""# Player: {player_info["handle"]}
+
+## Recent Performance (Last 90 Days)
+- **Tournaments**: {player_info["tournaments_played"] or 0}
+- **Total Entries**: {player_info["total_entries"] or 0}
+- **Avg Rounds**: {round(player_info["avg_rounds"] or 0, 1)}
+- **Last Seen**: {player_info["last_tournament"] or "N/A"}
+
+## Recent Results
+{results_summary or "No recent tournament data"}
+"""
+
 @log_tool_calls
 @mcp.tool
 def get_player(player_id: str, ctx: Context = None) -> str:
@@ -160,25 +242,6 @@ def get_player(player_id: str, ctx: Context = None) -> str:
 @mcp.tool
 def search_player(player_handle: str, ctx: Context = None) -> str:
     """
-    Search for a player by handle using fuzzy matching, then return their profile.
-    This is more user-friendly than get_player which requires an exact player ID.
-
-    Workflow Integration:
-    - Use this first with a partial handle; it delegates to get_player() once matched.
-    - After getting the profile, pivot to query_database() for custom splits (by format, archetype, or period).
-    - Combine with get_sources() to list recent events where the player appeared.
-
-    Related Tools:
-    - get_player(), get_sources(), query_database()
-
-    Example:
-    - search_player("kanister") → get profile → run query_database() to compute W/L by archetype in the last 60 days.
+    DEPRECATED: Use get_player(player_id_or_handle) instead. This remains for backward compatibility.
     """
-    # Find player using fuzzy matching
-    player_match = _find_player_fuzzy(player_handle)
-
-    if not player_match:
-        return f"Player '{player_handle}' not found. Try a different name or check spelling."
-
-    # Use the found player ID to get full profile
-    return get_player(player_match["id"], ctx)
+    return _get_player_profile(player_handle)

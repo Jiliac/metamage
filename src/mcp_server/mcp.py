@@ -19,8 +19,7 @@ mcp = FastMCP(
           - get_tournament_results(format_id, start_date, end_date, min_players?, limit?): winners and top 8 breakdown
           - get_sources(format_id, start_date, end_date, archetype_name?, limit?): recent tournaments with links and source breakdown
           - search_card(query): search card by name (partial/fuzzy) and return details (id, name, type, oracle_text, mana_cost)
-          - get_player(player_id): player profile (also accepts handle)
-          - search_player(player_handle): fuzzy search a player then return profile
+          - get_player(player_id_or_handle): player profile (UUID or handle; fuzzy matching supported)
           - query_database(sql, limit): run SELECT-only SQLite queries against the MTG tournament DB
 
         ## Resources

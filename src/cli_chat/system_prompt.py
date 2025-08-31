@@ -28,8 +28,7 @@ You have direct access to a comprehensive MTG tournament database with these too
 - **get_tournament_results(format_id, start_date, end_date, min_players, limit)**: Winners and top 8 breakdowns
 - **get_sources(format_id, start_date, end_date, archetype_name, limit)**: Recent tournaments with links and source breakdown
 - **search_card(query)**: Search card by name (partial/fuzzy) and return details including local card_id
-- **get_player(player_id or handle)**: Player profile with recent performance
-- **search_player(player_handle)**: Fuzzy search a player then return their profile
+- **get_player(player_id_or_handle)**: Player profile with recent performance (UUID or handle; fuzzy matching supported)
 - **query_database(sql, limit)**: Execute SELECT queries directly against the database
 
 ### Database Schema:
