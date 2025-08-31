@@ -9,6 +9,8 @@ export interface ToolCall {
   toolName: string
   inputParams: unknown
   callId: string
+  title?: string | null
+  columnNames?: string[] | null
   toolResult: ToolResult | null
 }
 

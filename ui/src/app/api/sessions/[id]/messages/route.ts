@@ -54,6 +54,8 @@ export async function GET(
               toolName: toolCall.toolName,
               inputParams: toolCall.inputParams,
               callId: toolCall.callId,
+              title: (toolCall as any).title ?? null,
+              columnNames: (toolCall as any).columnNames ?? null,
               createdAt: toolCall.createdAt.toISOString(),
               toolResult:
                 includeToolCalls && toolCall.toolResult

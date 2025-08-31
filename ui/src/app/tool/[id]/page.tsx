@@ -1,11 +1,44 @@
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import QueryResultTable from '@/components/QueryResultTable'
 
 interface ToolPageProps {
   params: Promise<{
     id: string
   }>
+}
+
+// Normalize various resultContent shapes into array of row objects using provided column order
+function normalizeRows(
+  resultContent: any,
+  columnNames: string[]
+): Array<Record<string, any>> {
+  const raw = Array.isArray(resultContent?.rows)
+    ? resultContent.rows
+    : Array.isArray(resultContent)
+      ? resultContent
+      : Array.isArray(resultContent?.data)
+        ? resultContent.data
+        : []
+
+  return raw.map((row: any) => {
+    if (Array.isArray(row)) {
+      const obj: Record<string, any> = {}
+      columnNames.forEach((col, i) => {
+        obj[col] = row[i]
+      })
+      return obj
+    }
+    if (row && typeof row === 'object') {
+      const obj: Record<string, any> = {}
+      columnNames.forEach(col => {
+        obj[col] = (row as any)?.[col]
+      })
+      return obj
+    }
+    return { value: row }
+  })
 }
 
 async function getToolCallData(id: string) {
@@ -37,6 +70,8 @@ export default async function ToolPage({ params }: ToolPageProps) {
     toolName: toolCall.toolName,
     inputParams: toolCall.inputParams,
     callId: toolCall.callId,
+    title: toolCall.title ?? null,
+    columnNames: (toolCall as any).columnNames ?? null,
     toolResult: toolCall.toolResult
       ? {
           resultContent: toolCall.toolResult.resultContent,
@@ -73,10 +108,26 @@ export default async function ToolPage({ params }: ToolPageProps) {
           </div>
         </div>
 
-        <div className="bg-slate-800/50 rounded-lg p-6">
-          <h2 className="text-xl font-semibold text-white mb-4">
-            Tool Call Data
-          </h2>
+        <div className="bg-slate-800/50 rounded-lg p-6 space-y-4">
+          {toolCall.toolName === 'query_database' &&
+            Array.isArray((toolCall as any).columnNames) &&
+            ((toolCall as any).columnNames as unknown[]).length > 0 &&
+            toolCall.toolResult && (
+              <>
+                <h2 className="text-xl font-semibold text-white">
+                  Query Result
+                </h2>
+                <QueryResultTable
+                  columns={(toolCall as any).columnNames as string[]}
+                  data={normalizeRows(
+                    toolCall.toolResult.resultContent,
+                    (toolCall as any).columnNames as string[]
+                  )}
+                />
+              </>
+            )}
+
+          <h2 className="text-xl font-semibold text-white">Tool Call Data</h2>
           <pre className="text-slate-300 text-sm overflow-x-auto whitespace-pre-wrap">
             {JSON.stringify(toolCallData, null, 2)}
           </pre>

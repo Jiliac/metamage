@@ -16,6 +16,7 @@ const SUCCINCT_TOOLS = new Set<string>([
   'get_sources',
   'search_card',
   'get_player',
+  'query_database',
 ])
 
 function isSuccinctTool(name: string) {
@@ -144,6 +145,14 @@ function summarizeToolCall(tc: ToolCall): string {
       return p.query ? `"${p.query}"` : ''
     case 'get_player':
       return p.player_id_or_handle ? `${p.player_id_or_handle}` : ''
+    case 'query_database': {
+      const title = (tc.title || '').trim()
+      if (title) return title
+      const sql = typeof p.sql === 'string' ? p.sql : ''
+      return sql
+        ? `Query: ${sql.slice(0, 60)}${sql.length > 60 ? '…' : ''}`
+        : 'Custom Query'
+    }
     default:
       return ''
   }
@@ -532,6 +541,42 @@ function renderSuccinctContent(tc: ToolCall) {
               </ul>
             </div>
           )}
+        </div>
+      )
+    }
+    case 'query_database': {
+      const rc = tc.toolResult?.resultContent as any
+      const colNames = Array.isArray(tc.columnNames)
+        ? tc.columnNames
+        : undefined
+      const rows = Array.isArray(rc?.rows)
+        ? rc.rows
+        : Array.isArray(rc)
+          ? rc
+          : Array.isArray(rc?.data)
+            ? rc.data
+            : []
+      const rowCount = rows.length
+
+      return (
+        <div className="text-sm text-slate-200 space-y-2">
+          {tc.title && (
+            <div>
+              <strong>Title:</strong> {tc.title}
+            </div>
+          )}
+          <div>
+            <strong>Rows:</strong> {rowCount}
+          </div>
+          <div>
+            <strong>Columns:</strong>{' '}
+            {Array.isArray(colNames) && colNames.length > 0
+              ? colNames.join(', ')
+              : '—'}
+          </div>
+          <div className="text-xs text-slate-400">
+            View the full result table via the Share link below.
+          </div>
         </div>
       )
     }

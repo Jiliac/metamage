@@ -47,6 +47,8 @@ model ToolCall {
   toolName     String @map("tool_name") @db.VarChar(100)
   inputParams  Json   @map("input_params") // JSONB in PostgreSQL
   callId       String @map("call_id") @db.VarChar(100) // Agent's internal call ID
+  title        String?  @db.VarChar(200)
+  columnNames  Json?    @map("column_names")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
