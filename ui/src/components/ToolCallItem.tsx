@@ -406,7 +406,7 @@ export function ToolCallItem({ tc }: { tc: ToolCall }) {
             <span className="font-medium text-slate-100">
               {labelizeToolName(tc.toolName)}:
             </span>
-            <span className="text-sm font-semibold text-slate-200 truncate ml-2">
+            <span className="text-sm font-semibold text-slate-200 group-data-[state=closed]:truncate ml-2">
               {summarizeToolCall(tc)}
             </span>
           </div>
