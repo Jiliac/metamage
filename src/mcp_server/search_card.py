@@ -61,11 +61,11 @@ def search_card(query: str, ctx: Context = None) -> Dict[str, Any]:
                        s.code as set_code, s.name as set_name, c.first_printed_date
                 FROM cards c
                 LEFT JOIN sets s ON c.first_printed_set_id = s.id
-                WHERE c.name LIKE :pattern
-                ORDER BY CASE WHEN c.name = :exact THEN 0 ELSE 1 END, LENGTH(c.name)
+                WHERE LOWER(c.name) LIKE :pattern
+                ORDER BY CASE WHEN LOWER(c.name) = :exact_lower THEN 0 ELSE 1 END, LENGTH(c.name)
                 """
             ),
-            {"pattern": pattern, "exact": q.lower()},
+            {"pattern": pattern, "exact_lower": q.lower()},
         ).fetchall()
 
     if rows:
@@ -110,7 +110,7 @@ def search_card(query: str, ctx: Context = None) -> Dict[str, Any]:
                 db_set_info = {
                     "code": first.get("set_code"),
                     "name": first.get("set_name"),
-                    "first_printed": first.get("first_printed_date").isoformat()
+                    "first_printed": str(first.get("first_printed_date"))
                     if first.get("first_printed_date")
                     else None,
                 }
@@ -136,7 +136,7 @@ def search_card(query: str, ctx: Context = None) -> Dict[str, Any]:
             db_set_info = {
                 "code": first.get("set_code"),
                 "name": first.get("set_name"),
-                "first_printed": first.get("first_printed_date").isoformat()
+                "first_printed": str(first.get("first_printed_date"))
                 if first.get("first_printed_date")
                 else None,
             }

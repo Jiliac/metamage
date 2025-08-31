@@ -140,6 +140,7 @@ def _get_player_profile(player_id_or_handle: str) -> str:
 {results_summary or "No recent tournament data"}
 """
 
+
 @log_tool_calls
 @mcp.tool
 def get_player(player_id: str, ctx: Context = None) -> str:
@@ -236,12 +237,3 @@ def get_player(player_id: str, ctx: Context = None) -> str:
 ## Recent Results
 {results_summary or "No recent tournament data"}
 """
-
-
-@log_tool_calls
-@mcp.tool
-def search_player(player_handle: str, ctx: Context = None) -> str:
-    """
-    DEPRECATED: Use get_player(player_id_or_handle) instead. This remains for backward compatibility.
-    """
-    return _get_player_profile(player_handle)
