@@ -137,9 +137,7 @@ function summarizeToolCall(tc: ToolCall): string {
     case 'search_card':
       return p.query ? `"${p.query}"` : ''
     case 'get_player':
-      return p.player_id ? `${p.player_id}` : ''
-    case 'search_player':
-      return p.player_handle ? `${p.player_handle}` : ''
+      return p.player_id_or_handle ? `${p.player_id_or_handle}` : ''
     default:
       return ''
   }
@@ -352,19 +350,88 @@ function renderSuccinctContent(tc: ToolCall) {
         </div>
       )
     }
-    case 'get_player':
-    case 'search_player': {
-      if (typeof result === 'string') {
+    case 'get_player': {
+      if (!result || typeof result !== 'object') {
         return (
-          <div className="prose">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{result}</ReactMarkdown>
+          <pre className="text-xs text-slate-300">{String(result ?? '')}</pre>
+        )
+      }
+
+      // Handle error case
+      if ((result as Record<string, unknown>).error) {
+        return (
+          <div className="text-sm text-red-400">
+            {String((result as Record<string, unknown>).error)}
           </div>
         )
       }
+
+      const perf = (result as Record<string, unknown>).recent_performance || {}
+      const recentResults = Array.isArray(
+        (result as Record<string, unknown>).recent_results
+      )
+        ? ((result as Record<string, unknown>).recent_results as unknown[])
+        : []
+
       return (
-        <pre className="text-xs text-slate-300">
-          {JSON.stringify(result, null, 2)}
-        </pre>
+        <div className="text-sm text-slate-200 space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <strong>Player:</strong>{' '}
+              {String((result as Record<string, unknown>).handle)}
+            </div>
+            <div>
+              <strong>Tournaments:</strong>{' '}
+              {String(
+                (perf as Record<string, unknown>).tournaments_played ?? 0
+              )}
+            </div>
+            <div>
+              <strong>Total Entries:</strong>{' '}
+              {String((perf as Record<string, unknown>).total_entries ?? 0)}
+            </div>
+            <div>
+              <strong>Avg Rounds:</strong>{' '}
+              {String((perf as Record<string, unknown>).avg_rounds ?? 0)}
+            </div>
+          </div>
+          {recentResults.length > 0 && (
+            <div>
+              <div className="font-semibold mb-1">Recent Results</div>
+              <ul className="list-disc pl-5 text-slate-300">
+                {recentResults.slice(0, 5).map((r, i) => {
+                  const result = r as Record<string, unknown>
+                  const tournamentLink = result.tournament_link as string
+                  const tournamentName = String(result.tournament_name)
+                  const rank = result.rank
+
+                  const tournamentDisplay = tournamentLink ? (
+                    <a
+                      href={tournamentLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline text-cyan-400 hover:text-cyan-300"
+                    >
+                      {tournamentName}
+                    </a>
+                  ) : (
+                    <span>{tournamentName}</span>
+                  )
+
+                  return (
+                    <li key={i}>
+                      {tournamentDisplay} —{' '}
+                      {capitalizeWords(String(result.archetype_name))} (
+                      {String(result.wins)}-{String(result.losses)}-
+                      {String(result.draws)})
+                      {rank ? ` — Rank ${String(rank)}` : ''}
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
       )
     }
     default:
