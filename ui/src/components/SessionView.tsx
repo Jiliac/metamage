@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { SessionData, Message } from '@/types/chat'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -78,7 +77,7 @@ export default function SessionView({ initialSession }: SessionViewProps) {
         </div>
 
         <div className="space-y-4">
-          {turns.map((turn, idx) => {
+          {turns.map(turn => {
             return (
               <Card
                 key={turn.user.id}
@@ -90,15 +89,6 @@ export default function SessionView({ initialSession }: SessionViewProps) {
                     <CardTitle className="text-base font-semibold text-white">
                       User
                     </CardTitle>
-                    <Badge
-                      variant="outline"
-                      className="text-slate-400 border-slate-600"
-                    >
-                      #{idx + 1}
-                    </Badge>
-                    <span className="text-xs text-slate-500 ml-auto">
-                      {new Date(turn.startedAt).toLocaleTimeString()}
-                    </span>
                   </div>
                 </CardHeader>
 
@@ -134,7 +124,7 @@ export default function SessionView({ initialSession }: SessionViewProps) {
                               {m.toolCalls?.map(tc => (
                                 <div
                                   key={tc.id}
-                                  className="rounded-lg border border-slate-700 bg-slate-900/40 px-4 py-2 text-slate-200"
+                                  className="rounded-lg border border-slate-700 bg-slate-900/40 px-4 py-2 my-2 text-slate-200"
                                   title={tc.toolName}
                                 >
                                   <div className="flex items-center justify-between">
@@ -144,7 +134,7 @@ export default function SessionView({ initialSession }: SessionViewProps) {
                                         {labelizeToolName(tc.toolName)}
                                       </span>
                                     </div>
-                                    <span className="text-slate-500">▾</span>
+                                    {/* <span className="text-slate-500">▾</span> */}
                                   </div>
                                 </div>
                               ))}
