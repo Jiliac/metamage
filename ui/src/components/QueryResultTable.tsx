@@ -5,6 +5,8 @@ import {
   ColumnDef,
   flexRender,
   getCoreRowModel,
+  getSortedRowModel,
+  SortingState,
   useReactTable,
 } from '@tanstack/react-table'
 
@@ -17,11 +19,19 @@ export default function QueryResultTable({
   columns,
   data,
 }: QueryResultTableProps) {
+  const [sorting, setSorting] = React.useState<SortingState>([])
+  const [columnOrder, setColumnOrder] = React.useState<string[]>(columns)
+
+  React.useEffect(() => {
+    setColumnOrder(columns)
+  }, [columns])
+
   const columnDefs = React.useMemo<ColumnDef<Record<string, unknown>>[]>(
     () =>
-      columns.map(col => ({
+      columnOrder.map(col => ({
         accessorKey: col,
         header: col,
+        enableSorting: true,
         cell: info => {
           const v = info.getValue()
           if (v === null || v === undefined) return '—'
@@ -35,13 +45,20 @@ export default function QueryResultTable({
           return String(v)
         },
       })),
-    [columns]
+    [columnOrder]
   )
 
   const table = useReactTable({
     data,
     columns: columnDefs,
+    state: {
+      sorting,
+      columnOrder,
+    },
+    onSortingChange: setSorting,
+    onColumnOrderChange: setColumnOrder,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
   })
 
   return (
@@ -50,17 +67,48 @@ export default function QueryResultTable({
         <thead className="bg-slate-900/60 text-slate-200">
           {table.getHeaderGroups().map(headerGroup => (
             <tr key={headerGroup.id}>
-              {headerGroup.headers.map(header => (
+              {headerGroup.headers.map((header, index) => (
                 <th
                   key={header.id}
-                  className="px-3 py-2 text-left font-semibold"
+                  className="px-3 py-2 text-left font-semibold cursor-pointer hover:bg-slate-800/60 select-none relative group"
+                  onClick={header.column.getToggleSortingHandler()}
+                  draggable
+                  onDragStart={e => {
+                    e.dataTransfer.setData('text/plain', index.toString())
+                  }}
+                  onDragOver={e => {
+                    e.preventDefault()
+                  }}
+                  onDrop={e => {
+                    e.preventDefault()
+                    const draggedIndex = parseInt(
+                      e.dataTransfer.getData('text/plain')
+                    )
+                    const targetIndex = index
+                    if (draggedIndex !== targetIndex) {
+                      const newOrder = [...columnOrder]
+                      const [draggedItem] = newOrder.splice(draggedIndex, 1)
+                      newOrder.splice(targetIndex, 0, draggedItem)
+                      setColumnOrder(newOrder)
+                    }
+                  }}
                 >
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
+                  <div className="flex items-center justify-between">
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                    <div className="ml-2 flex flex-col">
+                      {header.column.getIsSorted() === 'asc' && (
+                        <span className="text-cyan-400">↑</span>
                       )}
+                      {header.column.getIsSorted() === 'desc' && (
+                        <span className="text-cyan-400">↓</span>
+                      )}
+                    </div>
+                  </div>
                 </th>
               ))}
             </tr>

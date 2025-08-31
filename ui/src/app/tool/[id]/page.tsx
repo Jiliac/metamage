@@ -1,49 +1,12 @@
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import QueryResultTable from '@/components/QueryResultTable'
+import { ToolResultView } from '@/components/ToolResultView'
 
 interface ToolPageProps {
   params: Promise<{
     id: string
   }>
-}
-
-// Normalize various resultContent shapes into array of row objects using provided column order
-function normalizeRows(
-  resultContent: unknown,
-  columnNames: string[]
-): Array<Record<string, unknown>> {
-  const extractArray = (rc: unknown): unknown[] => {
-    if (Array.isArray(rc)) return rc
-    if (typeof rc === 'object' && rc !== null) {
-      const obj = rc as { rows?: unknown; data?: unknown }
-      if (Array.isArray(obj.rows)) return obj.rows
-      if (Array.isArray(obj.data)) return obj.data
-    }
-    return []
-  }
-
-  const raw = extractArray(resultContent)
-
-  return raw.map(row => {
-    if (Array.isArray(row)) {
-      const obj: Record<string, unknown> = {}
-      columnNames.forEach((col, i) => {
-        obj[col] = row[i]
-      })
-      return obj
-    }
-    if (typeof row === 'object' && row !== null) {
-      const ro = row as Record<string, unknown>
-      const obj: Record<string, unknown> = {}
-      columnNames.forEach(col => {
-        obj[col] = ro[col]
-      })
-      return obj
-    }
-    return { value: row as unknown }
-  })
 }
 
 async function getToolCallData(id: string) {
@@ -70,27 +33,9 @@ export default async function ToolPage({ params }: ToolPageProps) {
     notFound()
   }
 
-  const toolCallData = {
-    id: toolCall.id,
-    toolName: toolCall.toolName,
-    inputParams: toolCall.inputParams,
-    callId: toolCall.callId,
-    title: toolCall.title ?? null,
-    columnNames: toolCall.columnNames ?? null,
-    toolResult: toolCall.toolResult
-      ? {
-          resultContent: toolCall.toolResult.resultContent,
-          success: toolCall.toolResult.success,
-          errorMessage: toolCall.toolResult.errorMessage,
-        }
-      : null,
-    sessionId: toolCall.message.sessionId,
-    messageId: toolCall.message.id,
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="container mx-auto px-6 py-8 max-w-4xl pt-20">
+      <div className="container mx-auto px-6 py-8 max-w-5xl pt-20">
         <div className="mb-6">
           <Link
             href={`/sessions/${toolCall.message.sessionId}`}
@@ -107,35 +52,10 @@ export default async function ToolPage({ params }: ToolPageProps) {
               <span className="text-cyan-400">{toolCall.toolName}</span>
             </h1>
           </div>
-
-          <div className="text-sm text-slate-400">
-            ID: {toolCall.id.substring(0, 8)}...
-          </div>
         </div>
 
         <div className="bg-slate-800/50 rounded-lg p-6 space-y-4">
-          {toolCall.toolName === 'query_database' &&
-            Array.isArray(toolCall.columnNames) &&
-            (toolCall.columnNames as unknown[]).length > 0 &&
-            toolCall.toolResult && (
-              <>
-                <h2 className="text-xl font-semibold text-white">
-                  Query Result
-                </h2>
-                <QueryResultTable
-                  columns={(toolCall.columnNames as unknown[]).map(String)}
-                  data={normalizeRows(
-                    toolCall.toolResult.resultContent,
-                    (toolCall.columnNames as unknown[]).map(String)
-                  )}
-                />
-              </>
-            )}
-
-          <h2 className="text-xl font-semibold text-white">Tool Call Data</h2>
-          <pre className="text-slate-300 text-sm overflow-x-auto whitespace-pre-wrap">
-            {JSON.stringify(toolCallData, null, 2)}
-          </pre>
+          <ToolResultView toolCall={toolCall} />
         </div>
       </div>
     </div>
