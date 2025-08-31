@@ -31,6 +31,68 @@ function capitalizeWords(text: string) {
   return text.replace(/\b\w/g, c => c.toUpperCase())
 }
 
+function formatDateRange(startDate: string, endDate: string): string {
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+
+  const startMonth = start.toLocaleDateString('en-US', { month: 'short' })
+  const endMonth = end.toLocaleDateString('en-US', { month: 'short' })
+  const startDay = start.getDate()
+  const endDay = end.getDate()
+  const startYear = start.getFullYear()
+  const endYear = end.getFullYear()
+
+  // Same year
+  if (startYear === endYear) {
+    // Same month and year
+    if (startMonth === endMonth) {
+      return `${startMonth} ${startDay}–${endDay}, ${endYear}`
+    }
+    // Different months, same year
+    return `${startMonth} ${startDay} – ${endMonth} ${endDay}, ${endYear}`
+  }
+
+  // Different years
+  return `${startMonth} ${startDay}, ${startYear} – ${endMonth} ${endDay}, ${endYear}`
+}
+
+interface Tournament {
+  tournament_name: string
+  date: string
+  source: string
+  link?: string
+}
+
+function TournamentList({ sources }: { sources: Tournament[] }) {
+  const displayedSources = sources.slice(0, 5)
+
+  const tournamentItems = displayedSources.map((tournament, i) => {
+    const formattedDate = new Date(tournament.date).toLocaleDateString()
+    const hasLink = Boolean(tournament.link)
+
+    const tournamentName = hasLink ? (
+      <a
+        href={tournament.link}
+        target="_blank"
+        rel="noreferrer"
+        className="underline text-cyan-400 hover:text-cyan-300"
+      >
+        {tournament.tournament_name}
+      </a>
+    ) : (
+      <span>{tournament.tournament_name}</span>
+    )
+
+    return (
+      <li key={i}>
+        {tournamentName} — {formattedDate} [{tournament.source}]
+      </li>
+    )
+  })
+
+  return <ul className="list-disc pl-5 text-slate-300">{tournamentItems}</ul>
+}
+
 function summarizeToolCall(tc: ToolCall): string {
   const p = (tc.inputParams || {}) as Record<string, unknown>
   switch (tc.toolName) {
@@ -41,7 +103,9 @@ function summarizeToolCall(tc: ToolCall): string {
     case 'get_archetype_winrate':
       return [
         p.archetype_id ? `ID: ${String(p.archetype_id).slice(0, 8)}…` : null,
-        p.start_date && p.end_date ? `${p.start_date} → ${p.end_date}` : null,
+        p.start_date && p.end_date
+          ? formatDateRange(String(p.start_date), String(p.end_date))
+          : null,
         p.exclude_mirror !== undefined
           ? `No mirror: ${p.exclude_mirror ? 'Yes' : 'No'}`
           : null,
@@ -53,15 +117,20 @@ function summarizeToolCall(tc: ToolCall): string {
         p.archetype1_name && p.archetype2_name
           ? `${p.archetype1_name} vs ${p.archetype2_name}`
           : null,
-        p.start_date && p.end_date ? `${p.start_date} → ${p.end_date}` : null,
+        p.start_date && p.end_date
+          ? formatDateRange(String(p.start_date), String(p.end_date))
+          : null,
       ]
         .filter(Boolean)
         .join(' • ')
     case 'get_sources':
       return [
-        p.archetype_name ? `Arch: ${p.archetype_name}` : null,
-        p.start_date && p.end_date ? `${p.start_date} → ${p.end_date}` : null,
-        p.limit ? `Top ${p.limit}` : null,
+        p.archetype_name
+          ? `${capitalizeWords(p.archetype_name as string)}`
+          : null,
+        p.start_date && p.end_date
+          ? formatDateRange(String(p.start_date), String(p.end_date))
+          : null,
       ]
         .filter(Boolean)
         .join(' • ')
@@ -245,27 +314,7 @@ function renderSuccinctContent(tc: ToolCall) {
             </div>
           </div>
           {sources.length > 0 && (
-            <ul className="list-disc pl-5 text-slate-300">
-              {sources.slice(0, 5).map((s, i) => (
-                <li key={i}>
-                  {String((s as Record<string, unknown>).tournament_name)} —{' '}
-                  {new Date(
-                    (s as Record<string, unknown>).date as string
-                  ).toLocaleDateString()}{' '}
-                  [{String((s as Record<string, unknown>).source)}]{' '}
-                  {(s as Record<string, unknown>).link ? (
-                    <a
-                      href={(s as Record<string, unknown>).link as string}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="underline text-cyan-400"
-                    >
-                      (link)
-                    </a>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
+            <TournamentList sources={sources as Tournament[]} />
           )}
         </div>
       )
