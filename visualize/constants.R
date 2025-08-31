@@ -4,6 +4,10 @@ CHART_COLORS <- list(
   gradient_warm = "#e15759", # Muted red for poor performance
   gradient_cool = "#4e79a7", # Dusty blue for good performance
 
+  # Win rate gradient colors (bad to good) - consistent red=bad, green=good
+  gradient_bad = "#F87171", # Light red for poor win rates
+  gradient_good = "#4ADE80", # Light green for good win rates
+
   # Text colors
   text_primary = "#303030", # Dark gray for main text
   text_secondary = "#606060", # Medium gray for secondary text

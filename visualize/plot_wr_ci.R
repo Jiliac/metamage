@@ -33,10 +33,10 @@ plot_wr_ci <- function(
   min_wr_lo <- min(df$wr_lo, na.rm = TRUE)
   max_wr_lo <- max(df$wr_lo, na.rm = TRUE)
 
-  # Create color ramp function
+  # Create color ramp function (red=bad, green=good)
   color_ramp <- grDevices::colorRampPalette(c(
-    CHART_COLORS$gradient_cool,
-    CHART_COLORS$gradient_warm
+    CHART_COLORS$gradient_bad,
+    CHART_COLORS$gradient_good
   ))
 
   # Map each wr_lo value to a color based on its position in the range

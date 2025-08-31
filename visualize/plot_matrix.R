@@ -281,16 +281,18 @@ plot_matrix <- function(
         margin = margin(b = 10)
       ),
       plot.caption = element_text(
-        hjust = 0.55,
+        hjust = 0.17,
         size = 9,
         family = "Inter",
         color = CHART_COLORS$text_secondary,
-        margin = margin(t = 15)
+        margin = margin(t = -25)
       ),
       plot.background = element_rect(fill = "white", color = NA),
       panel.background = element_rect(fill = "white", color = NA),
       plot.margin = margin(10, 30, 10, 30),
       legend.position = "bottom",
+      legend.justification = "right",
+      legend.box.margin = margin(t = -7, r = 0, b = 0, l = 0),
       legend.title = element_text(size = 8, family = "Inter"),
       legend.text = element_text(size = 8, family = "Inter")
     ) +
