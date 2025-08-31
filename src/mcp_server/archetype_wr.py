@@ -48,10 +48,12 @@ def get_archetype_winrate(
         SELECT
           COALESCE(SUM(CASE WHEN m.result = 'WIN'  THEN 1 ELSE 0 END), 0) AS wins,
           COALESCE(SUM(CASE WHEN m.result = 'LOSS' THEN 1 ELSE 0 END), 0) AS losses,
-          COALESCE(SUM(CASE WHEN m.result = 'DRAW' THEN 1 ELSE 0 END), 0) AS draws
+          COALESCE(SUM(CASE WHEN m.result = 'DRAW' THEN 1 ELSE 0 END), 0) AS draws,
+          MAX(a.name) AS archetype_name
         FROM matches m
         JOIN tournament_entries e ON e.id = m.entry_id
         JOIN tournaments t ON t.id = e.tournament_id
+        JOIN archetypes a ON e.archetype_id = a.id
         WHERE e.archetype_id = :arch_id
           AND t.date >= :start
           AND t.date <= :end
@@ -72,12 +74,16 @@ def get_archetype_winrate(
     wins = int(res["wins"]) if res and res["wins"] is not None else 0
     losses = int(res["losses"]) if res and res["losses"] is not None else 0
     draws = int(res["draws"]) if res and res["draws"] is not None else 0
+    archetype_name = (
+        res["archetype_name"] if res and res["archetype_name"] is not None else None
+    )
     total = wins + losses + draws
     decisive_games = wins + losses
     winrate = (wins / decisive_games) if decisive_games > 0 else None
 
     return {
         "archetype_id": archetype_id,
+        "archetype_name": archetype_name,
         "start_date": start.isoformat(),
         "end_date": end.isoformat(),
         "exclude_mirror": exclude_mirror,

@@ -95,6 +95,7 @@ function TournamentList({ sources }: { sources: Tournament[] }) {
 
 function summarizeToolCall(tc: ToolCall): string {
   const p = (tc.inputParams || {}) as Record<string, unknown>
+  const result = (tc.toolResult?.resultContent || {}) as Record<string, unknown>
   switch (tc.toolName) {
     case 'list_formats':
       return 'All formats'
@@ -102,21 +103,21 @@ function summarizeToolCall(tc: ToolCall): string {
       return p.archetype_name ? `${p.archetype_name}` : ''
     case 'get_archetype_winrate':
       return [
-        p.archetype_id ? `ID: ${String(p.archetype_id).slice(0, 8)}…` : null,
+        result.archetype_name
+          ? capitalizeWords(String(result.archetype_name))
+          : null,
         p.start_date && p.end_date
           ? formatDateRange(String(p.start_date), String(p.end_date))
-          : null,
-        p.exclude_mirror !== undefined
-          ? `No mirror: ${p.exclude_mirror ? 'Yes' : 'No'}`
           : null,
       ]
         .filter(Boolean)
         .join(' • ')
     case 'get_matchup_winrate':
+      if (!p.archetype1_name || !p.archetype2_name) return ''
+      const arch1Name = capitalizeWords(p.archetype1_name as string)
+      const arch2Name = capitalizeWords(p.archetype2_name as string)
       return [
-        p.archetype1_name && p.archetype2_name
-          ? `${p.archetype1_name} vs ${p.archetype2_name}`
-          : null,
+        `${arch1Name} vs ${arch2Name}`,
         p.start_date && p.end_date
           ? formatDateRange(String(p.start_date), String(p.end_date))
           : null,
@@ -223,30 +224,38 @@ function renderSuccinctContent(tc: ToolCall) {
           <pre className="text-xs text-slate-300">{String(result ?? '')}</pre>
         )
       }
+      const excludeMirror = (result as Record<string, unknown>).exclude_mirror
       return (
-        <div className="text-sm text-slate-200 grid grid-cols-2 gap-2">
-          <div>
-            <strong>Wins:</strong>{' '}
-            {String((result as Record<string, unknown>).wins)}
+        <div className="text-sm text-slate-200 space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <strong>Wins:</strong>{' '}
+              {String((result as Record<string, unknown>).wins)}
+            </div>
+            <div>
+              <strong>Losses:</strong>{' '}
+              {String((result as Record<string, unknown>).losses)}
+            </div>
+            <div>
+              <strong>Draws:</strong>{' '}
+              {String((result as Record<string, unknown>).draws)}
+            </div>
+            <div>
+              <strong>Matches:</strong>{' '}
+              {String((result as Record<string, unknown>).matches)}
+            </div>
           </div>
           <div>
-            <strong>Losses:</strong>{' '}
-            {String((result as Record<string, unknown>).losses)}
-          </div>
-          <div>
-            <strong>Draws:</strong>{' '}
-            {String((result as Record<string, unknown>).draws)}
-          </div>
-          <div>
-            <strong>Matches:</strong>{' '}
-            {String((result as Record<string, unknown>).matches)}
-          </div>
-          <div className="col-span-2">
             <strong>Winrate:</strong>{' '}
             {(result as Record<string, unknown>).winrate !== null &&
             (result as Record<string, unknown>).winrate !== undefined
               ? `${(((result as Record<string, unknown>).winrate as number) * 100).toFixed(2)}%`
               : '—'}
+          </div>
+          <div className="text-xs text-slate-400">
+            {excludeMirror
+              ? 'Mirror matches excluded from winrate calculation'
+              : 'Mirror matches included in winrate calculation'}
           </div>
         </div>
       )
@@ -264,10 +273,12 @@ function renderSuccinctContent(tc: ToolCall) {
             {String((result as Record<string, unknown>).decisive_matches)}
           </div>
           <div>
-            <strong>Arch1 W-L-D:</strong>{' '}
-            {String((result as Record<string, unknown>).arch1_wins)}-
-            {String((result as Record<string, unknown>).arch1_losses)}-
-            {String((result as Record<string, unknown>).draws)}
+            <strong>Wins:</strong>{' '}
+            {String((result as Record<string, unknown>).arch1_wins)}
+          </div>
+          <div>
+            <strong>Losses:</strong>{' '}
+            {String((result as Record<string, unknown>).arch1_losses)}
           </div>
           <div>
             <strong>Winrate (no draws):</strong>{' '}
