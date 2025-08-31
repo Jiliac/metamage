@@ -1,7 +1,8 @@
 """Session and tool titling utilities using small models."""
 
 import re
-from typing import Optional
+import json
+from typing import Optional, List
 
 from sqlalchemy import inspect, text
 from langchain_anthropic import ChatAnthropic
@@ -31,6 +32,7 @@ class Titler:
         # Ensure the title column exists for backwards-compatible DBs
         try:
             self._ensure_title_column()
+            self._ensure_toolcall_columns()
         except Exception:
             # Non-fatal if we can't apply in-process migration
             pass
@@ -69,6 +71,196 @@ class Titler:
             return None
         finally:
             session.close()
+
+    def set_titles(
+        self,
+        session_id: str,
+        provider: str,
+        user_text: str,
+        assistant_text: str,
+    ) -> Optional[str]:
+        """Set session title and query titles for query_database tool calls."""
+        title = self.maybe_set_session_title(
+            session_id, provider, user_text, assistant_text
+        )
+        try:
+            self.set_query_titles(session_id, provider)
+        except Exception as e:
+            print(f"❌ Error setting query titles: {e}")
+        return title
+
+    def set_query_titles(self, session_id: str, provider: str) -> None:
+        """Fill title and column_names for query_database tool calls missing them."""
+        sess = self.SessionFactory()
+        try:
+            from ..ops_model.chat_models import ToolCall, ChatMessage
+
+            q = (
+                sess.query(ToolCall)
+                .join(ChatMessage, ChatMessage.id == ToolCall.message_id)
+                .filter(
+                    ChatMessage.session_id == session_id,
+                    ToolCall.tool_name == "query_database",
+                )
+                .filter((ToolCall.title.is_(None)) | (ToolCall.column_names.is_(None)))
+                .all()
+            )
+
+            if not q:
+                return
+
+            import json as _json
+
+            for tc in q:
+                # Extract SQL
+                sql = None
+                try:
+                    if isinstance(tc.input_params, dict):
+                        sql = tc.input_params.get("sql")
+                    if not sql and isinstance(tc.input_params, str):
+                        maybe = _json.loads(tc.input_params)
+                        if isinstance(maybe, dict):
+                            sql = maybe.get("sql")
+                except Exception:
+                    pass
+
+                if not sql:
+                    continue
+
+                result_json = None
+                if tc.tool_result and tc.tool_result.result_content is not None:
+                    result_json = tc.tool_result.result_content
+
+                # Build compact content preview for the model
+                try:
+                    result_preview = (
+                        _json.dumps(result_json)[:4000]
+                        if result_json is not None
+                        else ""
+                    )
+                except Exception:
+                    result_preview = str(result_json)[:4000]
+
+                # Ask small model for title (call 1) and ordered column names (call 2)
+                q_title = self._generate_query_title(provider, sql, result_preview)
+                col_names = self._generate_query_columns(provider, sql, result_preview)
+
+                updates = False
+
+                if q_title and (tc.title is None or not str(tc.title).strip()):
+                    tc.title = self._sanitize_title(q_title)
+                    updates = True
+                    print(f"🏷️  Query title set: {tc.title}")
+
+                if col_names and (tc.column_names is None or not tc.column_names):
+                    if isinstance(col_names, list):
+                        tc.column_names = [str(x) for x in col_names]
+                        updates = True
+                        print(f"🧾 Column names set: {tc.column_names}")
+
+                if updates:
+                    sess.add(tc)
+
+            sess.commit()
+        except Exception:
+            sess.rollback()
+            raise
+        finally:
+            sess.close()
+
+    def _generate_query_title(
+        self, provider: str, sql: str, result_preview: str
+    ) -> Optional[str]:
+        """Use a small model to produce a concise title for a SQL query. Return plain string title."""
+        prompt = (
+            "Produce a concise title (3–8 words) for the following SQL query and result preview.\n"
+            "- No quotes, no emojis, no trailing punctuation.\n"
+            "- Title should describe the question the SQL answers.\n\n"
+            "SQL:\n"
+            f"{sql}\n\n"
+            "Result content (sample/preview; may be truncated):\n"
+            f"{result_preview}\n\n"
+            "Return ONLY the title text."
+        )
+        try:
+            if provider in ("claude", "opus"):
+                llm = ChatAnthropic(model="claude-3-5-haiku-20241022", max_tokens=64)
+            elif provider == "gpt5":
+                llm = ChatOpenAI(model="gpt-5-nano", max_tokens=64)
+            else:
+                llm = ChatAnthropic(model="claude-3-5-haiku-20241022", max_tokens=64)
+            resp = llm.invoke(prompt)
+            text = str(getattr(resp, "content", resp)).strip()
+            # Clean to one line and strip quotes
+            title = self._sanitize_title(text)
+            return title if title else None
+        except Exception as e:
+            print(f"❌ Query title generation failed: {e}")
+            return None
+
+    def _generate_query_columns(
+        self, provider: str, sql: str, result_preview: str
+    ) -> Optional[List[str]]:
+        """Use a small model to infer ordered column names matching the result rows. Return list[str]."""
+        prompt = (
+            "Given the SQL and the preview of the result JSON, output ONLY a JSON array of column names "
+            "in the exact order they appear in each result row.\n"
+            "- Do not include any text before or after the JSON array.\n"
+            "- Ensure names are concise, snake_case preferred.\n\n"
+            "SQL:\n"
+            f"{sql}\n\n"
+            "Result content (sample/preview; may be truncated):\n"
+            f"{result_preview}\n\n"
+            'Example output: ["archetype","wins","losses"]'
+        )
+        try:
+            if provider in ("claude", "opus"):
+                llm = ChatAnthropic(model="claude-3-5-haiku-20241022", max_tokens=128)
+            elif provider == "gpt5":
+                llm = ChatOpenAI(model="gpt-5-nano", max_tokens=128)
+            else:
+                llm = ChatAnthropic(model="claude-3-5-haiku-20241022", max_tokens=128)
+            resp = llm.invoke(prompt)
+            text = str(getattr(resp, "content", resp)).strip()
+            # Parse JSON array strictly, then fallback
+            try:
+                data = json.loads(text)
+            except Exception:
+                import re as _re
+
+                m = _re.search(r"\[.*\]", text, _re.DOTALL)
+                data = json.loads(m.group(0)) if m else None
+            if isinstance(data, list):
+                cols = [str(x).strip() for x in data if str(x).strip()]
+                return cols if cols else None
+            return None
+        except Exception as e:
+            print(f"❌ Column names generation failed: {e}")
+            return None
+
+    def _ensure_toolcall_columns(self):
+        """Ensure tool_calls.title and tool_calls.column_names exist (SQLite/Postgres safe)."""
+        sess = self.SessionFactory()
+        try:
+            engine = sess.get_bind()
+            insp = inspect(engine)
+            if "tool_calls" not in insp.get_table_names():
+                return
+            cols = [c["name"] for c in insp.get_columns("tool_calls")]
+            stmts = []
+            if "title" not in cols:
+                stmts.append("ALTER TABLE tool_calls ADD COLUMN title VARCHAR(200)")
+            if "column_names" not in cols:
+                if engine.dialect.name == "postgresql":
+                    stmts.append("ALTER TABLE tool_calls ADD COLUMN column_names JSONB")
+                else:
+                    stmts.append("ALTER TABLE tool_calls ADD COLUMN column_names TEXT")
+            if stmts:
+                with engine.begin() as conn:
+                    for sql in stmts:
+                        conn.execute(text(sql))
+        finally:
+            sess.close()
 
     def _generate_title(
         self, provider: str, user_text: str, assistant_text: str

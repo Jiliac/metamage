@@ -69,6 +69,9 @@ class ToolCall(Base, TimestampMixin):
     call_id = Column(
         String(100), nullable=False, index=True
     )  # Agent's internal call ID
+    # Optional metadata for query_database tool calls
+    title = Column(String(200), nullable=True)
+    column_names = Column(JSONB, nullable=True)
 
     # Relationships
     message = relationship("ChatMessage", back_populates="tool_calls")

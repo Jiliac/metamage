@@ -261,8 +261,8 @@ class MTGChatAgent:
                         self.logger.log_final_response(
                             self.session_id, assistant_message
                         )
-                        # Set a concise session title using a small model, if not set
-                        self.titler.maybe_set_session_title(
+                        # Set titles (session + query tool calls)
+                        self.titler.set_titles(
                             self.session_id,
                             self.provider,
                             user_input,
