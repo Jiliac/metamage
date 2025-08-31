@@ -107,7 +107,7 @@ async function getSessionData(id: string): Promise<SessionData | null> {
         inputParams: toolCall.inputParams,
         callId: toolCall.callId,
         title: toolCall.title ?? null,
-        columnNames: (toolCall as any).columnNames ?? null,
+        columnNames: toolCall.columnNames ?? null,
         toolResult: toolCall.toolResult
           ? {
               resultContent: toolCall.toolResult.resultContent,

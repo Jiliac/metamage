@@ -545,17 +545,22 @@ function renderSuccinctContent(tc: ToolCall) {
       )
     }
     case 'query_database': {
-      const rc = tc.toolResult?.resultContent as any
+      const rc: unknown = tc.toolResult?.resultContent
       const colNames = Array.isArray(tc.columnNames)
         ? tc.columnNames
         : undefined
-      const rows = Array.isArray(rc?.rows)
-        ? rc.rows
-        : Array.isArray(rc)
-          ? rc
-          : Array.isArray(rc?.data)
-            ? rc.data
-            : []
+
+      const extractArray = (val: unknown): unknown[] => {
+        if (Array.isArray(val)) return val
+        if (typeof val === 'object' && val !== null) {
+          const obj = val as { rows?: unknown; data?: unknown }
+          if (Array.isArray(obj.rows)) return obj.rows
+          if (Array.isArray(obj.data)) return obj.data
+        }
+        return []
+      }
+
+      const rows = extractArray(rc)
       const rowCount = rows.length
 
       return (

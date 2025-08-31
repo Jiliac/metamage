@@ -10,14 +10,14 @@ import {
 
 type QueryResultTableProps = {
   columns: string[]
-  data: Array<Record<string, any>>
+  data: Array<Record<string, unknown>>
 }
 
 export default function QueryResultTable({
   columns,
   data,
 }: QueryResultTableProps) {
-  const columnDefs = React.useMemo<ColumnDef<Record<string, any>>[]>(
+  const columnDefs = React.useMemo<ColumnDef<Record<string, unknown>>[]>(
     () =>
       columns.map(col => ({
         accessorKey: col,

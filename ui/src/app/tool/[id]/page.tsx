@@ -11,33 +11,38 @@ interface ToolPageProps {
 
 // Normalize various resultContent shapes into array of row objects using provided column order
 function normalizeRows(
-  resultContent: any,
+  resultContent: unknown,
   columnNames: string[]
-): Array<Record<string, any>> {
-  const raw = Array.isArray(resultContent?.rows)
-    ? resultContent.rows
-    : Array.isArray(resultContent)
-      ? resultContent
-      : Array.isArray(resultContent?.data)
-        ? resultContent.data
-        : []
+): Array<Record<string, unknown>> {
+  const extractArray = (rc: unknown): unknown[] => {
+    if (Array.isArray(rc)) return rc
+    if (typeof rc === 'object' && rc !== null) {
+      const obj = rc as { rows?: unknown; data?: unknown }
+      if (Array.isArray(obj.rows)) return obj.rows
+      if (Array.isArray(obj.data)) return obj.data
+    }
+    return []
+  }
 
-  return raw.map((row: any) => {
+  const raw = extractArray(resultContent)
+
+  return raw.map(row => {
     if (Array.isArray(row)) {
-      const obj: Record<string, any> = {}
+      const obj: Record<string, unknown> = {}
       columnNames.forEach((col, i) => {
         obj[col] = row[i]
       })
       return obj
     }
-    if (row && typeof row === 'object') {
-      const obj: Record<string, any> = {}
+    if (typeof row === 'object' && row !== null) {
+      const ro = row as Record<string, unknown>
+      const obj: Record<string, unknown> = {}
       columnNames.forEach(col => {
-        obj[col] = (row as any)?.[col]
+        obj[col] = ro[col]
       })
       return obj
     }
-    return { value: row }
+    return { value: row as unknown }
   })
 }
 
@@ -71,7 +76,7 @@ export default async function ToolPage({ params }: ToolPageProps) {
     inputParams: toolCall.inputParams,
     callId: toolCall.callId,
     title: toolCall.title ?? null,
-    columnNames: (toolCall as any).columnNames ?? null,
+    columnNames: toolCall.columnNames ?? null,
     toolResult: toolCall.toolResult
       ? {
           resultContent: toolCall.toolResult.resultContent,
