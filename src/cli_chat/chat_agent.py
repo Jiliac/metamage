@@ -8,12 +8,12 @@ import os
 from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
 from langchain_openai import ChatOpenAI
-from langchain_xai import ChatXAI
 from langgraph.prebuilt import create_react_agent
 
 from .mcp_client import create_mcp_client
 from .system_prompt import get_metamage_system_prompt
 from .chat_logger import ChatLogger
+from .titler import Titler
 
 
 load_dotenv()
@@ -27,6 +27,7 @@ class MTGChatAgent:
         self.conversation_history = []
         self.provider = provider
         self.logger = ChatLogger()
+        self.titler = Titler()
         self.session_id = None
 
     async def setup(self):
@@ -41,12 +42,6 @@ class MTGChatAgent:
                 print("❌ Error: ANTHROPIC_API_KEY environment variable not set")
                 print("Please set your Anthropic API key:")
                 print("export ANTHROPIC_API_KEY=your_api_key_here")
-                return False
-        elif self.provider == "xai":
-            if not os.getenv("XAI_API_KEY"):
-                print("❌ Error: XAI_API_KEY environment variable not set")
-                print("Please set your xAI API key:")
-                print("export XAI_API_KEY=your_api_key_here")
                 return False
         elif self.provider == "gpt5":
             if not os.getenv("OPENAI_API_KEY"):
@@ -71,12 +66,6 @@ class MTGChatAgent:
                 print("🧠 Initializing Claude Opus...")
                 llm = ChatAnthropic(
                     model="claude-opus-4-1-20250805",
-                    max_tokens=4096,
-                )
-            elif self.provider == "xai":
-                print("🧠 Initializing xAI Grok...")
-                llm = ChatXAI(
-                    model="grok-2-1212",
                     max_tokens=4096,
                 )
             elif self.provider == "gpt5":
@@ -265,6 +254,13 @@ class MTGChatAgent:
                         self.logger.log_final_response(
                             self.session_id, assistant_message
                         )
+                        # Set a concise session title using a small model, if not set
+                        self.titler.maybe_set_session_title(
+                            self.session_id,
+                            self.provider,
+                            user_input,
+                            assistant_message,
+                        )
                 else:
                     print("\n🤖 Assistant: [No final response captured]")
 
@@ -300,7 +296,7 @@ async def main():
     parser = argparse.ArgumentParser(description="MTG Tournament Analysis Chat Agent")
     parser.add_argument(
         "--provider",
-        choices=["claude", "xai", "opus", "gpt5"],
+        choices=["claude", "opus", "gpt5"],
         default="claude",
         help="LLM provider to use (default: claude)",
     )
