@@ -19,3 +19,42 @@ This document lists all registered MCP tools and whether their outputs are succi
 | get_archetype_cards | No | Card adoption within a specific archetype and board (MAIN/SIDE); tabular and longer. |
 | get_tournament_results | No | Recent winners list plus a top 8 meta breakdown for the window. |
 | query_database | No | Executes arbitrary SELECT queries; output size depends entirely on the query. |
+
+----
+
+Each "No" tool can be explained well on a single page if you lead with a compact summary and tuck detail into charts/tables. Even get_meta_report is fine with the right layout.
+
+Suggested one‑page designs per "No" tool:
+
+- get_format_meta_changes
+   - Top: 1–2 sentence summary (window size, counts by type).
+   - Main: chronological timeline with badges (BAN/SET_RELEASE), optional filters and search.
+   - Extras: collapse long descriptions, paginate by year.
+- get_archetype_trends
+   - Top: average presence% and winrate across window, best/worst week.
+   - Main: two small line charts sharing x-axis (presence%, winrate), tooltips per week.
+   - Extras: compact weekly table below charts (entries, matches, WR), downloadable CSV.
+- get_meta_report
+   - Top: KPIs for window (tournaments, entries, total matches).
+   - Main:
+      - Left: scatter plot (presence% vs winrate), point size by entries, labels for top N.
+      - Right: top-N table (archetype, entries, matches, presence%, WR), sortable.
+   - Extras: filters (min entries/matches), toggle exclude draws note, link out to sources.
+- get_card_presence
+   - Top: counts (unique cards, decks analyzed), board/exclude lands summary.
+   - Main: searchable, sortable table (card, decks_playing, total_copies, avg_copies, presence%).
+   - Extras: small bar chart of top 10 by presence%, board toggle chips.
+- get_archetype_cards
+   - Top: archetype + board summary (decks analyzed).
+   - Main: table like card_presence but scoped to the archetype.
+   - Extras: quick filter for "appears in ≥X% decks", optional card hover preview.
+- get_tournament_results
+   - Top: KPIs (tournaments meeting min_players, unique winners).
+   - Main:
+      - Left: winners list (date, event, winner handle, archetype, link).
+      - Right: top-8 breakdown stacked bar or table (archetype, top8 count, wins, share%).
+   - Extras: source filter, link to "view tournament" where applicable.
+- query_database
+   - Top: brief safety notes and current LIMIT.
+   - Main: SQL editor + results grid (first N rows), rowcount, export CSV.
+   - Extras: schema sidebar, recent queries, error panel.
