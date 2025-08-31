@@ -6,7 +6,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
-import { Button } from '@/components/ui/button'
+import { ShareButton } from './ShareButton'
 
 const SUCCINCT_TOOLS = new Set<string>([
   'list_formats',
@@ -322,7 +322,7 @@ export function ToolCallItem({ tc }: { tc: ToolCall }) {
     return (
       <div
         key={tc.id}
-        className="rounded-lg border border-slate-700 bg-slate-900/40 px-4 py-2 my-3 text-slate-200"
+        className="rounded-lg border border-slate-700 bg-slate-900/40 hover:bg-slate-700/40 px-4 py-2 my-3 text-slate-200"
         title={tc.toolName}
       >
         <div className="flex items-center justify-between">
@@ -336,31 +336,26 @@ export function ToolCallItem({ tc }: { tc: ToolCall }) {
   }
 
   return (
-    <Collapsible className="rounded-lg border border-slate-700 bg-slate-900/40 my-3">
-      <div className="flex items-center justify-between gap-2 px-4 py-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="text-slate-400">🛠️</span>
-          <span className="font-medium text-slate-100">
-            {labelizeToolName(tc.toolName)}
-          </span>
-          <span className="text-xs text-slate-400 truncate">
-            {summarizeToolCall(tc)}
-          </span>
+    <Collapsible className="rounded-lg border border-slate-700 bg-slate-900/40 my-3 group">
+      <CollapsibleTrigger className="w-full">
+        <div className="flex items-center justify-between gap-2 px-4 py-2 hover:bg-slate-700/40 transition-colors group-data-[state=open]:border-b group-data-[state=open]:border-slate-800/60">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="text-slate-400">🛠️</span>
+            <span className="font-medium text-slate-100">
+              {labelizeToolName(tc.toolName)}
+            </span>
+            <span className="text-xs text-slate-400 truncate">
+              {summarizeToolCall(tc)}
+            </span>
+          </div>
+          <div className="text-slate-400 group-data-[state=open]:rotate-180 transition-transform duration-300">
+            ▼
+          </div>
         </div>
-        <CollapsibleTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-slate-300 hover:text-white"
-          >
-            Details
-          </Button>
-        </CollapsibleTrigger>
-      </div>
-      <CollapsibleContent className="px-4 pb-3">
-        <div className="border-t border-slate-800/60 pt-3">
-          {renderSuccinctContent(tc)}
-        </div>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="px-4 pb-3 pt-3">
+        {renderSuccinctContent(tc)}
+        <ShareButton toolCallId={tc.id} />
       </CollapsibleContent>
     </Collapsible>
   )
