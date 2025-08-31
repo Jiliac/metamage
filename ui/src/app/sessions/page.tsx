@@ -1,9 +1,27 @@
+import type { Metadata } from 'next'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 // This page uses ISR to regenerate every 60 seconds
 export const revalidate = 60
+
+export function generateMetadata(): Metadata {
+  return {
+    title: 'Chat Sessions',
+    description: 'MTG Tournament Analysis Conversations',
+    alternates: { canonical: '/sessions' },
+    openGraph: {
+      url: '/sessions',
+      title: 'Chat Sessions',
+      description: 'MTG Tournament Analysis Conversations',
+      images: ['/logo.png'],
+    },
+    twitter: {
+      card: 'summary_large_image',
+    },
+  }
+}
 
 async function getSessionsWithCounts() {
   const sessions = await prisma.chatSession.findMany({

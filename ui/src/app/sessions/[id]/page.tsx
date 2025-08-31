@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import SessionView from '@/components/SessionView'
@@ -11,6 +12,50 @@ interface SessionPageProps {
 
 // This page uses ISR - static at build time, revalidated every 30 seconds
 export const revalidate = 30
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params
+
+  const session = await prisma.chatSession.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      provider: true,
+      createdAt: true,
+      messages: {
+        select: { content: true, messageType: true },
+        orderBy: { sequenceOrder: 'desc' },
+        take: 1,
+      },
+    },
+  })
+
+  const title = session
+    ? `Session ${session.id.slice(0, 8)} – ${session.provider}`
+    : 'Session Not Found'
+  const description =
+    session?.messages[0]?.content?.slice(0, 160) ||
+    'Chat session details and transcript.'
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `/sessions/${id}` },
+    openGraph: {
+      url: `/sessions/${id}`,
+      title,
+      description,
+      images: ['/logo.png'],
+    },
+    twitter: {
+      card: 'summary_large_image',
+    },
+  }
+}
 
 // Generate static paths for all existing sessions at build time
 export async function generateStaticParams() {
@@ -79,5 +124,30 @@ export default async function SessionPage({ params }: SessionPageProps) {
     notFound()
   }
 
-  return <SessionView initialSession={session} />
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  const excerpt =
+    session.messages
+      .find(m => m.messageType === 'user')
+      ?.content?.slice(0, 160) ||
+    session.messages[0]?.content?.slice(0, 160) ||
+    ''
+  const ldJson = {
+    '@context': 'https://schema.org',
+    '@type': 'CreativeWork',
+    '@id': `${baseUrl}/sessions/${session.id}`,
+    name: `Chat Session ${session.id.slice(0, 8)} – ${session.provider}`,
+    datePublished: session.createdAt,
+    description: excerpt,
+  }
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(ldJson) }}
+      />
+      <SessionView initialSession={session} />
+    </>
+  )
 }

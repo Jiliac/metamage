@@ -1,11 +1,42 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 
+export function generateMetadata(): Metadata {
+  return {
+    title: 'Home',
+    description: 'MTG Tournament Analysis & Chat Logs Interface',
+    alternates: { canonical: '/' },
+    openGraph: {
+      type: 'website',
+      url: '/',
+      title: 'MetaMage – MTG Tournament Analysis',
+      description: 'MTG Tournament Analysis & Chat Logs Interface',
+      images: ['/logo.png'],
+    },
+    twitter: {
+      card: 'summary_large_image',
+    },
+  }
+}
+
 export default function Home() {
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  const ldJson = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'MetaMage',
+    url: baseUrl,
+  }
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <main className="container mx-auto px-6 pt-20 pb-16 flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] text-center">
+        <script
+          type="application/ld+json"
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(ldJson) }}
+        />
         <div className="mb-8">
           <h1 className="text-6xl font-bold text-white mb-4">
             Meta<span className="text-cyan-400">Mage</span>

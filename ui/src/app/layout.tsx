@@ -14,8 +14,30 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'MetaMage - MTG Tournament Analysis',
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  ),
+  title: {
+    default: 'MetaMage – MTG Tournament Analysis',
+    template: '%s | MetaMage',
+  },
   description: 'MTG Tournament Analysis & Chat Logs Interface',
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    type: 'website',
+    url: '/',
+    title: 'MetaMage – MTG Tournament Analysis',
+    description: 'MTG Tournament Analysis & Chat Logs Interface',
+    images: [{ url: '/logo.png', width: 1200, height: 630, alt: 'MetaMage' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'MetaMage – MTG Tournament Analysis',
+    description: 'MTG Tournament Analysis & Chat Logs Interface',
+    images: ['/logo.png'],
+  },
   icons: {
     icon: [
       { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
