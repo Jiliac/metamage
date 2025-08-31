@@ -57,10 +57,16 @@ export default function SessionView({ initialSession }: SessionViewProps) {
 
           <div className="flex items-center gap-4 mb-2">
             <h1 className="text-3xl font-bold text-white">
-              Session{' '}
-              <span className="text-cyan-400">
-                {initialSession.id.substring(0, 8)}
-              </span>
+              {initialSession.title ? (
+                <>{initialSession.title}</>
+              ) : (
+                <>
+                  Session{' '}
+                  <span className="text-cyan-400">
+                    {initialSession.id.substring(0, 8)}
+                  </span>
+                </>
+              )}
             </h1>
           </div>
 

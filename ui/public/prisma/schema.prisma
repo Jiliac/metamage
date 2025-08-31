@@ -13,6 +13,7 @@ datasource db {
 model ChatSession {
   id        String   @id @default(uuid())
   provider  String   @db.VarChar(20) // claude, xai, opus, gpt5
+  title     String?  @db.VarChar(200)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

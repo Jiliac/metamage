@@ -25,6 +25,7 @@ export async function generateMetadata({
     select: {
       id: true,
       provider: true,
+      title: true,
       createdAt: true,
       messages: {
         select: { content: true, messageType: true },
@@ -35,7 +36,7 @@ export async function generateMetadata({
   })
 
   const title = session
-    ? `Session ${session.id.slice(0, 8)} – ${session.provider}`
+    ? `${session.title ?? `Session ${session.id.slice(0, 8)}`} – ${session.provider}`
     : 'Session Not Found'
   const description =
     session?.messages[0]?.content?.slice(0, 160) ||
@@ -92,6 +93,7 @@ async function getSessionData(id: string): Promise<SessionData | null> {
   return {
     id: session.id,
     provider: session.provider,
+    title: session.title ?? null,
     createdAt: session.createdAt.toISOString(),
     messages: session.messages.map(message => ({
       id: message.id,
@@ -135,7 +137,9 @@ export default async function SessionPage({ params }: SessionPageProps) {
     '@context': 'https://schema.org',
     '@type': 'CreativeWork',
     '@id': `${baseUrl}/sessions/${session.id}`,
-    name: `Chat Session ${session.id.slice(0, 8)} – ${session.provider}`,
+    name: session.title
+      ? `${session.title} – ${session.provider}`
+      : `Chat Session ${session.id.slice(0, 8)} – ${session.provider}`,
     datePublished: session.createdAt,
     description: excerpt,
   }

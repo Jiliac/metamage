@@ -35,6 +35,7 @@ export async function GET(
     const formattedSession = {
       id: session.id,
       provider: session.provider,
+      title: session.title ?? null,
       createdAt: session.createdAt.toISOString(),
       updatedAt: session.updatedAt.toISOString(),
       messages: session.messages.map(message => ({

@@ -24,6 +24,7 @@ export interface Message {
 export interface SessionData {
   id: string
   provider: string
+  title?: string | null
   createdAt: string
   messages: Message[]
 }

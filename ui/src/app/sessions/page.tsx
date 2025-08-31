@@ -28,6 +28,7 @@ async function getSessionsWithCounts() {
     select: {
       id: true,
       provider: true,
+      title: true,
       createdAt: true,
       messages: {
         select: {
@@ -54,6 +55,7 @@ async function getSessionsWithCounts() {
   return sessions.map(session => ({
     id: session.id,
     provider: session.provider,
+    title: session.title || null,
     createdAt: session.createdAt.toISOString(),
     messageCount: session._count.messages,
     lastMessage: session.messages[0]?.content.substring(0, 100) || null,
@@ -97,7 +99,8 @@ export default async function SessionsPage() {
                     <div className="flex justify-between items-start">
                       <div>
                         <CardTitle className="text-lg text-white mb-1">
-                          Session {session.id.substring(0, 8)}...
+                          {session.title ??
+                            `Session ${session.id.substring(0, 8)}...`}
                         </CardTitle>
                         <div className="flex items-center gap-4 text-sm text-slate-400">
                           <span>{session.messageCount} messages</span>

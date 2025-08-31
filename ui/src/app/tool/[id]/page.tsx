@@ -13,7 +13,11 @@ async function getToolCallData(id: string) {
     where: { id },
     include: {
       toolResult: true,
-      message: true,
+      message: {
+        include: {
+          session: true,
+        },
+      },
     },
   })
 
@@ -53,6 +57,8 @@ export default async function ToolPage({ params }: ToolPageProps) {
             className="text-cyan-400 hover:text-cyan-300 text-sm mb-4 inline-block"
           >
             ← Back to Session
+            {toolCall.message.session.title &&
+              `: ${toolCall.message.session.title}`}
           </Link>
 
           <div className="flex items-center gap-4 mb-2">

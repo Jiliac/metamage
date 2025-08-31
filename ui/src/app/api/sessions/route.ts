@@ -11,6 +11,7 @@ export async function GET(request: Request) {
       select: {
         id: true,
         provider: true,
+        title: true,
         createdAt: true,
         messages: {
           select: {
@@ -39,6 +40,7 @@ export async function GET(request: Request) {
     const formattedSessions = sessions.map(session => ({
       id: session.id,
       provider: session.provider,
+      title: session.title || null,
       createdAt: session.createdAt.toISOString(),
       messageCount: session._count.messages,
       lastMessage: session.messages[0]?.content.substring(0, 100) || null,
