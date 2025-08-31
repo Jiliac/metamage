@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import type { ChatMessage, ToolCall, ToolResult } from '@prisma/client'
 
 export async function GET(
   request: Request,
@@ -35,32 +36,40 @@ export async function GET(
       },
     })
 
-    const formattedMessages = messages.map(message => ({
-      id: message.id,
-      messageType: message.messageType,
-      content: message.content,
-      sequenceOrder: message.sequenceOrder,
-      createdAt: message.createdAt.toISOString(),
-      ...(includeToolCalls && {
-        toolCalls: message.toolCalls.map(toolCall => ({
-          id: toolCall.id,
-          toolName: toolCall.toolName,
-          inputParams: toolCall.inputParams,
-          callId: toolCall.callId,
-          createdAt: toolCall.createdAt.toISOString(),
-          toolResult:
-            includeToolCalls && toolCall.toolResult
-              ? {
-                  id: toolCall.toolResult.id,
-                  resultContent: toolCall.toolResult.resultContent,
-                  success: toolCall.toolResult.success,
-                  errorMessage: toolCall.toolResult.errorMessage,
-                  createdAt: toolCall.toolResult.createdAt.toISOString(),
-                }
-              : null,
-        })),
-      }),
-    }))
+    const formattedMessages = messages.map(
+      (
+        message: ChatMessage & {
+          toolCalls: (ToolCall & { toolResult: ToolResult | null })[]
+        }
+      ) => ({
+        id: message.id,
+        messageType: message.messageType,
+        content: message.content,
+        sequenceOrder: message.sequenceOrder,
+        createdAt: message.createdAt.toISOString(),
+        ...(includeToolCalls && {
+          toolCalls: message.toolCalls.map(
+            (toolCall: ToolCall & { toolResult: ToolResult | null }) => ({
+              id: toolCall.id,
+              toolName: toolCall.toolName,
+              inputParams: toolCall.inputParams,
+              callId: toolCall.callId,
+              createdAt: toolCall.createdAt.toISOString(),
+              toolResult:
+                includeToolCalls && toolCall.toolResult
+                  ? {
+                      id: toolCall.toolResult.id,
+                      resultContent: toolCall.toolResult.resultContent,
+                      success: toolCall.toolResult.success,
+                      errorMessage: toolCall.toolResult.errorMessage,
+                      createdAt: toolCall.toolResult.createdAt.toISOString(),
+                    }
+                  : null,
+            })
+          ),
+        }),
+      })
+    )
 
     return NextResponse.json({
       messages: formattedMessages,
