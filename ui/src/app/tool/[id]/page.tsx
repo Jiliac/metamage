@@ -115,18 +115,18 @@ export default async function ToolPage({ params }: ToolPageProps) {
 
         <div className="bg-slate-800/50 rounded-lg p-6 space-y-4">
           {toolCall.toolName === 'query_database' &&
-            Array.isArray((toolCall as any).columnNames) &&
-            ((toolCall as any).columnNames as unknown[]).length > 0 &&
+            Array.isArray(toolCall.columnNames) &&
+            (toolCall.columnNames as unknown[]).length > 0 &&
             toolCall.toolResult && (
               <>
                 <h2 className="text-xl font-semibold text-white">
                   Query Result
                 </h2>
                 <QueryResultTable
-                  columns={(toolCall as any).columnNames as string[]}
+                  columns={(toolCall.columnNames as unknown[]).map(String)}
                   data={normalizeRows(
                     toolCall.toolResult.resultContent,
-                    (toolCall as any).columnNames as string[]
+                    (toolCall.columnNames as unknown[]).map(String)
                   )}
                 />
               </>
