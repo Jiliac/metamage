@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 
 interface ShareButtonProps {
@@ -7,6 +8,8 @@ interface ShareButtonProps {
 }
 
 export function ShareButton({ toolCallId }: ShareButtonProps) {
+  const router = useRouter()
+
   return (
     <div className="flex justify-end mt-3">
       <Button
@@ -15,8 +18,7 @@ export function ShareButton({ toolCallId }: ShareButtonProps) {
         className="text-slate-400 text-xs"
         onClick={e => {
           e.stopPropagation()
-          // TODO: Implement share functionality for toolCallId
-          console.log('Share tool call:', toolCallId)
+          router.push(`/tool/${toolCallId}`)
         }}
       >
         Share
