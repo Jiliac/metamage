@@ -7,16 +7,21 @@ mcp = FastMCP(
         This server exposes tools and resources for MTG tournament analysis:
 
         ## Tools
-          - query_database(sql, limit): run SELECT-only SQLite queries against the MTG tournament DB
-          - get_archetype_winrate(archetype_id, start_date, end_date, exclude_mirror?): compute W/L/D and winrate
+          - list_formats(): list all formats with their IDs and names
+          - get_format_meta_changes(format_id): all meta changes (bans, set releases) for a format
+          - get_archetype_overview(archetype_name): resolve archetype by name with recent performance and key cards
+          - get_archetype_trends(format_id, archetype_name, days_back?): weekly presence/winrate trends
           - get_meta_report(format_id, start_date, end_date, limit?): meta report with presence % and winrates
+          - get_archetype_winrate(archetype_id, start_date, end_date, exclude_mirror?): compute W/L/D and winrate
           - get_matchup_winrate(format_id, archetype1_name, archetype2_name, start_date, end_date): head-to-head analysis
           - get_card_presence(format_id, start_date, end_date, board?, exclude_lands?, limit?): top cards by presence in format
-          - search_card(query): search card by name (partial/fuzzy) and return details (id, name, type, oracle_text, mana_cost)
           - get_archetype_cards(format_id, archetype_name, start_date, end_date, board?, limit?): cards in specific archetype
-          - get_archetype_trends(format_id, archetype_name, days_back?): weekly presence/winrate trends
           - get_tournament_results(format_id, start_date, end_date, min_players?, limit?): winners and top 8 breakdown
           - get_sources(format_id, start_date, end_date, archetype_name?, limit?): recent tournaments with links and source breakdown
+          - search_card(query): search card by name (partial/fuzzy) and return details (id, name, type, oracle_text, mana_cost)
+          - get_player(player_id): player profile (also accepts handle)
+          - search_player(player_handle): fuzzy search a player then return profile
+          - query_database(sql, limit): run SELECT-only SQLite queries against the MTG tournament DB
 
         ## Resources
           - mtg://formats/{format_id}: format overview with recent tournaments and meta snapshot

@@ -18,14 +18,19 @@ You have direct access to a comprehensive MTG tournament database with these too
 ### Core Analysis Tools:
 - **list_formats()**: List all available formats with their IDs and names
 - **get_format_meta_changes(format_id)**: Get all meta changes (bans, set releases) for a format
-- **query_database(sql, limit)**: Execute SELECT queries directly against the database
-- **get_meta_report(format_id, start_date, end_date)**: Get top archetypes by presence and winrate
-- **get_archetype_winrate(archetype_id, start_date, end_date)**: Calculate archetype performance
+- **get_archetype_overview(archetype_name)**: Resolve an archetype by name and show recent performance and key cards
+- **get_archetype_trends(format_id, archetype_name, days_back)**: Weekly presence and winrate trends
+- **get_meta_report(format_id, start_date, end_date, limit)**: Top archetypes by presence and winrate
+- **get_archetype_winrate(archetype_id, start_date, end_date, exclude_mirror)**: Calculate archetype performance
 - **get_matchup_winrate(format_id, arch1, arch2, start_date, end_date)**: Head-to-head analysis
-- **get_card_presence(format_id, start_date, end_date, board)**: Top cards by usage
-- **get_archetype_cards(format_id, archetype_name, start_date, end_date)**: Cards in specific archetypes
-- **get_tournament_results(format_id, start_date, end_date)**: Winners and top 8 breakdowns
+- **get_card_presence(format_id, start_date, end_date, board, exclude_lands, limit)**: Top cards by usage
+- **get_archetype_cards(format_id, archetype_name, start_date, end_date, board, limit)**: Cards in specific archetypes
+- **get_tournament_results(format_id, start_date, end_date, min_players, limit)**: Winners and top 8 breakdowns
 - **get_sources(format_id, start_date, end_date, archetype_name, limit)**: Recent tournaments with links and source breakdown
+- **search_card(query)**: Search card by name (partial/fuzzy) and return details including local card_id
+- **get_player(player_id or handle)**: Player profile with recent performance
+- **search_player(player_handle)**: Fuzzy search a player then return their profile
+- **query_database(sql, limit)**: Execute SELECT queries directly against the database
 
 ### Database Schema:
 ```sql
