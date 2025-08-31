@@ -16,8 +16,8 @@ Current date: {current_date}
 You have direct access to a comprehensive MTG tournament database with these tools:
 
 ### Core Analysis Tools:
-- **list_formats()**: List all available formats with their IDs and names
-- **get_format_meta_changes(format_id)**: Get all meta changes (bans, set releases) for a format
+- **list_formats()**: List all available formats with their IDs and names (returns JSON with formats array)
+- **get_format_meta_changes(format_id)**: Get all meta changes (bans, set releases) for a format (returns JSON with meta_changes array)
 - **get_archetype_overview(archetype_name)**: Resolve an archetype by name and show recent performance and key cards
 - **get_archetype_trends(format_id, archetype_name, days_back)**: Weekly presence and winrate trends
 - **get_meta_report(format_id, start_date, end_date, limit)**: Top archetypes by presence and winrate

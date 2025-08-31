@@ -140,6 +140,13 @@ class MTGChatAgent:
 
                         # Log tool calls separately
                         for tool_call in tool_calls:
+                            # If we have tool calls but no current_message_id (no agent thought),
+                            # create an empty thought to ensure tool calls get logged
+                            if not current_message_id and self.session_id:
+                                current_message_id = self.logger.log_agent_thought(
+                                    self.session_id, ""
+                                )
+
                             if current_message_id:
                                 self.logger.log_tool_call(
                                     current_message_id,

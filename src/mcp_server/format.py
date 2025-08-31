@@ -1,3 +1,4 @@
+from typing import Dict, Any
 from .utils import get_session
 from .mcp import mcp
 from fastmcp import Context
@@ -7,7 +8,7 @@ from ..models import Format, MetaChange
 
 @log_tool_calls
 @mcp.tool
-def list_formats(ctx: Context = None) -> str:
+def list_formats(ctx: Context = None) -> Dict[str, Any]:
     """
     List all available formats with their IDs and names.
 
@@ -22,20 +23,16 @@ def list_formats(ctx: Context = None) -> str:
         formats = session.query(Format).order_by(Format.name).all()
 
     if not formats:
-        return "No formats found in database"
+        return {"formats": [], "message": "No formats found in database"}
 
-    format_list = "\n".join([f"- {row.name}: {row.id}" for row in formats])
+    format_list = [{"id": row.id, "name": row.name} for row in formats]
 
-    return f"""# Available MTG Formats
-
-{format_list}
-
-Use these format IDs in other tools to query specific format data."""
+    return {"formats": format_list, "total_count": len(format_list)}
 
 
 @log_tool_calls
 @mcp.tool
-def get_format_meta_changes(format_id: str, ctx: Context = None) -> str:
+def get_format_meta_changes(format_id: str, ctx: Context = None) -> Dict[str, Any]:
     """
     Get all meta changes (bans, set releases) for a format.
 
@@ -49,7 +46,7 @@ def get_format_meta_changes(format_id: str, ctx: Context = None) -> str:
     with get_session() as session:
         fmt = session.query(Format).filter(Format.id == format_id).first()
         if not fmt:
-            return f"Format {format_id} not found"
+            return {"error": f"Format {format_id} not found"}
 
         changes = (
             session.query(MetaChange)
@@ -59,23 +56,26 @@ def get_format_meta_changes(format_id: str, ctx: Context = None) -> str:
         )
 
     if not changes:
-        return f"No meta changes found for format {format_id}"
+        return {
+            "format_id": format_id,
+            "format_name": fmt.name,
+            "meta_changes": [],
+            "message": f"No meta changes found for format {format_id}",
+        }
 
     changes_list = []
     for change in changes:
-        change_text = (
-            f"**{change.date.strftime('%Y-%m-%d')}** - {change.change_type.value}"
-        )
-        if change.set_code:
-            change_text += f" ({change.set_code})"
-        if change.description:
-            change_text += f": {change.description}"
-        changes_list.append(change_text)
+        change_data = {
+            "date": change.date.strftime("%Y-%m-%d"),
+            "change_type": change.change_type.value,
+            "set_code": change.set_code,
+            "description": change.description,
+        }
+        changes_list.append(change_data)
 
-    changes_summary = "\n".join(changes_list)
-
-    return f"""# {fmt.name} Meta Changes
-
-{changes_summary}
-
-These changes affect the competitive landscape and deck building considerations."""
+    return {
+        "format_id": format_id,
+        "format_name": fmt.name,
+        "meta_changes": changes_list,
+        "total_changes": len(changes_list),
+    }

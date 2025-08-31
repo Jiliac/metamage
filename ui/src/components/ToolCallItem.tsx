@@ -1,5 +1,3 @@
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import Link from 'next/link'
 import { ToolCall } from '@/types/chat'
 import {
@@ -11,6 +9,7 @@ import { ShareButton } from './ShareButton'
 
 const SUCCINCT_TOOLS = new Set<string>([
   'list_formats',
+  'get_format_meta_changes',
   'get_archetype_overview',
   'get_archetype_winrate',
   'get_matchup_winrate',
@@ -99,6 +98,12 @@ function summarizeToolCall(tc: ToolCall): string {
   switch (tc.toolName) {
     case 'list_formats':
       return 'All formats'
+    case 'get_format_meta_changes':
+      return result.format_name
+        ? `${capitalizeWords(String(result.format_name))}`
+        : p.format_id
+          ? `Format ${String(p.format_id).slice(0, 8)}…`
+          : ''
     case 'get_archetype_overview':
       return p.archetype_name ? `${p.archetype_name}` : ''
     case 'get_archetype_winrate':
@@ -149,17 +154,102 @@ function renderSuccinctContent(tc: ToolCall) {
 
   switch (tc.toolName) {
     case 'list_formats': {
-      if (typeof result === 'string') {
+      if (!result || typeof result !== 'object') {
         return (
-          <div className="prose">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{result}</ReactMarkdown>
+          <pre className="text-xs text-slate-300">{String(result ?? '')}</pre>
+        )
+      }
+      const formats = Array.isArray((result as Record<string, unknown>).formats)
+        ? ((result as Record<string, unknown>).formats as unknown[])
+        : []
+      const totalCount = (result as Record<string, unknown>).total_count
+      const message = (result as Record<string, unknown>).message
+
+      if (message) {
+        return <div className="text-sm text-slate-400">{String(message)}</div>
+      }
+
+      return (
+        <div className="text-sm text-slate-200 space-y-2">
+          <div className="font-semibold">
+            {totalCount
+              ? `${totalCount} formats available`
+              : 'Available formats'}
+          </div>
+          {formats.length > 0 && (
+            <ul className="list-disc pl-5 text-slate-300">
+              {formats.map((format, i) => {
+                const f = format as Record<string, unknown>
+                return (
+                  <li key={i}>
+                    <strong>{capitalizeWords(String(f.name))}</strong>
+                    <br />
+                    <span className="text-xs text-slate-400">
+                      ID: {String(f.id).slice(0, 8)}…
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+      )
+    }
+    case 'get_format_meta_changes': {
+      if (!result || typeof result !== 'object') {
+        return (
+          <pre className="text-xs text-slate-300">{String(result ?? '')}</pre>
+        )
+      }
+
+      // Handle error case
+      if ((result as Record<string, unknown>).error) {
+        return (
+          <div className="text-sm text-red-400">
+            {String((result as Record<string, unknown>).error)}
           </div>
         )
       }
+
+      const metaChanges = Array.isArray(
+        (result as Record<string, unknown>).meta_changes
+      )
+        ? ((result as Record<string, unknown>).meta_changes as unknown[])
+        : []
+      const formatName = (result as Record<string, unknown>).format_name
+      const totalChanges = (result as Record<string, unknown>).total_changes
+      const message = (result as Record<string, unknown>).message
+
+      if (message) {
+        return <div className="text-sm text-slate-400">{String(message)}</div>
+      }
+
       return (
-        <pre className="text-xs text-slate-300 overflow-x-auto">
-          {JSON.stringify(result, null, 2)}
-        </pre>
+        <div className="text-sm text-slate-200 space-y-2">
+          <div className="font-semibold">
+            {formatName ? `${capitalizeWords(String(formatName))} — ` : ''}
+            {totalChanges ? `${totalChanges} meta changes` : 'Meta changes'}
+          </div>
+          {metaChanges.length > 0 && (
+            <ul className="list-disc pl-5 text-slate-300 space-y-1">
+              {metaChanges.slice(0, 10).map((change, i) => {
+                const c = change as Record<string, unknown>
+                return (
+                  <li key={i}>
+                    <strong>{String(c.date)}</strong> —{' '}
+                    {capitalizeWords(String(c.change_type))}
+                    {c.set_code ? ` (${String(c.set_code)})` : ''}
+                    {c.description ? (
+                      <div className="text-xs text-slate-400 mt-1">
+                        {String(c.description)}
+                      </div>
+                    ) : null}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
       )
     }
     case 'get_archetype_overview': {
