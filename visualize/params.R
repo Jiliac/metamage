@@ -8,8 +8,8 @@ env_or <- function(var, default) {
 }
 
 # Get values once
-format_name <- env_or("MTG_FORMAT", "Pauper")
-start_date <- env_or("START_DATE", "2025-07-20")
+format_name <- env_or("MTG_FORMAT", "Modern")
+start_date <- env_or("START_DATE", "2025-08-01")
 end_date <- env_or("END_DATE", "2025-09-01")
 
 # Build output directory path

@@ -96,8 +96,35 @@ marav_data <- presence %>%
     wr_lo = ifelse(is.na(wr_lo), 0, wr_lo),
     wr_hi = ifelse(is.na(wr_hi), 0, wr_hi),
 
+    # Group related archetypes
+    archetype_grouped = case_when(
+      archetype_name %in% c("Esper Blink", "Mardu Blink", "Orzhov Blink") ~ "Blink",
+      archetype_name %in% c("Azorius Scam", "Azorius Control", "Jeskai Control") ~ "Control",
+      archetype_name %in% c("Ramp Eldrazi", "Aggro Eldrazi") ~ "Eldrazi",
+      archetype_name %in% c("Dimir Frog", "Esper Frog") ~ "Frog",
+      archetype_name %in% c("Mardu Energy", "Boros Energy") ~ "Energy",
+      archetype_name %in% c("Grixis Reanimator", "Goryo Reanimator") ~ "Reanimator",
+      TRUE ~ archetype_name
+    )
+  ) %>%
+  # Group by the new archetype names and sum the stats
+  group_by(archetype_grouped) %>%
+  summarise(
+    wins = sum(wins, na.rm = TRUE),
+    losses = sum(losses, na.rm = TRUE),
+    draws = sum(draws, na.rm = TRUE),
+    games = sum(games, na.rm = TRUE),
+    entries = sum(entries, na.rm = TRUE),
+    players = sum(players, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    # Recalculate derived stats
+    share = entries / sum(entries),
+    wr = ifelse(games > 0, wins / (wins + losses), 0),
+    
     # Create CSV columns matching docs/marav.csv format
-    Archetype = archetype_name,
+    Archetype = archetype_grouped,
     Wins = wins,
     Defeats = losses,
     Draws = draws,
@@ -106,8 +133,9 @@ marav_data <- presence %>%
     Matches = games,
     Presence = share * 100, # Convert to percentage
     Measured.Win.Rate = wr * 100, # Convert to percentage
-    Lower.Bound.of.CI.on.WR = wr_lo * 100, # Convert to percentage
-    Upper.Bound.of.CI.on.WR = wr_hi * 100 # Convert to percentage
+    # Note: CI bounds will be recalculated simply based on binomial approximation
+    Lower.Bound.of.CI.on.WR = pmax(0, (wr - 1.96 * sqrt(wr * (1 - wr) / games))) * 100,
+    Upper.Bound.of.CI.on.WR = pmin(100, (wr + 1.96 * sqrt(wr * (1 - wr) / games))) * 100
   ) %>%
   select(
     Archetype,
