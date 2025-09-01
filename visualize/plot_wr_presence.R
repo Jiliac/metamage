@@ -125,7 +125,7 @@ plot_wr_vs_presence <- function(
       axis.title.x = element_text(size = 10, family = "Inter"),
       axis.title.y = element_text(size = 10, family = "Inter"),
       plot.title = element_text(
-        size = 14,
+        size = 11.7,
         face = "bold",
         hjust = 0.5,
         family = "Inter"

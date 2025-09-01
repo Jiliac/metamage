@@ -102,7 +102,12 @@ plot_wr_ci <- function(
         hjust = 0.5,
         family = "Inter"
       ),
-      plot.subtitle = element_text(hjust = 0.5, size = 7, family = "Inter"),
+      plot.subtitle = element_text(
+        hjust = 0.5,
+        size = 6.3,
+        family = "Inter",
+        color = "#808080"
+      ),
       plot.caption = element_text(
         hjust = 0.4,
         size = 6,

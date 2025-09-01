@@ -89,7 +89,7 @@ plot_matrix <- function(
     row_name = factor(rev(order_levels), levels = rev(order_levels)),
     col_name2 = factor("NAME", levels = x_levels),
     title = as.character(rev(order_levels)),
-    label = stringr::str_wrap(as.character(rev(order_levels)), width = 16),
+    label = stringr::str_wrap(as.character(rev(order_levels)), width = 14),
     subtitle = ""
   )
 

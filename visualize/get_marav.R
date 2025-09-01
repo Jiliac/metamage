@@ -98,12 +98,16 @@ marav_data <- presence %>%
 
     # Group related archetypes
     archetype_grouped = case_when(
-      archetype_name %in% c("Esper Blink", "Mardu Blink", "Orzhov Blink") ~ "Blink",
-      archetype_name %in% c("Azorius Scam", "Azorius Control", "Jeskai Control") ~ "Control",
+      archetype_name %in% c("Esper Blink", "Mardu Blink", "Orzhov Blink") ~
+        "Blink",
+      archetype_name %in%
+        c("Azorius Scam", "Azorius Control", "Jeskai Control") ~
+        "Control",
       archetype_name %in% c("Ramp Eldrazi", "Aggro Eldrazi") ~ "Eldrazi",
       archetype_name %in% c("Dimir Frog", "Esper Frog") ~ "Frog",
       archetype_name %in% c("Mardu Energy", "Boros Energy") ~ "Energy",
-      archetype_name %in% c("Grixis Reanimator", "Goryo Reanimator") ~ "Reanimator",
+      archetype_name %in% c("Grixis Reanimator", "Goryo Reanimator") ~
+        "Reanimator",
       TRUE ~ archetype_name
     )
   ) %>%
@@ -122,7 +126,7 @@ marav_data <- presence %>%
     # Recalculate derived stats
     share = entries / sum(entries),
     wr = ifelse(games > 0, wins / (wins + losses), 0),
-    
+
     # Create CSV columns matching docs/marav.csv format
     Archetype = archetype_grouped,
     Wins = wins,
@@ -134,8 +138,16 @@ marav_data <- presence %>%
     Presence = share * 100, # Convert to percentage
     Measured.Win.Rate = wr * 100, # Convert to percentage
     # Note: CI bounds will be recalculated simply based on binomial approximation
-    Lower.Bound.of.CI.on.WR = pmax(0, (wr - 1.96 * sqrt(wr * (1 - wr) / games))) * 100,
-    Upper.Bound.of.CI.on.WR = pmin(100, (wr + 1.96 * sqrt(wr * (1 - wr) / games))) * 100
+    Lower.Bound.of.CI.on.WR = pmax(
+      0,
+      (wr - 1.96 * sqrt(wr * (1 - wr) / games))
+    ) *
+      100,
+    Upper.Bound.of.CI.on.WR = pmin(
+      100,
+      (wr + 1.96 * sqrt(wr * (1 - wr) / games))
+    ) *
+      100
   ) %>%
   select(
     Archetype,

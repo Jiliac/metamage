@@ -153,13 +153,22 @@ async def process_historical_messages():
                         session.commit()
 
                         messages_processed += 1
-                        latest_time = max(latest_time, message.created_at)
+                        # Ensure both datetimes are timezone-aware for comparison
+                        message_time = message.created_at
+                        if message_time.tzinfo is None:
+                            message_time = message_time.replace(tzinfo=timezone.utc)
+                        latest_time = max(latest_time, message_time)
 
                         logger.info(
                             f"[HISTORY] Created post: {message.created_at}: {message.author.display_name}: {message.id}"
                         )
                     else:
                         discord_post = existing
+                        # Update latest_time even for existing messages
+                        message_time = message.created_at
+                        if message_time.tzinfo is None:
+                            message_time = message_time.replace(tzinfo=timezone.utc)
+                        latest_time = max(latest_time, message_time)
 
                     # Check if successful social media post exists for this Discord post
                     successful_social_exists = (

@@ -194,7 +194,7 @@ p_presence <- plot_presence(
   top_order,
   title = paste0(params$format_name, " Metagame Share"),
   caption = paste0(
-    "Source: MTGO & Melee tournaments  •  ",
+    "Source: MTGO Top32 & Melee  •  ",
     params$start_date,
     " → ",
     params$end_date,
@@ -206,8 +206,9 @@ p_wr_ci <- plot_wr_ci(
   color_map,
   top_order,
   title = paste0(params$format_name, " Win Rates"),
+  subtitle = "Bars show 95% confidence intervals",
   caption = paste0(
-    "Source: MTGO & Melee tournaments  •  ",
+    "Source: MTGO Top32 & Melee  •  ",
     params$start_date,
     " → ",
     params$end_date
@@ -221,7 +222,7 @@ p_matrix <- plot_matrix(
   matrix_order,
   title = paste0(params$format_name, " Matchups"),
   caption = paste0(
-    "Source: MTGO & Melee tournaments  •  ",
+    "Source: MTGO Top32 & Melee  •  ",
     params$start_date,
     " → ",
     params$end_date
@@ -232,7 +233,7 @@ p_bubble <- plot_wr_vs_presence(
   color_map,
   title = paste0(params$format_name, " Win Rate vs Presence"),
   caption = paste0(
-    "Source: MTGO & Melee tournaments  •  ",
+    "Source: MTGO Top32 & Melee  •  ",
     params$start_date,
     " → ",
     params$end_date
@@ -242,7 +243,7 @@ p_tiers <- plot_tiers(
   wr,
   title = paste0(params$format_name, " Tier Rankings"),
   caption = paste0(
-    "Source: MTGO & Melee tournaments  •  ",
+    "Source: MTGO Top32 & Melee  •  ",
     params$start_date,
     " → ",
     params$end_date

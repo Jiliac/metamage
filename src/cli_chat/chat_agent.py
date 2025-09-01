@@ -166,7 +166,7 @@ class MTGChatAgent:
                 # Agent is calling tools
                 tool_messages = event["tools"].get("messages", [])
                 for tool_msg in tool_messages:
-                    print(f"📊 Tool Result: {tool_msg}")
+                    # print(f"📊 Tool Result: {tool_msg}")
 
                     # Log tool results
                     tool_call_id_value = None
