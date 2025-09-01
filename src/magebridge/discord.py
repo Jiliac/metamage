@@ -110,7 +110,7 @@ async def process_historical_messages():
             # Create a new pass record
             current_pass = Pass(
                 pass_type=f"history_{focused_channel.channel_id}",
-                start_time=datetime.now(),
+                start_time=datetime.now(timezone.utc),
             )
             session.add(current_pass)
             session.commit()
@@ -177,7 +177,7 @@ async def process_historical_messages():
                         )
 
                 # Update pass record
-                current_pass.end_time = datetime.now()
+                current_pass.end_time = datetime.now(timezone.utc)
                 current_pass.last_processed_time = latest_time
                 current_pass.messages_processed = messages_processed
                 current_pass.success = True
@@ -290,7 +290,7 @@ async def process_message_for_social(message, discord_post, focused_channel, ses
         platform="bluesky",
         discord_post_id=discord_post.id,
         content=bluesky_text,
-        post_time=datetime.now(),
+        post_time=datetime.now(timezone.utc),
         success=success,
         error_message=error_msg,
     )

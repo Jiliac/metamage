@@ -192,8 +192,11 @@ def main():
             print("📦 Ingesting all data types...")
             # Ingest implemented data types
             ingest_archetypes(session, entries, format_id)
+            session.commit()
             ingest_players(session, entries)
+            session.commit()
             ingest_cards(session, entries)
+            session.commit()
             # Now ingest tournaments, entries, deck cards and matches last
             ingest_entries(session, entries, format_id)
             # Commit all changes
