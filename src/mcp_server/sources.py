@@ -19,7 +19,12 @@ def get_sources(
     ctx: Context = None,
 ) -> Dict[str, Any]:
     """
-    Return up to N recent tournaments (with links) for a format and optional archetype within a date window.
+    **FOR CITATION ONLY** - Return up to N recent tournaments (with links) for a format and optional archetype within a date window.
+
+    IMPORTANT: This returns tournaments ordered by DATE (most recent first), NOT by performance.
+    Do NOT use this tool for finding "top performing" entries or performance analysis.
+
+    Use this tool ONLY when you need tournament links to cite as sources for claims made by other tools.
 
     Args:
         format_id: Format UUID
