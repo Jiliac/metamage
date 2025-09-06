@@ -44,7 +44,12 @@ export async function generateMetadata({
 
   const isSuccinct = SUCCINCT_TOOLS.has(toolCall.toolName)
   const title = isSuccinct
-    ? `${labelizeToolName(toolCall.toolName)}: ${summarizeToolCall(toolCall)}`
+    ? `${labelizeToolName(toolCall.toolName)}: ${summarizeToolCall({
+        ...toolCall,
+        columnNames: Array.isArray(toolCall.columnNames)
+          ? (toolCall.columnNames as string[])
+          : null,
+      })}`
     : `Tool Call – ${toolCall.toolName}`
 
   return {
@@ -106,7 +111,12 @@ export default async function ToolPage({ params }: ToolPageProps) {
                 <>
                   {labelizeToolName(toolCall.toolName)}:{' '}
                   <span className="text-slate-200">
-                    {summarizeToolCall(toolCall)}
+                    {summarizeToolCall({
+                      ...toolCall,
+                      columnNames: Array.isArray(toolCall.columnNames)
+                        ? (toolCall.columnNames as string[])
+                        : null,
+                    })}
                   </span>
                 </>
               ) : (
@@ -121,7 +131,12 @@ export default async function ToolPage({ params }: ToolPageProps) {
 
         <div className="bg-slate-800/50 rounded-lg p-6 space-y-4">
           {SUCCINCT_TOOLS.has(toolCall.toolName) ? (
-            renderSuccinctContent(toolCall)
+            renderSuccinctContent({
+              ...toolCall,
+              columnNames: Array.isArray(toolCall.columnNames)
+                ? (toolCall.columnNames as string[])
+                : null,
+            })
           ) : (
             <ToolResultView toolCall={toolCall} />
           )}

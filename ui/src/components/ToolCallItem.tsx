@@ -39,8 +39,7 @@ export function ToolCallItemVerbose({ tc }: { tc: ToolCall }) {
 }
 
 export function ToolCallItem({ tc }: { tc: ToolCall }) {
-  if (!SUCCINCT_TOOLS.has(tc.toolName))
-    return <ToolCallItemVerbose tc={tc} />
+  if (!SUCCINCT_TOOLS.has(tc.toolName)) return <ToolCallItemVerbose tc={tc} />
 
   return <ToolCallItemSuccinct tc={tc} />
 }
