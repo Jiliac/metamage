@@ -104,7 +104,7 @@ async def run_agent_with_logging(agent, messages, provider: str):
                                 elif item["type"] == "tool_use":
                                     tool_calls.append(item)
                     elif isinstance(content_items, str):
-                        text_parts = [content_items]
+                        assistant_message = content_items
 
                     readable = " ".join(text_parts).strip()
                     if readable:
