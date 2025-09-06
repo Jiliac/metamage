@@ -9,7 +9,7 @@ import {
   labelizeToolName,
   summarizeToolCall,
   renderSuccinctContent,
-} from './toolCallUtils'
+} from '@/components/tool_utils'
 
 /* helper functions moved to toolCallUtils.tsx */
 

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { ToolCall } from '@/types/chat'
 import { ToolCallItemSuccinct } from './ToolCallItemSuccinct'
-import { SUCCINCT_TOOLS, labelizeToolName } from './toolCallUtils'
+import { SUCCINCT_TOOLS, labelizeToolName } from '@/components/tool_utils'
 
 export function ToolCallItemVerbose({ tc }: { tc: ToolCall }) {
   const toolName = tc.toolName

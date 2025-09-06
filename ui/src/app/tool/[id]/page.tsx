@@ -8,7 +8,7 @@ import {
   labelizeToolName,
   summarizeToolCall,
   SUCCINCT_TOOLS,
-} from '@/components/toolCallUtils'
+} from '@/components/tool_utils'
 
 interface ToolPageProps {
   params: Promise<{
