@@ -1,25 +1,7 @@
 import Link from 'next/link'
 import { ToolCall } from '@/types/chat'
 import { ToolCallItemSuccinct } from './ToolCallItemSuccinct'
-
-const SUCCINCT_TOOLS = new Set<string>([
-  'list_formats',
-  'get_format_meta_changes',
-  'get_archetype_overview',
-  'get_archetype_winrate',
-  'get_matchup_winrate',
-  'get_sources',
-  'search_card',
-  'get_player',
-])
-
-function isSuccinctTool(name: string) {
-  return SUCCINCT_TOOLS.has(name)
-}
-
-function labelizeToolName(name: string) {
-  return name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-}
+import { SUCCINCT_TOOLS, labelizeToolName } from './toolCallUtils'
 
 export function ToolCallItemVerbose({ tc }: { tc: ToolCall }) {
   const toolName = tc.toolName
@@ -57,7 +39,8 @@ export function ToolCallItemVerbose({ tc }: { tc: ToolCall }) {
 }
 
 export function ToolCallItem({ tc }: { tc: ToolCall }) {
-  if (!isSuccinctTool(tc.toolName)) return <ToolCallItemVerbose tc={tc} />
+  if (!SUCCINCT_TOOLS.has(tc.toolName))
+    return <ToolCallItemVerbose tc={tc} />
 
   return <ToolCallItemSuccinct tc={tc} />
 }

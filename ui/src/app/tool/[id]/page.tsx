@@ -2,11 +2,65 @@ import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ToolResultView } from '@/components/ToolResultView'
+import type { Metadata } from 'next'
+import {
+  renderSuccinctContent,
+  labelizeToolName,
+  summarizeToolCall,
+  SUCCINCT_TOOLS,
+} from '@/components/toolCallUtils'
 
 interface ToolPageProps {
   params: Promise<{
     id: string
   }>
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params
+  const toolCall = await prisma.toolCall.findUnique({
+    where: { id },
+    include: {
+      toolResult: true,
+      message: {
+        include: {
+          session: true,
+        },
+      },
+    },
+  })
+
+  if (!toolCall) {
+    return {
+      title: 'Tool Call Not Found',
+      description: 'Requested tool call could not be found.',
+      alternates: { canonical: `/tool/${id}` },
+    }
+  }
+
+  const isSuccinct = SUCCINCT_TOOLS.has(toolCall.toolName)
+  const title = isSuccinct
+    ? `${labelizeToolName(toolCall.toolName)}: ${summarizeToolCall(toolCall)}`
+    : `Tool Call – ${toolCall.toolName}`
+
+  return {
+    title,
+    description: `Details for ${toolCall.toolName}.`,
+    alternates: { canonical: `/tool/${id}` },
+    openGraph: {
+      url: `/tool/${id}`,
+      title,
+      description: `Details for ${toolCall.toolName}.`,
+      images: ['/logo.png'],
+    },
+    twitter: {
+      card: 'summary_large_image',
+    },
+  }
 }
 
 async function getToolCallData(id: string) {
@@ -48,14 +102,29 @@ export default async function ToolPage({ params }: ToolPageProps) {
 
           <div className="flex items-center gap-4 mb-2">
             <h1 className="text-3xl font-bold text-white">
-              Tool Call{' '}
-              <span className="text-cyan-400">{toolCall.toolName}</span>
+              {SUCCINCT_TOOLS.has(toolCall.toolName) ? (
+                <>
+                  {labelizeToolName(toolCall.toolName)}:{' '}
+                  <span className="text-slate-200">
+                    {summarizeToolCall(toolCall)}
+                  </span>
+                </>
+              ) : (
+                <>
+                  Tool Call{' '}
+                  <span className="text-cyan-400">{toolCall.toolName}</span>
+                </>
+              )}
             </h1>
           </div>
         </div>
 
         <div className="bg-slate-800/50 rounded-lg p-6 space-y-4">
-          <ToolResultView toolCall={toolCall} />
+          {SUCCINCT_TOOLS.has(toolCall.toolName) ? (
+            renderSuccinctContent(toolCall)
+          ) : (
+            <ToolResultView toolCall={toolCall} />
+          )}
         </div>
       </div>
     </div>

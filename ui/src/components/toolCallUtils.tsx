@@ -1,15 +1,34 @@
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible'
 import { ToolCall } from '@/types/chat'
-import { ShareButton } from './ShareButton'
-import {
-  labelizeToolName,
-  summarizeToolCall,
-  renderSuccinctContent,
-} from './toolCallUtils'
+
+// A minimal shape to accept either our Prisma payload or the UI ToolCall type
+export interface ToolCallLike {
+  id: string
+  toolName: string
+  inputParams?: unknown
+  callId?: string
+  title?: string | null
+  columnNames?: string[] | null
+  toolResult?: { resultContent: unknown } | null
+}
+
+export const SUCCINCT_TOOLS = new Set<string>([
+  'list_formats',
+  'get_format_meta_changes',
+  'get_archetype_overview',
+  'get_archetype_winrate',
+  'get_matchup_winrate',
+  'get_sources',
+  'search_card',
+  'get_player',
+])
+
+export function labelizeToolName(name: string) {
+  return name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
+function capitalizeWords(text: string) {
+  return text.replace(/\b\w/g, c => c.toUpperCase())
+}
 
 function formatDateRange(startDate: string, endDate: string): string {
   const start = new Date(startDate)
@@ -22,17 +41,12 @@ function formatDateRange(startDate: string, endDate: string): string {
   const startYear = start.getFullYear()
   const endYear = end.getFullYear()
 
-  // Same year
   if (startYear === endYear) {
-    // Same month and year
     if (startMonth === endMonth) {
       return `${startMonth} ${startDay}–${endDay}, ${endYear}`
     }
-    // Different months, same year
     return `${startMonth} ${startDay} – ${endMonth} ${endDay}, ${endYear}`
   }
-
-  // Different years
   return `${startMonth} ${startDay}, ${startYear} – ${endMonth} ${endDay}, ${endYear}`
 }
 
@@ -73,12 +87,12 @@ function TournamentList({ sources }: { sources: Tournament[] }) {
   return <ul className="list-disc pl-5 text-slate-300">{tournamentItems}</ul>
 }
 
-// Helper functions extracted from summarizeToolCall cases
+// ---------- summarize helpers ----------
 function summarizeListFormats(): string {
   return 'All formats'
 }
 
-function summarizeGetFormatMetaChanges(tc: ToolCall): string {
+function summarizeGetFormatMetaChanges(tc: ToolCall | ToolCallLike): string {
   const p = (tc.inputParams || {}) as Record<string, unknown>
   const result = (tc.toolResult?.resultContent || {}) as Record<string, unknown>
   return result.format_name
@@ -88,12 +102,12 @@ function summarizeGetFormatMetaChanges(tc: ToolCall): string {
       : ''
 }
 
-function summarizeArchetypeOverview(tc: ToolCall): string {
+function summarizeArchetypeOverview(tc: ToolCall | ToolCallLike): string {
   const p = (tc.inputParams || {}) as Record<string, unknown>
   return p.archetype_name ? `${p.archetype_name}` : ''
 }
 
-function summarizeArchetypeWinrate(tc: ToolCall): string {
+function summarizeArchetypeWinrate(tc: ToolCall | ToolCallLike): string {
   const p = (tc.inputParams || {}) as Record<string, unknown>
   const result = (tc.toolResult?.resultContent || {}) as Record<string, unknown>
   return [
@@ -108,7 +122,7 @@ function summarizeArchetypeWinrate(tc: ToolCall): string {
     .join(' • ')
 }
 
-function summarizeMatchupWinrate(tc: ToolCall): string {
+function summarizeMatchupWinrate(tc: ToolCall | ToolCallLike): string {
   const p = (tc.inputParams || {}) as Record<string, unknown>
   if (!p.archetype1_name || !p.archetype2_name) return ''
   const arch1Name = capitalizeWords(p.archetype1_name as string)
@@ -123,7 +137,7 @@ function summarizeMatchupWinrate(tc: ToolCall): string {
     .join(' • ')
 }
 
-function summarizeSources(tc: ToolCall): string {
+function summarizeSources(tc: ToolCall | ToolCallLike): string {
   const p = (tc.inputParams || {}) as Record<string, unknown>
   return [
     p.archetype_name ? `${capitalizeWords(p.archetype_name as string)}` : null,
@@ -135,17 +149,17 @@ function summarizeSources(tc: ToolCall): string {
     .join(' • ')
 }
 
-function summarizeSearchCard(tc: ToolCall): string {
+function summarizeSearchCard(tc: ToolCall | ToolCallLike): string {
   const p = (tc.inputParams || {}) as Record<string, unknown>
   return p.query ? `"${p.query}"` : ''
 }
 
-function summarizeGetPlayer(tc: ToolCall): string {
+function summarizeGetPlayer(tc: ToolCall | ToolCallLike): string {
   const p = (tc.inputParams || {}) as Record<string, unknown>
   return p.player_id_or_handle ? `${p.player_id_or_handle}` : ''
 }
 
-function summarizeQueryDatabase(tc: ToolCall): string {
+function summarizeQueryDatabase(tc: ToolCall | ToolCallLike): string {
   const p = (tc.inputParams || {}) as Record<string, unknown>
   const title = (tc.title || '').trim()
   if (title) return title
@@ -155,7 +169,32 @@ function summarizeQueryDatabase(tc: ToolCall): string {
     : 'Custom Query'
 }
 
-// Helper functions extracted from renderSuccinctContent cases
+export function summarizeToolCall(tc: ToolCall | ToolCallLike): string {
+  switch (tc.toolName) {
+    case 'list_formats':
+      return summarizeListFormats()
+    case 'get_format_meta_changes':
+      return summarizeGetFormatMetaChanges(tc)
+    case 'get_archetype_overview':
+      return summarizeArchetypeOverview(tc)
+    case 'get_archetype_winrate':
+      return summarizeArchetypeWinrate(tc)
+    case 'get_matchup_winrate':
+      return summarizeMatchupWinrate(tc)
+    case 'get_sources':
+      return summarizeSources(tc)
+    case 'search_card':
+      return summarizeSearchCard(tc)
+    case 'get_player':
+      return summarizeGetPlayer(tc)
+    case 'query_database':
+      return summarizeQueryDatabase(tc)
+    default:
+      return ''
+  }
+}
+
+// ---------- render helpers ----------
 function renderListFormats(result: unknown) {
   if (!result || typeof result !== 'object') {
     return <pre className="text-xs text-slate-300">{String(result ?? '')}</pre>
@@ -200,7 +239,6 @@ function renderGetFormatMetaChanges(result: unknown) {
     return <pre className="text-xs text-slate-300">{String(result ?? '')}</pre>
   }
 
-  // Handle error case
   if ((result as Record<string, unknown>).error) {
     return (
       <div className="text-sm text-red-400">
@@ -445,7 +483,6 @@ function renderGetPlayer(result: unknown) {
     return <pre className="text-xs text-slate-300">{String(result ?? '')}</pre>
   }
 
-  // Handle error case
   if ((result as Record<string, unknown>).error) {
     return (
       <div className="text-sm text-red-400">
@@ -520,7 +557,7 @@ function renderGetPlayer(result: unknown) {
   )
 }
 
-function renderQueryDatabase(tc: ToolCall) {
+function renderQueryDatabase(tc: ToolCall | ToolCallLike) {
   const rc: unknown = tc.toolResult?.resultContent
   const colNames = Array.isArray(tc.columnNames) ? tc.columnNames : undefined
 
@@ -539,11 +576,6 @@ function renderQueryDatabase(tc: ToolCall) {
 
   return (
     <div className="text-sm text-slate-200 space-y-2">
-      {tc.title && (
-        <div>
-          <strong>Title:</strong> {tc.title}
-        </div>
-      )}
       <div>
         <strong>Rows:</strong> {rowCount}
       </div>
@@ -554,38 +586,13 @@ function renderQueryDatabase(tc: ToolCall) {
           : '—'}
       </div>
       <div className="text-xs text-slate-400">
-        View the full result table via the Share link below.
+        View the full result table via the share page.
       </div>
     </div>
   )
 }
 
-function summarizeToolCall(tc: ToolCall): string {
-  switch (tc.toolName) {
-    case 'list_formats':
-      return summarizeListFormats()
-    case 'get_format_meta_changes':
-      return summarizeGetFormatMetaChanges(tc)
-    case 'get_archetype_overview':
-      return summarizeArchetypeOverview(tc)
-    case 'get_archetype_winrate':
-      return summarizeArchetypeWinrate(tc)
-    case 'get_matchup_winrate':
-      return summarizeMatchupWinrate(tc)
-    case 'get_sources':
-      return summarizeSources(tc)
-    case 'search_card':
-      return summarizeSearchCard(tc)
-    case 'get_player':
-      return summarizeGetPlayer(tc)
-    case 'query_database':
-      return summarizeQueryDatabase(tc)
-    default:
-      return ''
-  }
-}
-
-function renderSuccinctContent(tc: ToolCall) {
+export function renderSuccinctContent(tc: ToolCall | ToolCallLike) {
   const result = tc.toolResult?.resultContent as unknown
 
   switch (tc.toolName) {
@@ -614,35 +621,4 @@ function renderSuccinctContent(tc: ToolCall) {
         </pre>
       )
   }
-}
-
-function labelizeToolName(name: string) {
-  return name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-}
-
-export function ToolCallItemSuccinct({ tc }: { tc: ToolCall }) {
-  return (
-    <Collapsible className="rounded-lg border border-slate-700 bg-slate-900/40 my-3 group">
-      <CollapsibleTrigger className="w-full">
-        <div className="flex items-center justify-between gap-2 px-4 py-2 hover:bg-slate-700/40 transition-colors group-data-[state=open]:border-b group-data-[state=open]:border-slate-800/60">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="text-slate-400">🛠️</span>
-            <span className="font-medium text-slate-100">
-              {labelizeToolName(tc.toolName)}:
-            </span>
-            <span className="text-sm font-semibold text-slate-200 group-data-[state=closed]:truncate ml-2">
-              {summarizeToolCall(tc)}
-            </span>
-          </div>
-          <div className="text-slate-400 group-data-[state=open]:rotate-180 transition-transform duration-300">
-            ▼
-          </div>
-        </div>
-      </CollapsibleTrigger>
-      <CollapsibleContent className="px-4 pb-3 pt-3">
-        {renderSuccinctContent(tc)}
-        <ShareButton toolCallId={tc.id} />
-      </CollapsibleContent>
-    </Collapsible>
-  )
 }
