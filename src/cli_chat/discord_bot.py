@@ -20,6 +20,8 @@ from langgraph.prebuilt import create_react_agent
 
 from .mcp_client import create_mcp_client
 from .system_prompt import get_metamage_system_prompt
+from .chat_logger import ChatLogger
+from .titler import Titler
 
 # Load environment variables from .env file
 load_dotenv()
@@ -62,6 +64,93 @@ class AgentContainer:
 agent_container = AgentContainer()
 
 
+async def run_agent_with_logging(agent, messages, provider: str):
+    """Run the agent with streaming to log thoughts, tool calls, and results."""
+    logger = ChatLogger()
+    titler = Titler()
+    # Create a new session for each invocation
+    session_id = logger.create_session(provider)
+    # Log the latest user message
+    try:
+        if (
+            messages
+            and isinstance(messages[-1], (list, tuple))
+            and len(messages[-1]) >= 2
+        ):
+            logger.log_user_message(session_id, messages[-1][1])
+    except Exception:
+        pass
+
+    assistant_message = ""
+    current_message_id = None
+
+    async for event in agent.astream(
+        {"messages": messages}, config={"recursion_limit": 50}
+    ):
+        if "agent" in event:
+            agent_messages = event["agent"].get("messages", [])
+            if agent_messages:
+                latest_message = agent_messages[-1]
+                if hasattr(latest_message, "content") and latest_message.content:
+                    content_items = latest_message.content
+                    text_parts = []
+                    tool_calls = []
+
+                    if isinstance(content_items, list):
+                        for item in content_items:
+                            if isinstance(item, dict) and "type" in item:
+                                if item["type"] == "text":
+                                    text_parts.append(item.get("text", str(item)))
+                                elif item["type"] == "tool_use":
+                                    tool_calls.append(item)
+                    elif isinstance(content_items, str):
+                        text_parts = [content_items]
+
+                    readable = " ".join(text_parts).strip()
+                    if readable:
+                        current_message_id = logger.log_agent_thought(
+                            session_id, readable
+                        )
+                        assistant_message = readable
+
+                    for tc in tool_calls:
+                        if not current_message_id:
+                            current_message_id = logger.log_agent_thought(
+                                session_id, ""
+                            )
+                        logger.log_tool_call(
+                            current_message_id,
+                            tc.get("name"),
+                            tc.get("input"),
+                            tc.get("id"),
+                        )
+
+        elif "tools" in event:
+            tool_messages = event["tools"].get("messages", [])
+            for tool_msg in tool_messages:
+                tool_call_id_value = getattr(tool_msg, "tool_call_id", None)
+                if tool_call_id_value is None and isinstance(tool_msg, dict):
+                    tool_call_id_value = tool_msg.get("tool_call_id")
+                if tool_call_id_value:
+                    tool_call_id = logger.find_tool_call_by_call_id(tool_call_id_value)
+                    if tool_call_id:
+                        content = getattr(tool_msg, "content", None)
+                        if content is None and isinstance(tool_msg, dict):
+                            content = tool_msg.get("content")
+                        logger.log_tool_result(
+                            tool_call_id,
+                            str(content),
+                            success=True,
+                        )
+
+    if assistant_message:
+        logger.log_final_response(session_id, assistant_message)
+        # Title the session and any query_database tool calls
+        titler.set_titles(session_id, provider, messages[-1][1], assistant_message)
+
+    return assistant_message
+
+
 class MTGBot(discord.Client):
     def __init__(self):
         intents = (
@@ -98,11 +187,10 @@ async def mage(interaction: discord.Interaction, query: str):
 
     try:
         agent = await agent_container.get_agent()
-        # One-shot, no history. Ask the agent directly.
-        result = await agent.ainvoke(
-            {"messages": [("user", query)]}, config={"recursion_limit": 50}
-        )
-        answer = result["messages"][-1].content
+        messages = [("user", query)]
+        answer = await run_agent_with_logging(agent, messages, provider="claude")
+        if not answer:
+            answer = "I couldn't produce a response this time."
 
         # Echo the query + response (like ChatGPT/Claude)
         full_response = f"**Question:** {query}\n\n{answer}"
