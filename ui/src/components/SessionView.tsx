@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { SessionData, Message } from '@/types/chat'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkBreaks from 'remark-breaks'
 import { ToolCallItem } from './ToolCallItem'
 
 interface SessionViewProps {
@@ -102,7 +103,9 @@ export default function SessionView({ initialSession }: SessionViewProps) {
                         .map(m => (
                           <div key={m.id}>
                             <div className="prose mb-2">
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm, remarkBreaks]}
+                              >
                                 {m.content}
                               </ReactMarkdown>
                             </div>
@@ -123,7 +126,7 @@ export default function SessionView({ initialSession }: SessionViewProps) {
                     m => m.messageType === 'agent_final'
                   ) && (
                     <div className="prose">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
                         {
                           turn.agentMessages.find(
                             m => m.messageType === 'agent_final'
