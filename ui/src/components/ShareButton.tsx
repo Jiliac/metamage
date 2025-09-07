@@ -1,14 +1,24 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 
 interface ShareButtonProps {
   toolCallId: string
 }
 
 export function ShareButton({ toolCallId }: ShareButtonProps) {
-  const router = useRouter()
+  const handleCopyLink = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+
+    try {
+      const url = `${window.location.origin}/tool/${toolCallId}`
+      await navigator.clipboard.writeText(url)
+      toast.success('Link copied to clipboard!')
+    } catch (error) {
+      toast.error('Failed to copy link')
+    }
+  }
 
   return (
     <div className="flex justify-end mt-3">
@@ -16,10 +26,7 @@ export function ShareButton({ toolCallId }: ShareButtonProps) {
         variant="ghost"
         size="sm"
         className="text-slate-400 text-xs"
-        onClick={e => {
-          e.stopPropagation()
-          router.push(`/tool/${toolCallId}`)
-        }}
+        onClick={handleCopyLink}
       >
         Share
         <svg
