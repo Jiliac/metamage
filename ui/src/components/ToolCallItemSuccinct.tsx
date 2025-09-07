@@ -3,6 +3,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
+import { ChevronDown } from 'lucide-react'
 import { ToolCall } from '@/types/chat'
 import { ShareButton } from './ShareButton'
 import {
@@ -27,9 +28,7 @@ export function ToolCallItemSuccinct({ tc }: { tc: ToolCall }) {
               {summarizeToolCall(tc)}
             </span>
           </div>
-          <div className="text-slate-400 group-data-[state=open]:rotate-180 transition-transform duration-300">
-            ▼
-          </div>
+          <ChevronDown className="h-4 w-4 text-slate-400 group-data-[state=open]:rotate-180 transition-transform duration-300" />
         </div>
       </CollapsibleTrigger>
       <CollapsibleContent className="px-4 pb-3 pt-3">

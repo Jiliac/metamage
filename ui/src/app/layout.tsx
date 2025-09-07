@@ -61,7 +61,10 @@ export default function RootLayout({
       >
         <Navbar />
         {children}
-        <Toaster position="top-center" style={{ top: '30%', transform: 'translateY(-50%)' }} />
+        <Toaster
+          position="top-center"
+          style={{ top: '30%', transform: 'translateY(-50%)' }}
+        />
       </body>
     </html>
   )
