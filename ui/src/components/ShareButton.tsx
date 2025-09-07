@@ -15,7 +15,7 @@ export function ShareButton({ toolCallId }: ShareButtonProps) {
       const url = `${window.location.origin}/tool/${toolCallId}`
       await navigator.clipboard.writeText(url)
       toast.success('Link copied to clipboard!')
-    } catch (error) {
+    } catch {
       toast.error('Failed to copy link')
     }
   }
