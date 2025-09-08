@@ -36,7 +36,7 @@ export async function generateMetadata({
   })
 
   const title = session
-    ? `${session.title ?? `Session ${session.id.slice(0, 8)}`} – ${session.provider}`
+    ? `${session.title ?? `Session ${session.id.slice(0, 8)}`}`
     : 'Session Not Found'
   const description =
     session?.messages[0]?.content?.slice(0, 160) ||
@@ -109,15 +109,15 @@ async function getSessionData(id: string): Promise<SessionData | null> {
         title: toolCall.title ?? null,
         columnNames:
           Array.isArray(toolCall.columnNames) &&
-          toolCall.columnNames.every(item => typeof item === 'string')
+            toolCall.columnNames.every(item => typeof item === 'string')
             ? (toolCall.columnNames as string[])
             : null,
         toolResult: toolCall.toolResult
           ? {
-              resultContent: toolCall.toolResult.resultContent,
-              success: toolCall.toolResult.success,
-              errorMessage: toolCall.toolResult.errorMessage,
-            }
+            resultContent: toolCall.toolResult.resultContent,
+            success: toolCall.toolResult.success,
+            errorMessage: toolCall.toolResult.errorMessage,
+          }
           : null,
       })),
     })),

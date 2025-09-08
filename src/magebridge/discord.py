@@ -106,6 +106,9 @@ async def process_historical_messages():
             )
             if last_pass and last_pass.last_processed_time:
                 start_date = last_pass.last_processed_time
+                # Ensure start_date is timezone-aware for Discord API
+                if start_date.tzinfo is None:
+                    start_date = start_date.replace(tzinfo=timezone.utc)
 
             # Create a new pass record
             current_pass = Pass(
