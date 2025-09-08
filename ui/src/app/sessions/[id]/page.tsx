@@ -109,15 +109,15 @@ async function getSessionData(id: string): Promise<SessionData | null> {
         title: toolCall.title ?? null,
         columnNames:
           Array.isArray(toolCall.columnNames) &&
-            toolCall.columnNames.every(item => typeof item === 'string')
+          toolCall.columnNames.every(item => typeof item === 'string')
             ? (toolCall.columnNames as string[])
             : null,
         toolResult: toolCall.toolResult
           ? {
-            resultContent: toolCall.toolResult.resultContent,
-            success: toolCall.toolResult.success,
-            errorMessage: toolCall.toolResult.errorMessage,
-          }
+              resultContent: toolCall.toolResult.resultContent,
+              success: toolCall.toolResult.success,
+              errorMessage: toolCall.toolResult.errorMessage,
+            }
           : null,
       })),
     })),

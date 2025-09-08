@@ -42,15 +42,22 @@ export async function generateMetadata({
     }
   }
 
+  const isQuery = toolCall.toolName === 'query_database'
+  const dbTitle =
+    isQuery && toolCall.title && toolCall.title.trim()
+      ? toolCall.title.trim()
+      : null
   const isSuccinct = SUCCINCT_TOOLS.has(toolCall.toolName)
-  const title = isSuccinct
-    ? `${labelizeToolName(toolCall.toolName)}: ${summarizeToolCall({
-        ...toolCall,
-        columnNames: Array.isArray(toolCall.columnNames)
-          ? (toolCall.columnNames as string[])
-          : null,
-      })}`
-    : `Tool Call – ${toolCall.toolName}`
+  const title = dbTitle
+    ? dbTitle
+    : isSuccinct
+      ? `${labelizeToolName(toolCall.toolName)}: ${summarizeToolCall({
+          ...toolCall,
+          columnNames: Array.isArray(toolCall.columnNames)
+            ? (toolCall.columnNames as string[])
+            : null,
+        })}`
+      : `Tool Call – ${toolCall.toolName}`
 
   return {
     title,
@@ -107,7 +114,10 @@ export default async function ToolPage({ params }: ToolPageProps) {
 
           <div className="flex items-center gap-4 mb-2">
             <h1 className="text-3xl font-bold text-white">
-              {SUCCINCT_TOOLS.has(toolCall.toolName) ? (
+              {toolCall.toolName === 'query_database' &&
+              toolCall.title?.trim() ? (
+                <>{toolCall.title.trim()}</>
+              ) : SUCCINCT_TOOLS.has(toolCall.toolName) ? (
                 <>
                   {labelizeToolName(toolCall.toolName)}:{' '}
                   <span className="text-slate-200">
