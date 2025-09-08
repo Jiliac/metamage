@@ -65,7 +65,11 @@ agent_container = AgentContainer()
 
 
 async def run_agent_with_logging(agent, messages, provider: str):
-    """Run the agent with streaming to log thoughts, tool calls, and results."""
+    """Run the agent with streaming to log thoughts, tool calls, and results.
+
+    Returns:
+        tuple[str, str]: (assistant_message, session_id)
+    """
     logger = ChatLogger()
     titler = Titler()
     # Create a new session for each invocation
@@ -148,7 +152,7 @@ async def run_agent_with_logging(agent, messages, provider: str):
         # Title the session and any query_database tool calls
         titler.set_titles(session_id, provider, messages[-1][1], assistant_message)
 
-    return assistant_message
+    return assistant_message, session_id
 
 
 class MTGBot(discord.Client):
@@ -188,12 +192,14 @@ async def mage(interaction: discord.Interaction, query: str):
     try:
         agent = await agent_container.get_agent()
         messages = [("user", query)]
-        answer = await run_agent_with_logging(agent, messages, provider="claude")
+        answer, session_id = await run_agent_with_logging(
+            agent, messages, provider="claude"
+        )
         if not answer:
             answer = "I couldn't produce a response this time."
 
-        # Echo the query + response (like ChatGPT/Claude)
-        full_response = f"**Question:** {query}\n\n{answer}"
+        # Echo the query + response (like ChatGPT/Claude) and append session link
+        full_response = f"**Question:** {query}\n\n{answer}\n\nFor more details see: <https://www.metamages.com/sessions/{session_id}>"
 
         # Discord message length safety
         max_len = 1900

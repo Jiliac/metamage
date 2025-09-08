@@ -206,12 +206,13 @@ class Titler:
             "Given the SQL and the preview of the result JSON, output ONLY a JSON array of column names "
             "in the exact order they appear in each result row.\n"
             "- Do not include any text before or after the JSON array.\n"
-            "- Ensure names are concise, snake_case preferred.\n\n"
+            "- Column names should be human-readable and descriptive for display purposes.\n"
+            "- Use clear, concise names that users will easily understand.\n\n"
             "SQL:\n"
             f"{sql}\n\n"
             "Result content (sample/preview; may be truncated):\n"
             f"{result_preview}\n\n"
-            'Example output: ["archetype","wins","losses"]'
+            'Example output: ["Archetype","Wins","Losses"]'
         )
         try:
             if provider in ("claude", "opus"):
