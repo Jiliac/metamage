@@ -1,18 +1,26 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card'
 
 export function generateMetadata(): Metadata {
   return {
     title: 'Home',
-    description: 'MTG Tournament Analysis & Chat Logs Interface',
+    description:
+      'MetaMage helps analyze MTG tournament results with smart tools, shareable outputs, and a clean UI.',
     alternates: { canonical: '/' },
     openGraph: {
       type: 'website',
       url: '/',
       title: 'MetaMage – MTG Tournament Analysis',
-      description: 'MTG Tournament Analysis & Chat Logs Interface',
+      description:
+        'Analyze formats and archetypes, query the database, and browse shareable tool results.',
       images: ['/logo.png'],
     },
     twitter: {
@@ -28,61 +36,83 @@ export default function Home() {
     '@type': 'WebSite',
     name: 'MetaMage',
     url: baseUrl,
+    description:
+      'Analyze MTG tournament data, explore archetypes, and share insights.',
   }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <main className="container mx-auto px-6 pt-20 pb-16 flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] text-center">
+      <main className="container mx-auto px-6 pt-32 pb-32 max-w-6xl">
         <script
           type="application/ld+json"
           suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: JSON.stringify(ldJson) }}
         />
-        <div className="mb-8">
-          <h1 className="text-6xl font-bold text-white mb-4">
+
+        {/* Hero */}
+        <section className="text-center mb-20">
+          <h1 className="text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-8">
             Meta<span className="text-cyan-400">Mage</span>
           </h1>
-          <p className="text-xl text-slate-300 mb-8 max-w-2xl">
-            MTG Tournament Analysis & Chat Logs Interface
+          <p className="text-lg md:text-xl text-slate-300 max-w-3xl mx-auto mb-12">
+            MTG tournament analysis made simple. Explore formats and archetypes,
+            run ad‑hoc queries, and share results — all in one place.
           </p>
-        </div>
 
-        <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700 max-w-md w-full">
-          <CardContent className="p-8 text-center">
-            <div className="text-4xl mb-4">🃏</div>
-            <h2 className="text-2xl font-semibold text-white mb-4">
-              Hello World
-            </h2>
-            <p className="text-slate-400 mb-6">
-              Welcome to your MTG tournament analysis dashboard. This NextJS app
-              will display chat logs and tournament insights.
-            </p>
+          <div className="flex items-center justify-center">
+            <Button asChild size="lg" className="bg-cyan-600 hover:bg-cyan-700">
+              <Link href="/sessions">View Chat Sessions →</Link>
+            </Button>
+          </div>
+        </section>
 
-            <div className="space-y-2 text-sm text-slate-500">
-              <div className="flex justify-between">
-                <span>Framework:</span>
-                <span className="text-cyan-400">Next.js 15.5.2</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Styling:</span>
-                <span className="text-cyan-400">Tailwind CSS v4</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Components:</span>
-                <span className="text-cyan-400">shadcn/ui</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Package Manager:</span>
-                <span className="text-cyan-400">pnpm</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Features */}
+        <section className="grid md:grid-cols-3 gap-4">
+          <Card className="bg-slate-800/50 border-slate-700">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                📊 Metagame Insights
+              </CardTitle>
+              <CardDescription>
+                Track formats, archetypes, and matchup winrates.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-slate-300 text-sm">
+              Use built-in tools to summarize meta changes, recent performance,
+              and sources — quickly turning data into decisions.
+            </CardContent>
+          </Card>
 
-        <div className="mt-8">
-          <Button asChild size="lg" className="bg-cyan-600 hover:bg-cyan-700">
-            <Link href="/sessions">View Chat Sessions →</Link>
-          </Button>
-        </div>
+          <Card className="bg-slate-800/50 border-slate-700">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                🧰 Powerful Tools
+              </CardTitle>
+              <CardDescription>
+                Query the database and get shareable results.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-slate-300 text-sm">
+              Run ad‑hoc SQL with titled outputs, sortable tables, and links you
+              can share with teammates.
+            </CardContent>
+          </Card>
+
+          <Card className="bg-slate-800/50 border-slate-700">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                🗂️ Organized Sessions
+              </CardTitle>
+              <CardDescription>
+                Conversations with context, tools, and outputs.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-slate-300 text-sm">
+              Every chat keeps its tool calls, titles, and results, so you can
+              revisit insights anytime.
+            </CardContent>
+          </Card>
+        </section>
       </main>
     </div>
   )
