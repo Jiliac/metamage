@@ -28,6 +28,18 @@ function normalizeRows(
 
   const raw = extractArray(resultContent)
 
+  // For object rows, we need to map display column names to actual data keys
+  // Since column names are in the same order as data keys, we can create this mapping
+  let actualKeys: string[] | null = null
+  if (
+    raw.length > 0 &&
+    typeof raw[0] === 'object' &&
+    raw[0] !== null &&
+    !Array.isArray(raw[0])
+  ) {
+    actualKeys = Object.keys(raw[0] as Record<string, unknown>)
+  }
+
   return raw.map(row => {
     if (Array.isArray(row)) {
       const obj: Record<string, unknown> = {}
@@ -39,9 +51,17 @@ function normalizeRows(
     if (typeof row === 'object' && row !== null) {
       const ro = row as Record<string, unknown>
       const obj: Record<string, unknown> = {}
-      columnNames.forEach(col => {
-        obj[col] = ro[col]
-      })
+      if (actualKeys && actualKeys.length === columnNames.length) {
+        // Map display column names to actual data keys by position
+        columnNames.forEach((col, i) => {
+          obj[col] = ro[actualKeys[i]]
+        })
+      } else {
+        // Fallback to direct mapping (for backward compatibility)
+        columnNames.forEach(col => {
+          obj[col] = ro[col]
+        })
+      }
       return obj
     }
     return { value: row as unknown }
