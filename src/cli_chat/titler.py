@@ -204,15 +204,17 @@ class Titler:
         """Use a small model to infer ordered column names matching the result rows. Return list[str]."""
         prompt = (
             "Given the SQL and the preview of the result JSON, output ONLY a JSON array of column names "
-            "in the exact order they appear in each result row.\n"
+            "in the EXACT SAME ORDER as the keys appear in the first row of the result data.\n"
             "- Do not include any text before or after the JSON array.\n"
             "- Column names should be human-readable and descriptive for display purposes.\n"
-            "- Use clear, concise names that users will easily understand.\n\n"
+            "- Use clear, concise names that users will easily understand.\n"
+            "- CRITICAL: Preserve the exact order of columns as they appear in the data rows.\n"
+            "- Do not reorder columns alphabetically or by importance - maintain data order.\n\n"
             "SQL:\n"
             f"{sql}\n\n"
             "Result content (sample/preview; may be truncated):\n"
             f"{result_preview}\n\n"
-            'Example output: ["Archetype","Wins","Losses"]'
+            'Example: if data has {{"archetype": "Zoo", "wins": 10, "losses": 5}}, output ["Archetype","Wins","Losses"]'
         )
         try:
             if provider in ("claude", "opus"):
