@@ -24,7 +24,9 @@ class BlueskySocialClient(SocialClient):
         username = os.getenv("BLUESKY_USERNAME")
         password = os.getenv("BLUESKY_PASSWORD")
         if not username or not password:
-            print("BLUESKY_USERNAME and BLUESKY_PASSWORD environment variables required")
+            print(
+                "BLUESKY_USERNAME and BLUESKY_PASSWORD environment variables required"
+            )
             return False
         try:
             async with httpx.AsyncClient() as client:
@@ -42,7 +44,9 @@ class BlueskySocialClient(SocialClient):
                     self.handle = data.get("handle") or username
                     return True
                 else:
-                    print(f"Bluesky authentication failed: {resp.status_code} {resp.text}")
+                    print(
+                        f"Bluesky authentication failed: {resp.status_code} {resp.text}"
+                    )
                     return False
         except Exception as e:
             print(f"Error authenticating with Bluesky: {e}")
@@ -141,8 +145,12 @@ class BlueskySocialClient(SocialClient):
             "text": text,
             "createdAt": created_at,
             "reply": {
-                "root": {"uri": root_uri, "cid": root_cid} if root_cid else {"uri": root_uri},
-                "parent": {"uri": parent_uri, "cid": parent_cid} if parent_cid else {"uri": parent_uri},
+                "root": {"uri": root_uri, "cid": root_cid}
+                if root_cid
+                else {"uri": root_uri},
+                "parent": {"uri": parent_uri, "cid": parent_cid}
+                if parent_cid
+                else {"uri": parent_uri},
             },
         }
 

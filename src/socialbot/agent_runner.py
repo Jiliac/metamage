@@ -43,7 +43,9 @@ class AgentContainer:
 agent_container = AgentContainer()
 
 
-async def run_agent_with_logging(messages: List[tuple], provider: str) -> Tuple[str, str]:
+async def run_agent_with_logging(
+    messages: List[tuple], provider: str
+) -> Tuple[str, str]:
     """
     Run the agent with streaming and log thoughts/tool calls/results.
     Returns (assistant_message, session_id).
@@ -55,7 +57,11 @@ async def run_agent_with_logging(messages: List[tuple], provider: str) -> Tuple[
 
     # Attempt to log the latest user input if present
     try:
-        if messages and isinstance(messages[-1], (list, tuple)) and len(messages[-1]) >= 2:
+        if (
+            messages
+            and isinstance(messages[-1], (list, tuple))
+            and len(messages[-1]) >= 2
+        ):
             chat_logger.log_user_message(session_id, messages[-1][1])
     except Exception:
         pass
@@ -65,7 +71,9 @@ async def run_agent_with_logging(messages: List[tuple], provider: str) -> Tuple[
 
     agent = await agent_container.get_agent()
 
-    async for event in agent.astream({"messages": messages}, config={"recursion_limit": 50}):
+    async for event in agent.astream(
+        {"messages": messages}, config={"recursion_limit": 50}
+    ):
         if "agent" in event:
             agent_messages = event["agent"].get("messages", [])
             if agent_messages:
@@ -87,12 +95,16 @@ async def run_agent_with_logging(messages: List[tuple], provider: str) -> Tuple[
 
                     readable = " ".join(text_parts).strip()
                     if readable:
-                        current_message_id = chat_logger.log_agent_thought(session_id, readable)
+                        current_message_id = chat_logger.log_agent_thought(
+                            session_id, readable
+                        )
                         assistant_message = readable
 
                     for tc in tool_calls:
                         if not current_message_id:
-                            current_message_id = chat_logger.log_agent_thought(session_id, "")
+                            current_message_id = chat_logger.log_agent_thought(
+                                session_id, ""
+                            )
                         chat_logger.log_tool_call(
                             current_message_id,
                             tc.get("name"),
@@ -107,7 +119,9 @@ async def run_agent_with_logging(messages: List[tuple], provider: str) -> Tuple[
                 if tool_call_id_value is None and isinstance(tool_msg, dict):
                     tool_call_id_value = tool_msg.get("tool_call_id")
                 if tool_call_id_value:
-                    tool_call_id = chat_logger.find_tool_call_by_call_id(tool_call_id_value)
+                    tool_call_id = chat_logger.find_tool_call_by_call_id(
+                        tool_call_id_value
+                    )
                     if tool_call_id:
                         content = getattr(tool_msg, "content", None)
                         if content is None and isinstance(tool_msg, dict):

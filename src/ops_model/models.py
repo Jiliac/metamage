@@ -147,12 +147,18 @@ class SocialNotification(Base, TimestampMixin):
     __tablename__ = "social_notifications"
 
     id = uuid_pk()
-    platform = Column(String(20), nullable=False, index=True)  # e.g. 'bluesky', 'twitter'
-    post_uri = Column(String(255), nullable=False, index=True)  # Bluesky post URI or tweet URL/ID
+    platform = Column(
+        String(20), nullable=False, index=True
+    )  # e.g. 'bluesky', 'twitter'
+    post_uri = Column(
+        String(255), nullable=False, index=True
+    )  # Bluesky post URI or tweet URL/ID
     post_cid = Column(String(100), nullable=True)  # Bluesky CID; null for others
     actor_id = Column(String(200), nullable=True, index=True)  # DID/user id
     actor_handle = Column(String(200), nullable=True)
-    reason = Column(String(30), nullable=False, index=True)  # mention|reply|quote|like|...
+    reason = Column(
+        String(30), nullable=False, index=True
+    )  # mention|reply|quote|like|...
     text = Column(Text, nullable=True)
     indexed_at = Column(DateTime, nullable=True, index=True)
 
@@ -176,7 +182,9 @@ class SocialNotification(Base, TimestampMixin):
     answered_at = Column(DateTime, nullable=True)
 
     # Link to analysis session for traceability
-    session_id = Column(String(36), ForeignKey("chat_sessions.id"), nullable=True, index=True)
+    session_id = Column(
+        String(36), ForeignKey("chat_sessions.id"), nullable=True, index=True
+    )
 
     __table_args__ = (
         UniqueConstraint(

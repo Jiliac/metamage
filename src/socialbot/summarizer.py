@@ -20,7 +20,11 @@ def _small_llm(provider: Optional[str] = None):
     if provider == "gpt5" and _has_openai():
         return ChatOpenAI(model="gpt-5-nano", max_tokens=128)
     # Fallback to Anthropic if available, otherwise None (we'll hard-trim)
-    return ChatAnthropic(model="claude-3-5-haiku-20241022", max_tokens=128) if _has_anthropic() else None
+    return (
+        ChatAnthropic(model="claude-3-5-haiku-20241022", max_tokens=128)
+        if _has_anthropic()
+        else None
+    )
 
 
 async def summarize(
@@ -47,8 +51,10 @@ async def summarize(
     )
 
     for i in range(max_retries + 1):
-        prompt = base_prompt if attempt is None else (
-            base_prompt + "\n\nPrevious attempt (too long):\n" + attempt
+        prompt = (
+            base_prompt
+            if attempt is None
+            else (base_prompt + "\n\nPrevious attempt (too long):\n" + attempt)
         )
         try:
             resp = llm.invoke(prompt)

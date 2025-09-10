@@ -6,10 +6,9 @@ summarizes to <=250 chars, and replies in-thread.
 
 import os
 import asyncio
-import json
 import logging
 from datetime import datetime, timezone
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple
 
 from sqlalchemy import and_
 
@@ -44,7 +43,9 @@ def _get_or_create_pass(session, pass_type: str) -> Pass:
         .first()
     )
     if p is None:
-        p = Pass(pass_type=pass_type, start_time=datetime.now(timezone.utc), success=False)
+        p = Pass(
+            pass_type=pass_type, start_time=datetime.now(timezone.utc), success=False
+        )
         session.add(p)
         session.commit()
     return p
@@ -54,11 +55,14 @@ def _iso_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _extract_parent_root_from_thread(thread_json: dict, target_uri: str) -> Tuple[Optional[Tuple[str, Optional[str]]], Optional[Tuple[str, Optional[str]]]]:
+def _extract_parent_root_from_thread(
+    thread_json: dict, target_uri: str
+) -> Tuple[Optional[Tuple[str, Optional[str]]], Optional[Tuple[str, Optional[str]]]]:
     """
     From app.bsky.feed.getPostThread result, find parent and root (uri, cid)
     for the node matching target_uri.
     """
+
     def find_node(node: dict, root: Optional[dict]) -> Optional[dict]:
         if not node:
             return None
@@ -105,7 +109,9 @@ def _extract_parent_root_from_thread(thread_json: dict, target_uri: str) -> Tupl
     return parent_tuple, root_tuple
 
 
-async def poll_and_process_once(client: BlueskySocialClient, provider: str = "claude") -> None:
+async def poll_and_process_once(
+    client: BlueskySocialClient, provider: str = "claude"
+) -> None:
     """
     Poll notifications once, upsert to DB, process one pending notification.
     """
@@ -150,7 +156,9 @@ async def poll_and_process_once(client: BlueskySocialClient, provider: str = "cl
                     actor_handle=n.get("actor_handle"),
                     reason=n.get("reason"),
                     text=n.get("text"),
-                    indexed_at=n.get("indexed_at") if isinstance(n.get("indexed_at"), datetime) else None,
+                    indexed_at=n.get("indexed_at")
+                    if isinstance(n.get("indexed_at"), datetime)
+                    else None,
                     status="skipped" if is_self else "pending",
                     is_self=is_self,
                 )
@@ -159,13 +167,17 @@ async def poll_and_process_once(client: BlueskySocialClient, provider: str = "cl
 
             idx_at = n.get("indexed_at")
             if isinstance(idx_at, datetime):
-                latest_indexed = idx_at if latest_indexed is None else max(latest_indexed, idx_at)
+                latest_indexed = (
+                    idx_at if latest_indexed is None else max(latest_indexed, idx_at)
+                )
 
         # Update cursor and pass record
         pass_rec.last_processed_time = latest_indexed or pass_rec.last_processed_time
         if next_cursor:
             pass_rec.notes = next_cursor
-        pass_rec.messages_processed = (pass_rec.messages_processed or 0) + messages_processed
+        pass_rec.messages_processed = (
+            pass_rec.messages_processed or 0
+        ) + messages_processed
         pass_rec.end_time = _iso_now()
         pass_rec.success = True
         session.commit()
@@ -180,7 +192,10 @@ async def poll_and_process_once(client: BlueskySocialClient, provider: str = "cl
                     SocialNotification.is_self.is_(False),
                 )
             )
-            .order_by(SocialNotification.indexed_at.asc().nullsfirst(), SocialNotification.created_at.asc())
+            .order_by(
+                SocialNotification.indexed_at.asc().nullsfirst(),
+                SocialNotification.created_at.asc(),
+            )
             .first()
         )
 
@@ -197,7 +212,9 @@ async def poll_and_process_once(client: BlueskySocialClient, provider: str = "cl
         pending.thread_json = thread
 
         # Fill parent/root from thread
-        parent_tuple, root_tuple = _extract_parent_root_from_thread(thread, pending.post_uri)
+        parent_tuple, root_tuple = _extract_parent_root_from_thread(
+            thread, pending.post_uri
+        )
         if parent_tuple:
             pending.parent_uri, pending.parent_cid = parent_tuple
         if root_tuple:
@@ -223,7 +240,9 @@ async def poll_and_process_once(client: BlueskySocialClient, provider: str = "cl
                         stack.append(child)
             return ""
 
-        pending.text = pending.text or _get_post_text_from_thread(thread, pending.post_uri)
+        pending.text = pending.text or _get_post_text_from_thread(
+            thread, pending.post_uri
+        )
         session.commit()
 
         # Build messages for agent (KISS: include mention text + note that thread JSON is stored)
