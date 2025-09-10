@@ -8,7 +8,9 @@ from sqlalchemy import (
     Index,
     UniqueConstraint,
     BigInteger,
+    Integer,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from .base import Base, uuid_pk, TimestampMixin
 
@@ -137,3 +139,63 @@ class Pass(Base, TimestampMixin):
 Index("idx_discord_post_message_time", DiscordPost.message_time)
 Index("idx_social_message_post_time", SocialMessage.post_time)
 Index("idx_pass_type_start", Pass.pass_type, Pass.start_time)
+
+
+class SocialNotification(Base, TimestampMixin):
+    """Normalized social notification across platforms (Bluesky, Twitter, etc.)."""
+
+    __tablename__ = "social_notifications"
+
+    id = uuid_pk()
+    platform = Column(String(20), nullable=False, index=True)  # e.g. 'bluesky', 'twitter'
+    post_uri = Column(String(255), nullable=False, index=True)  # Bluesky post URI or tweet URL/ID
+    post_cid = Column(String(100), nullable=True)  # Bluesky CID; null for others
+    actor_id = Column(String(200), nullable=True, index=True)  # DID/user id
+    actor_handle = Column(String(200), nullable=True)
+    reason = Column(String(30), nullable=False, index=True)  # mention|reply|quote|like|...
+    text = Column(Text, nullable=True)
+    indexed_at = Column(DateTime, nullable=True, index=True)
+
+    status = Column(
+        String(20), nullable=False, default="pending", index=True
+    )  # pending|processing|answered|skipped|error
+    is_self = Column(Boolean, nullable=False, default=False)
+    attempts = Column(Integer, nullable=False, default=0)
+    error_message = Column(Text, nullable=True)
+
+    # Thread + response metadata
+    root_uri = Column(String(255), nullable=True)
+    root_cid = Column(String(100), nullable=True)
+    parent_uri = Column(String(255), nullable=True)
+    parent_cid = Column(String(100), nullable=True)
+    thread_json = Column(JSONB, nullable=True)
+
+    # Response linkage
+    response_text = Column(Text, nullable=True)
+    response_uri = Column(String(255), nullable=True)
+    answered_at = Column(DateTime, nullable=True)
+
+    # Link to analysis session for traceability
+    session_id = Column(String(36), ForeignKey("chat_sessions.id"), nullable=True, index=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "platform",
+            "post_uri",
+            "actor_id",
+            "reason",
+            name="uq_social_notification_unique",
+        ),
+    )
+
+    def __repr__(self):
+        return f"<SocialNotification(platform='{self.platform}', reason='{self.reason}', status='{self.status}')>"
+
+
+# Performance indexes for SocialNotification
+Index(
+    "idx_social_notification_platform_status_time",
+    SocialNotification.platform,
+    SocialNotification.status,
+    SocialNotification.indexed_at,
+)

@@ -8,7 +8,7 @@ from .base import (
     get_ops_session_factory,
     get_ops_database_path,
 )
-from .models import FocusedChannel, DiscordPost, SocialMessage, Pass
+from .models import FocusedChannel, DiscordPost, SocialMessage, Pass, SocialNotification
 from .chat_models import ChatSession, ChatMessage, ToolCall, ToolResult
 
 __all__ = [
@@ -25,6 +25,7 @@ __all__ = [
     "DiscordPost",
     "SocialMessage",
     "Pass",
+    "SocialNotification",
     # Chat models
     "ChatSession",
     "ChatMessage",
