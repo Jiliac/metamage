@@ -61,9 +61,8 @@ export default function QueryResultTable({
   const [columnOrder, setColumnOrder] = React.useState<string[]>(columnNames)
 
   React.useEffect(() => {
-    console.log(JSON.stringify({ columns, data }, null, 2))
     setColumnOrder(columnNames)
-  }, [columnNames])
+  }, [columnNames, data])
 
   const columnDefs = React.useMemo<ColumnDef<Record<string, unknown>>[]>(
     () =>

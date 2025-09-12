@@ -45,15 +45,26 @@ export function ToolResultView({
   const [isQueryOpen, setIsQueryOpen] = useState(false)
 
   if (toolCall.toolName === 'query_database' && toolCall.toolResult) {
-    console.log(JSON.stringify(toolCall.toolResult.resultContent, null, 2))
     const sqlQuery =
       ((toolCall.inputParams as Record<string, unknown>)?.sql as string) || ''
 
     // Extract raw data without transformation
     const rawData = extractRawData(toolCall.toolResult.resultContent)
 
-    // Pass column mapping directly to QueryResultTable
-    const columnMapping = toolCall.columnNames || []
+    // Handle column mapping - ensure it's in the right format for QueryResultTable
+    let columnMapping: string[] | Record<string, string> = []
+    if (toolCall.columnNames) {
+      if (Array.isArray(toolCall.columnNames)) {
+        // Legacy format: array of strings
+        columnMapping = toolCall.columnNames.map(String)
+      } else if (
+        typeof toolCall.columnNames === 'object' &&
+        toolCall.columnNames !== null
+      ) {
+        // New format: object mapping from data keys to display names
+        columnMapping = toolCall.columnNames as Record<string, string>
+      }
+    }
 
     return (
       <>
