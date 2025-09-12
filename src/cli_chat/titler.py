@@ -2,7 +2,7 @@
 
 import re
 import json
-from typing import Optional, List
+from typing import Optional
 
 from sqlalchemy import inspect, text
 from langchain_anthropic import ChatAnthropic
@@ -153,10 +153,10 @@ class Titler:
                     print(f"🏷️  Query title set: {tc.title}")
 
                 if col_names and (tc.column_names is None or not tc.column_names):
-                    if isinstance(col_names, list):
-                        tc.column_names = [str(x) for x in col_names]
+                    if isinstance(col_names, dict):
+                        tc.column_names = col_names
                         updates = True
-                        print(f"🧾 Column names set: {tc.column_names}")
+                        print(f"🧾 Column mapping set: {len(col_names)} columns")
 
                 if updates:
                     sess.add(tc)
@@ -200,21 +200,19 @@ class Titler:
 
     def _generate_query_columns(
         self, provider: str, sql: str, result_preview: str
-    ) -> Optional[List[str]]:
-        """Use a small model to infer ordered column names matching the result rows. Return list[str]."""
+    ) -> Optional[dict]:
+        """Use a small model to infer column mapping from data keys to display names. Return dict[str, str]."""
         prompt = (
-            "Given the SQL and the preview of the result JSON, output ONLY a JSON array of column names "
-            "in the EXACT SAME ORDER as the keys appear in the first row of the result data.\n"
-            "- Do not include any text before or after the JSON array.\n"
-            "- Column names should be human-readable and descriptive for display purposes.\n"
-            "- Use clear, concise names that users will easily understand.\n"
-            "- CRITICAL: Preserve the exact order of columns as they appear in the data rows.\n"
-            "- Do not reorder columns alphabetically or by importance - maintain data order.\n\n"
+            "Given the SQL and the preview of the result JSON, output ONLY a JSON object mapping data keys to human-readable column names.\n"
+            "- Do not include any text before or after the JSON object.\n"
+            "- Keys should be the exact data keys from the first row of results.\n"
+            "- Values should be human-readable, descriptive display names.\n"
+            "- Use clear, concise names that users will easily understand.\n\n"
             "SQL:\n"
             f"{sql}\n\n"
             "Result content (sample/preview; may be truncated):\n"
             f"{result_preview}\n\n"
-            'Example: if data has {{"archetype": "Zoo", "wins": 10, "losses": 5}}, output ["Archetype","Wins","Losses"]'
+            'Example: if data has {{"archetype": "Zoo", "wins": 10, "losses": 5}}, output {{"archetype": "Archetype", "wins": "Wins", "losses": "Losses"}}'
         )
         try:
             if provider in ("claude", "opus"):
@@ -225,17 +223,23 @@ class Titler:
                 llm = ChatAnthropic(model="claude-3-5-haiku-20241022", max_tokens=128)
             resp = llm.invoke(prompt)
             text = str(getattr(resp, "content", resp)).strip()
-            # Parse JSON array strictly, then fallback
+            # Parse JSON object strictly, then fallback
             try:
                 data = json.loads(text)
             except Exception:
                 import re as _re
 
-                m = _re.search(r"\[.*\]", text, _re.DOTALL)
+                m = _re.search(r"\{.*\}", text, _re.DOTALL)
                 data = json.loads(m.group(0)) if m else None
-            if isinstance(data, list):
-                cols = [str(x).strip() for x in data if str(x).strip()]
-                return cols if cols else None
+            if isinstance(data, dict):
+                # Ensure all keys and values are strings
+                mapping = {}
+                for k, v in data.items():
+                    key = str(k).strip()
+                    val = str(v).strip()
+                    if key and val:
+                        mapping[key] = val
+                return mapping if mapping else None
             return None
         except Exception as e:
             print(f"❌ Column names generation failed: {e}")

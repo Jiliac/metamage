@@ -11,8 +11,43 @@ import {
 } from '@tanstack/react-table'
 
 type QueryResultTableProps = {
-  columns: string[]
+  columns: string[] | Record<string, string>
   data: Array<Record<string, unknown>>
+}
+
+// Custom hook to handle column mapping and data transformation
+function useColumnMapping(
+  columns: string[] | Record<string, string>,
+  rawData: Array<Record<string, unknown>>
+) {
+  return React.useMemo(() => {
+    // Handle new format: object mapping from data keys to display names
+    if (typeof columns === 'object' && !Array.isArray(columns)) {
+      const columnMapping = columns as Record<string, string>
+      const dataKeys = Object.keys(columnMapping)
+      const displayNames = dataKeys.map(key => columnMapping[key])
+
+      // Transform data to use display names as keys
+      const transformedData = rawData.map(row => {
+        const newRow: Record<string, unknown> = {}
+        dataKeys.forEach(dataKey => {
+          const displayName = columnMapping[dataKey]
+          newRow[displayName] = row[dataKey]
+        })
+        return newRow
+      })
+
+      return { columnNames: displayNames, transformedData }
+    }
+
+    // Handle legacy format: array of column names (no transformation)
+    if (Array.isArray(columns)) {
+      return { columnNames: columns, transformedData: rawData }
+    }
+
+    // Fallback
+    return { columnNames: [], transformedData: [] }
+  }, [columns, rawData])
 }
 
 export default function QueryResultTable({
@@ -20,11 +55,15 @@ export default function QueryResultTable({
   data,
 }: QueryResultTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
-  const [columnOrder, setColumnOrder] = React.useState<string[]>(columns)
+
+  // Use the custom hook to handle column mapping and data transformation
+  const { columnNames, transformedData } = useColumnMapping(columns, data)
+  const [columnOrder, setColumnOrder] = React.useState<string[]>(columnNames)
 
   React.useEffect(() => {
-    setColumnOrder(columns)
-  }, [columns])
+    console.log(JSON.stringify({ columns, data }, null, 2))
+    setColumnOrder(columnNames)
+  }, [columnNames])
 
   const columnDefs = React.useMemo<ColumnDef<Record<string, unknown>>[]>(
     () =>
@@ -49,7 +88,7 @@ export default function QueryResultTable({
   )
 
   const table = useReactTable({
-    data,
+    data: transformedData,
     columns: columnDefs,
     state: {
       sorting,
@@ -131,7 +170,7 @@ export default function QueryResultTable({
             <tr>
               <td
                 className="px-3 py-4 text-slate-400"
-                colSpan={columns.length || 1}
+                colSpan={columnNames.length || 1}
               >
                 No rows to display.
               </td>

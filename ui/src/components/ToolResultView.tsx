@@ -11,61 +11,19 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 import { format } from 'sql-formatter'
 import { useState } from 'react'
 //
-// Normalize various resultContent shapes into array of row objects using provided column order
-function normalizeRows(
-  resultContent: unknown,
-  columnNames: string[]
+// Extract raw data array from various result content shapes
+function extractRawData(
+  resultContent: unknown
 ): Array<Record<string, unknown>> {
-  const extractArray = (rc: unknown): unknown[] => {
-    if (Array.isArray(rc)) return rc
-    if (typeof rc === 'object' && rc !== null) {
-      const obj = rc as { rows?: unknown; data?: unknown }
-      if (Array.isArray(obj.rows)) return obj.rows
-      if (Array.isArray(obj.data)) return obj.data
-    }
-    return []
+  if (Array.isArray(resultContent)) {
+    return resultContent
   }
-
-  const raw = extractArray(resultContent)
-
-  // For object rows, we need to map display column names to actual data keys
-  // Since column names are in the same order as data keys, we can create this mapping
-  let actualKeys: string[] | null = null
-  if (
-    raw.length > 0 &&
-    typeof raw[0] === 'object' &&
-    raw[0] !== null &&
-    !Array.isArray(raw[0])
-  ) {
-    actualKeys = Object.keys(raw[0] as Record<string, unknown>)
+  if (typeof resultContent === 'object' && resultContent !== null) {
+    const obj = resultContent as { rows?: unknown; data?: unknown }
+    if (Array.isArray(obj.rows)) return obj.rows
+    if (Array.isArray(obj.data)) return obj.data
   }
-
-  return raw.map(row => {
-    if (Array.isArray(row)) {
-      const obj: Record<string, unknown> = {}
-      columnNames.forEach((col, i) => {
-        obj[col] = row[i]
-      })
-      return obj
-    }
-    if (typeof row === 'object' && row !== null) {
-      const ro = row as Record<string, unknown>
-      const obj: Record<string, unknown> = {}
-      if (actualKeys && actualKeys.length === columnNames.length) {
-        // Map display column names to actual data keys by position
-        columnNames.forEach((col, i) => {
-          obj[col] = ro[actualKeys[i]]
-        })
-      } else {
-        // Fallback to direct mapping (for backward compatibility)
-        columnNames.forEach(col => {
-          obj[col] = ro[col]
-        })
-      }
-      return obj
-    }
-    return { value: row as unknown }
-  })
+  return []
 }
 
 type ToolCallWithRelations = Prisma.ToolCallGetPayload<{
@@ -87,20 +45,21 @@ export function ToolResultView({
   const [isQueryOpen, setIsQueryOpen] = useState(false)
 
   if (toolCall.toolName === 'query_database' && toolCall.toolResult) {
+    console.log(JSON.stringify(toolCall.toolResult.resultContent, null, 2))
     const sqlQuery =
       ((toolCall.inputParams as Record<string, unknown>)?.sql as string) || ''
+
+    // Extract raw data without transformation
+    const rawData = extractRawData(toolCall.toolResult.resultContent)
+
+    // Pass column mapping directly to QueryResultTable
+    const columnMapping = toolCall.columnNames || []
 
     return (
       <>
         <h2 className="text-xl font-semibold text-white">Query Result</h2>
 
-        <QueryResultTable
-          columns={(toolCall.columnNames as unknown[]).map(String)}
-          data={normalizeRows(
-            toolCall.toolResult.resultContent,
-            (toolCall.columnNames as unknown[]).map(String)
-          )}
-        />
+        <QueryResultTable columns={columnMapping} data={rawData} />
 
         {sqlQuery && (
           <div className="bg-slate-800/30 rounded-lg border border-slate-700/50">
