@@ -21,21 +21,21 @@ Add a new table in the Ops DB:
   - post_uri (str) — Bluesky post URI, Tweet ID/URL, etc.
   - post_cid (str|null) — Bluesky CID (null for other platforms)
   - actor_id (str|null) — DID/user ID of the actor that mentioned us
-  - actor_handle (str|null)
+  - **actor_handle** (str|null)
   - reason (str) — mention|reply|quote|like|...
   - text (text|null) — the actor’s message body (may be backfilled after fetching thread)
   - indexed_at (datetime|null) — platform-provided indexing time if available
   - status (str) — pending|processing|answered|skipped|error
-  - is_self (bool) — true if actor_id equals our own account ID (skip loops)
-  - attempts (int) — number of processing attempts
-  - error_message (text|null)
+  - **is_self** (bool) — true if actor_id equals our own account ID (skip loops)
+  - **attempts** (int) — number of processing attempts
+  - **error_message** (text|null)
   - root_uri/root_cid (str|null) — thread root pointers
   - parent_uri/parent_cid (str|null) — direct parent pointers
   - thread_json (JSONB|null) — raw thread JSON (opaque, for context)
   - response_text (text|null) — our final summarized reply
   - response_uri (str|null) — URI/ID of our posted reply
   - answered_at (datetime|null)
-  - session_id (uuid|null) — link to ChatSession for traceability
+  - **session_id** (uuid|null) — FK to chat_sessions.id for traceability
 
 Uniqueness:
 - UniqueConstraint(platform, post_uri, actor_id, reason)

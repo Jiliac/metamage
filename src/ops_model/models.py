@@ -186,6 +186,9 @@ class SocialNotification(Base, TimestampMixin):
         String(36), ForeignKey("chat_sessions.id"), nullable=True, index=True
     )
 
+    # Relationships
+    session = relationship("ChatSession", back_populates="social_notifications")
+
     __table_args__ = (
         UniqueConstraint(
             "platform",

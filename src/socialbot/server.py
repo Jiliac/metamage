@@ -109,121 +109,128 @@ def _extract_parent_root_from_thread(
     return parent_tuple, root_tuple
 
 
-async def poll_and_process_once(
-    client: BlueskySocialClient, provider: str = "claude"
-) -> None:
-    """
-    Poll notifications once, upsert to DB, process one pending notification.
-    """
-    SessionFactory = get_ops_session_factory()
-    session = SessionFactory()
-    try:
-        pass_rec = _get_or_create_pass(session, "bsky_notifications")
-        cursor = pass_rec.notes  # store cursor in notes
-        notifs, next_cursor = await client.list_notifications(cursor=cursor)
+async def poll_and_upsert(session, client, cursor):
+    """Poll Bluesky notifications and upsert into DB. Returns (seen_count, latest_indexed, next_cursor)."""
+    notifs, next_cursor = await client.list_notifications(cursor=cursor)
 
-        messages_processed = 0
-        latest_indexed: Optional[datetime] = None
+    messages_processed = 0
+    latest_indexed = None
 
-        # Upsert notifications
-        for n in notifs:
-            actor_id = n.get("actor_id")
-            is_self = bool(client.did and actor_id == client.did)
+    def _parse_indexed_at(val):
+        if isinstance(val, datetime):
+            return val
+        if isinstance(val, str):
+            try:
+                return datetime.fromisoformat(val.replace("Z", "+00:00"))
+            except Exception:
+                return None
+        return None
 
-            # Upsert by unique key
-            existing = (
-                session.query(SocialNotification)
-                .filter_by(
-                    platform="bluesky",
-                    post_uri=n.get("post_uri"),
-                    actor_id=actor_id,
-                    reason=n.get("reason"),
-                )
-                .first()
-            )
-            if existing:
-                # Update minimal fields
-                existing.indexed_at = n.get("indexed_at") or existing.indexed_at
-                existing.text = existing.text or n.get("text")
-                if existing.is_self != is_self:
-                    existing.is_self = is_self
-            else:
-                sn = SocialNotification(
-                    platform="bluesky",
-                    post_uri=n.get("post_uri"),
-                    post_cid=n.get("post_cid"),
-                    actor_id=actor_id,
-                    actor_handle=n.get("actor_handle"),
-                    reason=n.get("reason"),
-                    text=n.get("text"),
-                    indexed_at=n.get("indexed_at")
-                    if isinstance(n.get("indexed_at"), datetime)
-                    else None,
-                    status="skipped" if is_self else "pending",
-                    is_self=is_self,
-                )
-                session.add(sn)
-            messages_processed += 1
+    for n in notifs:
+        actor_id = n.get("actor_id")
+        is_self = bool(client.did and actor_id == client.did)
+        idx_at = _parse_indexed_at(n.get("indexed_at"))
 
-            idx_at = n.get("indexed_at")
-            if isinstance(idx_at, datetime):
-                latest_indexed = (
-                    idx_at if latest_indexed is None else max(latest_indexed, idx_at)
-                )
-
-        # Update cursor and pass record
-        pass_rec.last_processed_time = latest_indexed or pass_rec.last_processed_time
-        if next_cursor:
-            pass_rec.notes = next_cursor
-        pass_rec.messages_processed = (
-            pass_rec.messages_processed or 0
-        ) + messages_processed
-        pass_rec.end_time = _iso_now()
-        pass_rec.success = True
-        session.commit()
-
-        # Process one pending notification (oldest first)
-        pending = (
+        existing = (
             session.query(SocialNotification)
-            .filter(
-                and_(
-                    SocialNotification.platform == "bluesky",
-                    SocialNotification.status == "pending",
-                    SocialNotification.is_self.is_(False),
-                )
-            )
-            .order_by(
-                SocialNotification.indexed_at.asc().nullsfirst(),
-                SocialNotification.created_at.asc(),
+            .filter_by(
+                platform="bluesky",
+                post_uri=n.get("post_uri"),
+                actor_id=actor_id,
+                reason=n.get("reason"),
             )
             .first()
         )
+        if existing:
+            if idx_at and (existing.indexed_at is None or idx_at > existing.indexed_at):
+                existing.indexed_at = idx_at
+            if not existing.text and n.get("text"):
+                existing.text = n.get("text")
+            if not existing.actor_handle and n.get("actor_handle"):
+                existing.actor_handle = n.get("actor_handle")
+            existing.is_self = is_self
+        else:
+            sn = SocialNotification(
+                platform="bluesky",
+                post_uri=n.get("post_uri"),
+                post_cid=n.get("post_cid"),
+                actor_id=actor_id,
+                actor_handle=n.get("actor_handle"),
+                reason=n.get("reason"),
+                text=n.get("text"),
+                indexed_at=idx_at,
+                status="skipped" if is_self else "pending",
+                is_self=is_self,
+            )
+            session.add(sn)
 
-        if not pending:
-            return
+        messages_processed += 1
+        if idx_at:
+            latest_indexed = (
+                idx_at if latest_indexed is None else max(latest_indexed, idx_at)
+            )
 
-        # Mark processing
-        pending.status = "processing"
-        pending.attempts = (pending.attempts or 0) + 1
+    session.commit()
+    return messages_processed, latest_indexed, next_cursor
+
+
+def claim_next_pending(session, platform: str = "bluesky"):
+    """Atomically claim the next pending notification. Returns the claimed row or None."""
+    candidates = (
+        session.query(SocialNotification)
+        .filter(
+            and_(
+                SocialNotification.platform == platform,
+                SocialNotification.status == "pending",
+                SocialNotification.is_self.is_(False),
+            )
+        )
+        .order_by(
+            SocialNotification.indexed_at.asc().nullsfirst(),
+            SocialNotification.created_at.asc(),
+        )
+        .limit(10)
+        .all()
+    )
+
+    for cand in candidates:
+        updated = (
+            session.query(SocialNotification)
+            .filter_by(id=cand.id, status="pending")
+            .update(
+                {
+                    SocialNotification.status: "processing",
+                    SocialNotification.attempts: SocialNotification.attempts + 1,
+                },
+                synchronize_session=False,
+            )
+        )
         session.commit()
+        if updated == 1:
+            return session.query(SocialNotification).filter_by(id=cand.id).first()
 
+    return None
+
+
+async def process_notification(session, client, notif, provider: str) -> None:
+    """Process a single claimed notification end-to-end and update its row."""
+    try:
         # Fetch thread
-        thread = await client.get_post_thread(pending.post_uri, depth=10)
-        pending.thread_json = thread
+        thread = await client.get_post_thread(notif.post_uri, depth=10)
+        notif.thread_json = thread
 
         # Fill parent/root from thread
         parent_tuple, root_tuple = _extract_parent_root_from_thread(
-            thread, pending.post_uri
+            thread, notif.post_uri
         )
         if parent_tuple:
-            pending.parent_uri, pending.parent_cid = parent_tuple
+            notif.parent_uri, notif.parent_cid = parent_tuple
         if root_tuple:
-            pending.root_uri, pending.root_cid = root_tuple
+            notif.root_uri, notif.root_cid = root_tuple
 
-        # Try to extract post text for the target node (fallback to empty)
+        # Extract text for target node if missing
         def _get_post_text_from_thread(thread_json: dict, target_uri: str) -> str:
             node = thread_json.get("thread") or {}
-            # simple DFS to find matching post text
             stack = [node]
             while stack:
                 cur = stack.pop()
@@ -231,7 +238,6 @@ async def poll_and_process_once(
                 if post.get("uri") == target_uri:
                     rec = post.get("record") or {}
                     return rec.get("text") or ""
-                # push children
                 parent = cur.get("parent")
                 if isinstance(parent, dict):
                     stack.append(parent)
@@ -240,25 +246,22 @@ async def poll_and_process_once(
                         stack.append(child)
             return ""
 
-        pending.text = pending.text or _get_post_text_from_thread(
-            thread, pending.post_uri
-        )
+        notif.text = notif.text or _get_post_text_from_thread(thread, notif.post_uri)
         session.commit()
 
-        # Build messages for agent (KISS: include mention text + note that thread JSON is stored)
-        user_text = f"Bluesky mention by @{pending.actor_handle or 'unknown'}:\n{pending.text or ''}\n\nPlease answer the question based on MTG tournament data. The full thread JSON is available but omitted here."
+        # Build messages for agent
+        user_text = f"Bluesky mention by @{notif.actor_handle or 'unknown'}:\n{notif.text or ''}\n\nPlease answer the question based on MTG tournament data. The full thread JSON is available but omitted here."
         messages = [("user", user_text)]
 
         answer, session_id = await run_agent_with_logging(messages, provider=provider)
 
-        # Summarize to <=250 chars with retries; final hard-cap
+        # Summarize and reply
         short = await summarize(answer, provider=provider, limit=250, max_retries=2)
 
-        # Determine reply targets
-        parent_uri = pending.parent_uri or pending.post_uri
-        parent_cid = pending.parent_cid or None
-        root_uri = pending.root_uri or pending.post_uri
-        root_cid = pending.root_cid or None
+        parent_uri = notif.parent_uri or notif.post_uri
+        parent_cid = notif.parent_cid or None
+        root_uri = notif.root_uri or notif.post_uri
+        root_cid = notif.root_cid or None
 
         created_uri = await client.reply(
             short,
@@ -268,15 +271,74 @@ async def poll_and_process_once(
             root_cid=root_cid,
         )
 
-        # Update DB
-        pending.status = "answered"
-        pending.response_text = short
-        pending.response_uri = created_uri
-        pending.answered_at = _iso_now()
-        pending.session_id = session_id
+        # Update row
+        notif.status = "answered"
+        notif.response_text = short
+        notif.response_uri = created_uri
+        notif.answered_at = _iso_now()
+        notif.session_id = session_id
         session.commit()
 
         logger.info(f"Answered Bluesky mention with post: {created_uri}")
+    except Exception as e:
+        logger.exception("Error processing notification")
+        notif.status = "error"
+        notif.error_message = str(e)
+        session.commit()
+
+
+async def poll_and_process_once(
+    client: BlueskySocialClient,
+    provider: str = "claude",
+    max_to_process: Optional[int] = None,
+) -> None:
+    """
+    Poll notifications once, upsert to DB, then process up to N pending notifications.
+    N defaults to env SOCIALBOT_MAX_TO_PROCESS or 1.
+    """
+    if max_to_process is None:
+        try:
+            max_to_process = int(os.getenv("SOCIALBOT_MAX_TO_PROCESS", "1"))
+        except Exception:
+            max_to_process = 1
+
+    SessionFactory = get_ops_session_factory()
+    session = SessionFactory()
+    try:
+        pass_rec = _get_or_create_pass(session, "bsky_notifications")
+        cursor = pass_rec.notes  # store cursor in notes
+
+        seen, latest_idx, next_cursor = await poll_and_upsert(session, client, cursor)
+
+        # Update pass record
+        pass_rec.last_processed_time = latest_idx or pass_rec.last_processed_time
+        if next_cursor:
+            pass_rec.notes = next_cursor
+        pass_rec.messages_processed = (pass_rec.messages_processed or 0) + (seen or 0)
+        pass_rec.end_time = _iso_now()
+        pass_rec.success = True
+        session.commit()
+
+        # Process up to N pending notifications
+        processed = 0
+        for _ in range(max_to_process):
+            notif = claim_next_pending(session, platform="bluesky")
+            if not notif:
+                break
+            try:
+                await process_notification(session, client, notif, provider)
+                processed += 1
+            except Exception as e:
+                logger.exception("Unhandled error during notification processing")
+                try:
+                    notif.status = "error"
+                    notif.error_message = str(e)
+                    session.commit()
+                except Exception:
+                    session.rollback()
+
+        if processed:
+            logger.info(f"Processed {processed} pending notification(s).")
 
     except Exception as e:
         logger.exception(f"Error in poll_and_process_once: {e}")

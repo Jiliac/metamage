@@ -17,6 +17,7 @@ class ChatSession(Base, TimestampMixin):
     messages = relationship(
         "ChatMessage", back_populates="session", passive_deletes=True
     )
+    social_notifications = relationship("SocialNotification", back_populates="session")
 
     def __repr__(self):
         return f"<ChatSession(id={self.id}, provider='{self.provider}')>"
