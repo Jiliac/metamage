@@ -42,7 +42,8 @@ function useColumnMapping(
 
     // Handle legacy format: array of column names (no transformation)
     if (Array.isArray(columns)) {
-      return { columnNames: columns, transformedData: rawData }
+      const columnNames = Object.keys(rawData[0])
+      return { columnNames, transformedData: rawData }
     }
 
     // Fallback
