@@ -10,7 +10,7 @@ from sqlalchemy import (
     BigInteger,
     Integer,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import JSON
 from sqlalchemy.orm import relationship
 from .base import Base, uuid_pk, TimestampMixin
 
@@ -174,7 +174,7 @@ class SocialNotification(Base, TimestampMixin):
     root_cid = Column(String(100), nullable=True)
     parent_uri = Column(String(255), nullable=True)
     parent_cid = Column(String(100), nullable=True)
-    thread_json = Column(JSONB, nullable=True)
+    thread_json = Column(JSON, nullable=True)
 
     # Response linkage
     response_text = Column(Text, nullable=True)

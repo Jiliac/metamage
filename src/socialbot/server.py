@@ -10,6 +10,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional, Tuple
 
+from dotenv import load_dotenv
+
 from sqlalchemy import and_
 
 from ..ops_model.base import get_ops_session_factory
@@ -142,7 +144,15 @@ async def poll_and_upsert(session, client, cursor):
             .first()
         )
         if existing:
-            if idx_at and (existing.indexed_at is None or idx_at > existing.indexed_at):
+            if idx_at and (
+                existing.indexed_at is None
+                or (
+                    existing.indexed_at.replace(tzinfo=timezone.utc)
+                    if existing.indexed_at.tzinfo is None
+                    else existing.indexed_at
+                )
+                < idx_at
+            ):
                 existing.indexed_at = idx_at
             if not existing.text and n.get("text"):
                 existing.text = n.get("text")
@@ -215,6 +225,13 @@ def claim_next_pending(session, platform: str = "bluesky"):
 async def process_notification(session, client, notif, provider: str) -> None:
     """Process a single claimed notification end-to-end and update its row."""
     try:
+        # Skip non-post notifications (follow, like, etc.)
+        if notif.reason not in ("mention", "reply", "quote"):
+            notif.status = "skipped"
+            notif.error_message = f"Notification type '{notif.reason}' is not supported"
+            session.commit()
+            return
+
         # Fetch thread
         thread = await client.get_post_thread(notif.post_uri, depth=10)
         notif.thread_json = thread
@@ -348,6 +365,7 @@ async def poll_and_process_once(
 
 
 async def main():
+    load_dotenv()
     ensure_tables()
 
     client = BlueskySocialClient()

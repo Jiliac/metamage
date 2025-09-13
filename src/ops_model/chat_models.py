@@ -1,5 +1,4 @@
-from sqlalchemy import Column, String, Text, Boolean, Integer, ForeignKey
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, String, Text, Boolean, Integer, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from .base import Base, uuid_pk, TimestampMixin
 
@@ -66,13 +65,13 @@ class ToolCall(Base, TimestampMixin):
         index=True,
     )
     tool_name = Column(String(100), nullable=False, index=True)
-    input_params = Column(JSONB, nullable=False)
+    input_params = Column(JSON, nullable=False)
     call_id = Column(
         String(100), nullable=False, index=True
     )  # Agent's internal call ID
     # Optional metadata for query_database tool calls
     title = Column(String(200), nullable=True)
-    column_names = Column(JSONB, nullable=True)
+    column_names = Column(JSON, nullable=True)
 
     # Relationships
     message = relationship("ChatMessage", back_populates="tool_calls")
@@ -100,7 +99,7 @@ class ToolResult(Base, TimestampMixin):
         unique=True,  # 1-to-1 relationship
         index=True,
     )
-    result_content = Column(JSONB, nullable=False)
+    result_content = Column(JSON, nullable=False)
     success = Column(Boolean, nullable=False, default=True)
     error_message = Column(Text, nullable=True)
 
