@@ -293,9 +293,9 @@ async def process_notification(session, client, notif, provider: str) -> None:
         logger.info(f"Summarized to {len(short)} chars: {short[:100]}...")
 
         parent_uri = notif.parent_uri or notif.post_uri
-        parent_cid = notif.parent_cid or None
+        parent_cid = notif.parent_cid or notif.post_cid
         root_uri = notif.root_uri or notif.post_uri
-        root_cid = notif.root_cid or None
+        root_cid = notif.root_cid or notif.post_cid
 
         logger.info(f"Posting reply to parent {parent_uri}")
         created_uri = await client.reply(

@@ -1,4 +1,5 @@
 import os
+import json
 import httpx
 from datetime import datetime, timezone
 from typing import Optional, Tuple, List, Dict, Any
@@ -165,6 +166,12 @@ class BlueskySocialClient(SocialClient):
                 },
                 timeout=30.0,
             )
+            if resp.status_code != 200:
+                error_text = resp.text
+                print(f"Bluesky reply error {resp.status_code}: {error_text}")
+                print(
+                    f"Request payload: {json.dumps({'repo': self.did, 'collection': 'app.bsky.feed.post', 'record': record}, indent=2)}"
+                )
             resp.raise_for_status()
             data = resp.json()
             return data.get("uri")
