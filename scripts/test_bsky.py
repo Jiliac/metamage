@@ -71,12 +71,15 @@ class BlueskySocialClient:
             params["cursor"] = cursor
 
         async with httpx.AsyncClient() as client:
+            url = f"{self.base_url}/xrpc/app.bsky.notification.listNotifications"
             resp = await client.get(
-                f"{self.base_url}/xrpc/app.bsky.notification.listNotifications",
+                url,
                 headers=headers,
                 params=params,
                 timeout=30.0,
             )
+            print(f"Fetched URL: {url}")
+            print(f"Params: {params}")
             resp.raise_for_status()
             payload = resp.json()
             items = payload.get("notifications", []) or []
@@ -131,7 +134,9 @@ async def main():
         print("Failed to authenticate")
         return
 
-    notifications, cursor = await client.list_notifications()
+    notifications, cursor = await client.list_notifications(
+        cursor="2025-08-27T13:23:55.331Z"
+    )
 
     # Print CSV header
     fieldnames = [

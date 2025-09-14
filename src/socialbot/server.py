@@ -111,9 +111,9 @@ def _extract_parent_root_from_thread(
     return parent_tuple, root_tuple
 
 
-async def poll_and_upsert(session, client, cursor):
-    """Poll Bluesky notifications and upsert into DB. Returns (seen_count, latest_indexed, next_cursor)."""
-    notifs, next_cursor = await client.list_notifications(cursor=cursor)
+async def poll_and_upsert(session, client, last_processed_time):
+    """Poll Bluesky notifications and upsert into DB. Returns (seen_count, latest_indexed)."""
+    notifs, _ = await client.list_notifications()  # Always fetch latest, no cursor
 
     messages_processed = 0
     latest_indexed = None
@@ -137,6 +137,14 @@ async def poll_and_upsert(session, client, cursor):
         # Skip notification types we don't handle
         if reason not in ("mention", "reply", "quote"):
             continue
+
+        # Skip notifications older than our last processed time
+        if last_processed_time and idx_at:
+            # Ensure last_processed_time is timezone-aware
+            if last_processed_time.tzinfo is None:
+                last_processed_time = last_processed_time.replace(tzinfo=timezone.utc)
+            if idx_at <= last_processed_time:
+                continue
 
         existing = (
             session.query(SocialNotification)
@@ -186,7 +194,7 @@ async def poll_and_upsert(session, client, cursor):
             )
 
     session.commit()
-    return messages_processed, latest_indexed, next_cursor
+    return messages_processed, latest_indexed
 
 
 def claim_next_pending(session, platform: str = "bluesky"):
@@ -350,14 +358,13 @@ async def poll_and_process_once(
     session = SessionFactory()
     try:
         pass_rec = _get_or_create_pass(session, "bsky_notifications")
-        cursor = pass_rec.notes  # store cursor in notes
+        last_processed = pass_rec.last_processed_time
 
-        seen, latest_idx, next_cursor = await poll_and_upsert(session, client, cursor)
+        seen, latest_idx = await poll_and_upsert(session, client, last_processed)
 
         # Update pass record
         pass_rec.last_processed_time = latest_idx or pass_rec.last_processed_time
-        if next_cursor:
-            pass_rec.notes = next_cursor
+        pass_rec.notes = None  # No longer using cursor
         pass_rec.messages_processed = (pass_rec.messages_processed or 0) + (seen or 0)
         pass_rec.end_time = _iso_now()
         pass_rec.success = True
