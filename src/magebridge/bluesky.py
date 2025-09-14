@@ -1,4 +1,5 @@
 import os
+import re
 import httpx
 from datetime import datetime
 from typing import Optional, List, Dict, Any
@@ -59,6 +60,29 @@ class BlueskyClient:
                 return False
 
         try:
+            # Build hashtag facets so hashtags are clickable
+            facets = []
+            for m in re.finditer(r"(?<!\w)#([A-Za-z0-9_]+)", text):
+                tag = m.group(1)
+                start_byte = len(text[: m.start()].encode("utf-8"))
+                end_byte = len(text[: m.end()].encode("utf-8"))
+                facets.append(
+                    {
+                        "index": {"byteStart": start_byte, "byteEnd": end_byte},
+                        "features": [
+                            {"$type": "app.bsky.richtext.facet#tag", "tag": tag}
+                        ],
+                    }
+                )
+
+            record = {
+                "$type": "app.bsky.feed.post",
+                "text": text,
+                "createdAt": datetime.now().isoformat() + "Z",
+            }
+            if facets:
+                record["facets"] = facets
+
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     f"{self.base_url}/xrpc/com.atproto.repo.createRecord",
@@ -69,11 +93,7 @@ class BlueskyClient:
                     json={
                         "repo": self.did,
                         "collection": "app.bsky.feed.post",
-                        "record": {
-                            "$type": "app.bsky.feed.post",
-                            "text": text,
-                            "createdAt": datetime.now().isoformat() + "Z",
-                        },
+                        "record": record,
                     },
                 )
 
@@ -220,6 +240,23 @@ class BlueskyClient:
                     "text": text,
                     "createdAt": datetime.now().isoformat() + "Z",
                 }
+
+                # Add hashtag facets so tags are clickable
+                facets = []
+                for m in re.finditer(r"(?<!\w)#([A-Za-z0-9_]+)", text):
+                    tag = m.group(1)
+                    start_byte = len(text[: m.start()].encode("utf-8"))
+                    end_byte = len(text[: m.end()].encode("utf-8"))
+                    facets.append(
+                        {
+                            "index": {"byteStart": start_byte, "byteEnd": end_byte},
+                            "features": [
+                                {"$type": "app.bsky.richtext.facet#tag", "tag": tag}
+                            ],
+                        }
+                    )
+                if facets:
+                    record["facets"] = facets
 
                 if image_blobs:
                     record["embed"] = {
