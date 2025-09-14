@@ -132,6 +132,11 @@ async def poll_and_upsert(session, client, cursor):
         actor_id = n.get("actor_id")
         is_self = bool(client.did and actor_id == client.did)
         idx_at = _parse_indexed_at(n.get("indexed_at"))
+        reason = n.get("reason")
+
+        # Skip notification types we don't handle
+        if reason not in ("mention", "reply", "quote"):
+            continue
 
         existing = (
             session.query(SocialNotification)
@@ -233,6 +238,7 @@ async def process_notification(session, client, notif, provider: str) -> None:
             return
 
         # Fetch thread
+        logger.info(f"Fetching thread for {notif.post_uri}")
         thread = await client.get_post_thread(notif.post_uri, depth=10)
         notif.thread_json = thread
 
@@ -242,8 +248,10 @@ async def process_notification(session, client, notif, provider: str) -> None:
         )
         if parent_tuple:
             notif.parent_uri, notif.parent_cid = parent_tuple
+            logger.info(f"Found parent: {notif.parent_uri}")
         if root_tuple:
             notif.root_uri, notif.root_cid = root_tuple
+            logger.info(f"Found root: {notif.root_uri}")
 
         # Extract text for target node if missing
         def _get_post_text_from_thread(thread_json: dict, target_uri: str) -> str:
@@ -264,22 +272,32 @@ async def process_notification(session, client, notif, provider: str) -> None:
             return ""
 
         notif.text = notif.text or _get_post_text_from_thread(thread, notif.post_uri)
+        logger.info(
+            f"Extracted text: {notif.text[:100]}..." if notif.text else "No text found"
+        )
         session.commit()
 
         # Build messages for agent
         user_text = f"Bluesky mention by @{notif.actor_handle or 'unknown'}:\n{notif.text or ''}\n\nPlease answer the question based on MTG tournament data. The full thread JSON is available but omitted here."
         messages = [("user", user_text)]
 
+        logger.info("Running MTG agent...")
         answer, session_id = await run_agent_with_logging(messages, provider=provider)
+        logger.info(
+            f"Agent completed with session {session_id}, answer length: {len(answer)}"
+        )
 
         # Summarize and reply
+        logger.info("Summarizing answer...")
         short = await summarize(answer, provider=provider, limit=250, max_retries=2)
+        logger.info(f"Summarized to {len(short)} chars: {short[:100]}...")
 
         parent_uri = notif.parent_uri or notif.post_uri
         parent_cid = notif.parent_cid or None
         root_uri = notif.root_uri or notif.post_uri
         root_cid = notif.root_cid or None
 
+        logger.info(f"Posting reply to parent {parent_uri}")
         created_uri = await client.reply(
             short,
             parent_uri=parent_uri,
@@ -296,12 +314,21 @@ async def process_notification(session, client, notif, provider: str) -> None:
         notif.session_id = session_id
         session.commit()
 
-        logger.info(f"Answered Bluesky mention with post: {created_uri}")
+        logger.info(
+            f"Successfully answered notification {notif.id} with post: {created_uri}"
+        )
     except Exception as e:
-        logger.exception("Error processing notification")
-        notif.status = "error"
-        notif.error_message = str(e)
-        session.commit()
+        logger.exception(f"Error processing notification {notif.id}")
+        try:
+            notif.status = "error"
+            notif.error_message = str(e)
+            session.commit()
+            logger.info(f"Marked notification {notif.id} as error")
+        except Exception as commit_error:
+            logger.exception(
+                f"Failed to mark notification {notif.id} as error: {commit_error}"
+            )
+            session.rollback()
 
 
 async def poll_and_process_once(
