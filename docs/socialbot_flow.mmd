@@ -1,0 +1,52 @@
+%% Mermaid Diagram: SocialBot end-to-end flow (Bluesky-first)
+%% Source: src/socialbot/server.py, agent_runner.py, bsky_client.py, summarizer.py
+
+flowchart TD
+    subgraph Runner["SocialBot Server (src/socialbot/server.py)"]
+        A[poll_and_process_once(client, provider, max_to_process)]
+        A --> B[poll_and_upsert(session, client, last_processed_time)]
+        B -->|GET app.bsky.notification.listNotifications| BSkyAPI[(Bluesky API)]
+        BSkyAPI --> B
+        B -->|upsert rows| SN[(Ops DB: social_notifications)]
+        B -->|update last_processed_time| Pass[(Ops DB: passes)]
+        A --> C[claim_next_pending(session)]
+        C -->|status: pending -> processing, attempts+1| SN
+        A --> D[process_notification(session, client, notif, provider)]
+    end
+
+    D --> E[get_post_thread(uri, depth=10)]
+    E -->|GET app.bsky.feed.getPostThread| BSkyAPI
+    BSkyAPI --> E
+    E -->|extract parent/root/text| SN
+
+    D --> F[Build user message from mention]
+    D --> G[run_agent_with_logging(messages, provider)]
+
+    subgraph Agent["Agent Pipeline (src/socialbot/agent_runner.py)"]
+        G --> GL[ChatLogger → Ops DB\n(chat_sessions, chat_messages,\n tool_calls, tool_results)]
+        G --> MCP[MCP Client → Tools (DB queries)]
+        G --> LLM[Claude Sonnet via LangChain]
+        MCP --> LLM
+        LLM --> GL
+    end
+
+    G -->|answer, session_id| H[summarize(answer, limit ≤ 300 – link)]
+    H --> I[Append session link:\n{site}/sessions/{session_id}]
+
+    I --> J[client.reply(text, parent/root StrongRefs)]
+    J -->|POST com.atproto.repo.createRecord| BSkyAPI
+    BSkyAPI --> J
+
+    J --> K[Update notification row]
+    K -->|status: answered,\nresponse_uri, response_text,\nanswered_at, session_id| SN
+
+    %% Skips and errors
+    B -->|self-mention or unsupported reason| Skip[Set status='skipped'] --> SN
+    J -. 4xx/Errors .-> Err[Set status='error', error_message] --> SN
+
+    %% Styling
+    style SN fill:#e0f7fa,stroke:#006064,stroke-width:1px
+    style Pass fill:#f1f8e9,stroke:#33691e,stroke-width:1px
+    style BSkyAPI fill:#fff3e0,stroke:#e65100,stroke-width:1px
+    style Runner fill:#ede7f6,stroke:#4527a0,stroke-width:1px
+    style Agent fill:#fce4ec,stroke:#880e4f,stroke-width:1px
