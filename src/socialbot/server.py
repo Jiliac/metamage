@@ -295,10 +295,25 @@ async def process_notification(session, client, notif, provider: str) -> None:
             f"Agent completed with session {session_id}, answer length: {len(answer)}"
         )
 
-        # Summarize and reply
+        # Summarize and reply (append session link; keep under Bluesky 300-char limit)
         logger.info("Summarizing answer...")
-        short = await summarize(answer, provider=provider, limit=250, max_retries=2)
-        logger.info(f"Summarized to {len(short)} chars: {short[:100]}...")
+        site_url = os.getenv(
+            "NEXT_PUBLIC_SITE_URL", "https://www.metamages.com"
+        ).rstrip("/")
+        session_link = f"{site_url}/sessions/{session_id}"
+        suffix = f" More: {session_link}"
+        allowed_len = 300 - len(suffix)
+        if allowed_len < 50:
+            allowed_len = 50
+        short = await summarize(
+            answer, provider=provider, limit=allowed_len, max_retries=2
+        )
+        post_text = (short + suffix) if short.endswith(" ") else (short + " " + suffix)
+        if len(post_text) > 300:
+            post_text = post_text[:300].rstrip()
+        logger.info(
+            f"Summarized to {len(short)} chars (+ link -> {len(post_text)}): {short[:100]}..."
+        )
 
         parent_uri = notif.parent_uri or notif.post_uri
         parent_cid = notif.parent_cid or notif.post_cid
@@ -307,7 +322,7 @@ async def process_notification(session, client, notif, provider: str) -> None:
 
         logger.info(f"Posting reply to parent {parent_uri}")
         created_uri = await client.reply(
-            short,
+            post_text,
             parent_uri=parent_uri,
             parent_cid=parent_cid,
             root_uri=root_uri,
@@ -316,7 +331,7 @@ async def process_notification(session, client, notif, provider: str) -> None:
 
         # Update row
         notif.status = "answered"
-        notif.response_text = short
+        notif.response_text = post_text
         notif.response_uri = created_uri
         notif.answered_at = _iso_now()
         notif.session_id = session_id
