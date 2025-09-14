@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import httpx
 from datetime import datetime, timezone
 from typing import Optional, Tuple, List, Dict, Any
@@ -136,10 +137,32 @@ class BlueskySocialClient(SocialClient):
         parent_cid: Optional[str],
         root_uri: str,
         root_cid: Optional[str],
+        link_url: Optional[str] = None,
     ) -> str:
         """Post a reply to a given parent/root. Returns created post URI."""
         headers = await self._auth_headers()
         created_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+        # Create rich text facet for the provided link URL
+        facets = []
+        if link_url and link_url in text:
+            # Find where the URL appears in the text
+            url_start = text.rfind(link_url)  # Use rfind to get the last occurrence
+            if url_start != -1:
+                start_byte = len(text[:url_start].encode("utf-8"))
+                end_byte = len(text[: url_start + len(link_url)].encode("utf-8"))
+
+                facets.append(
+                    {
+                        "index": {"byteStart": start_byte, "byteEnd": end_byte},
+                        "features": [
+                            {
+                                "$type": "app.bsky.richtext.facet#link",
+                                "uri": link_url,
+                            }
+                        ],
+                    }
+                )
 
         record: Dict[str, Any] = {
             "$type": "app.bsky.feed.post",
@@ -154,6 +177,10 @@ class BlueskySocialClient(SocialClient):
                 else {"uri": parent_uri},
             },
         }
+
+        # Add facets if we found any URLs
+        if facets:
+            record["facets"] = facets
 
         async with httpx.AsyncClient() as client:
             resp = await client.post(

@@ -301,16 +301,22 @@ async def process_notification(session, client, notif, provider: str) -> None:
             "NEXT_PUBLIC_SITE_URL", "https://www.metamages.com"
         ).rstrip("/")
         session_link = f"{site_url}/sessions/{session_id}"
-        suffix = f" More: {session_link}"
+        suffix = f"\n\nFull analysis: {session_link}"
         allowed_len = 300 - len(suffix)
+
         if allowed_len < 50:
             allowed_len = 50
         short = await summarize(
             answer, provider=provider, limit=allowed_len, max_retries=2
         )
-        post_text = (short + suffix) if short.endswith(" ") else (short + " " + suffix)
+
+        post_text = short.rstrip() + suffix
+
         if len(post_text) > 300:
-            post_text = post_text[:300].rstrip()
+            # Ensure we don't cut off the URL - shorten the summary instead
+            max_summary_len = 300 - len(suffix) - 3  # -3 for "..."
+            post_text = short[:max_summary_len].rstrip() + "..." + suffix
+
         logger.info(
             f"Summarized to {len(short)} chars (+ link -> {len(post_text)}): {short[:100]}..."
         )
@@ -327,6 +333,7 @@ async def process_notification(session, client, notif, provider: str) -> None:
             parent_cid=parent_cid,
             root_uri=root_uri,
             root_cid=root_cid,
+            link_url=session_link,
         )
 
         # Update row
