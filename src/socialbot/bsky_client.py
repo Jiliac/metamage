@@ -1,5 +1,5 @@
 import os
-import json
+import asyncio
 import httpx
 from datetime import datetime, timezone
 from typing import Optional, Tuple, List, Dict, Any
@@ -20,6 +20,61 @@ class BlueskySocialClient(SocialClient):
         self.did: Optional[str] = None
         self.handle: Optional[str] = None
 
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        *,
+        headers: Optional[Dict[str, str]] = None,
+        params: Optional[Dict[str, Any]] = None,
+        json_body: Optional[Dict[str, Any]] = None,
+        timeout: float = 30.0,
+        max_retries: int = 3,
+        backoff_ms: int = 500,
+    ) -> httpx.Response:
+        url = f"{self.base_url}{path}"
+        last_exc: Optional[Exception] = None
+        for attempt in range(1, max_retries + 1):
+            try:
+                async with httpx.AsyncClient() as client:
+                    resp = await client.request(
+                        method,
+                        url,
+                        headers=headers,
+                        params=params,
+                        json=json_body,
+                        timeout=timeout,
+                    )
+                # Retry on 5xx and on 429/408; otherwise raise if error
+                if resp.status_code >= 500 or resp.status_code in (429, 408):
+                    if attempt < max_retries:
+                        await asyncio.sleep(backoff_ms / 1000.0)
+                        continue
+                resp.raise_for_status()
+                return resp
+            except (httpx.TransportError, httpx.TimeoutException) as e:
+                last_exc = e
+                if attempt < max_retries:
+                    await asyncio.sleep(backoff_ms / 1000.0)
+                    continue
+                raise
+            except httpx.HTTPStatusError as e:
+                last_exc = e
+                if (
+                    attempt < max_retries
+                    and e.response is not None
+                    and (
+                        500 <= e.response.status_code < 600
+                        or e.response.status_code in (429, 408)
+                    )
+                ):
+                    await asyncio.sleep(backoff_ms / 1000.0)
+                    continue
+                raise
+        if last_exc:
+            raise last_exc
+        raise RuntimeError("Unknown HTTP request failure")
+
     async def authenticate(self) -> bool:
         """Authenticate with Bluesky using username/password."""
         username = os.getenv("BLUESKY_USERNAME")
@@ -30,25 +85,23 @@ class BlueskySocialClient(SocialClient):
             )
             return False
         try:
-            async with httpx.AsyncClient() as client:
-                resp = await client.post(
-                    f"{self.base_url}/xrpc/com.atproto.server.createSession",
-                    json={"identifier": username, "password": password},
-                    timeout=30.0,
-                )
-                if resp.status_code == 200:
-                    data = resp.json()
-                    self.access_jwt = data.get("accessJwt")
-                    self.refresh_jwt = data.get("refreshJwt")
-                    self.did = data.get("did")
-                    # username may be handle if using email; attempt to resolve handle
-                    self.handle = data.get("handle") or username
-                    return True
-                else:
-                    print(
-                        f"Bluesky authentication failed: {resp.status_code} {resp.text}"
-                    )
-                    return False
+            resp = await self._request(
+                "POST",
+                "/xrpc/com.atproto.server.createSession",
+                json_body={"identifier": username, "password": password},
+                timeout=30.0,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                self.access_jwt = data.get("accessJwt")
+                self.refresh_jwt = data.get("refreshJwt")
+                self.did = data.get("did")
+                # username may be handle if using email; attempt to resolve handle
+                self.handle = data.get("handle") or username
+                return True
+            else:
+                print(f"Bluesky authentication failed: {resp.status_code} {resp.text}")
+                return False
         except Exception as e:
             print(f"Error authenticating with Bluesky: {e}")
             return False
@@ -69,17 +122,16 @@ class BlueskySocialClient(SocialClient):
         if cursor:
             params["cursor"] = cursor
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(
-                f"{self.base_url}/xrpc/app.bsky.notification.listNotifications",
-                headers=headers,
-                params=params,
-                timeout=30.0,
-            )
-            resp.raise_for_status()
-            payload = resp.json()
-            items = payload.get("notifications", []) or []
-            next_cursor = payload.get("cursor")
+        resp = await self._request(
+            "GET",
+            "/xrpc/app.bsky.notification.listNotifications",
+            headers=headers,
+            params=params,
+            timeout=30.0,
+        )
+        payload = resp.json()
+        items = payload.get("notifications", []) or []
+        next_cursor = payload.get("cursor")
 
         notifications: List[Dict[str, Any]] = []
         for it in items:
@@ -119,15 +171,14 @@ class BlueskySocialClient(SocialClient):
         """Fetch the full post thread for context."""
         headers = await self._auth_headers()
         params = {"uri": uri, "depth": depth}
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(
-                f"{self.base_url}/xrpc/app.bsky.feed.getPostThread",
-                headers=headers,
-                params=params,
-                timeout=30.0,
-            )
-            resp.raise_for_status()
-            return resp.json()
+        resp = await self._request(
+            "GET",
+            "/xrpc/app.bsky.feed.getPostThread",
+            headers=headers,
+            params=params,
+            timeout=30.0,
+        )
+        return resp.json()
 
     async def reply(
         self,
@@ -181,23 +232,16 @@ class BlueskySocialClient(SocialClient):
         if facets:
             record["facets"] = facets
 
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                f"{self.base_url}/xrpc/com.atproto.repo.createRecord",
-                headers={**headers, "Content-Type": "application/json"},
-                json={
-                    "repo": self.did,
-                    "collection": "app.bsky.feed.post",
-                    "record": record,
-                },
-                timeout=30.0,
-            )
-            if resp.status_code != 200:
-                error_text = resp.text
-                print(f"Bluesky reply error {resp.status_code}: {error_text}")
-                print(
-                    f"Request payload: {json.dumps({'repo': self.did, 'collection': 'app.bsky.feed.post', 'record': record}, indent=2)}"
-                )
-            resp.raise_for_status()
-            data = resp.json()
-            return data.get("uri")
+        resp = await self._request(
+            "POST",
+            "/xrpc/com.atproto.repo.createRecord",
+            headers={**headers, "Content-Type": "application/json"},
+            json_body={
+                "repo": self.did,
+                "collection": "app.bsky.feed.post",
+                "record": record,
+            },
+            timeout=30.0,
+        )
+        data = resp.json()
+        return data.get("uri")
