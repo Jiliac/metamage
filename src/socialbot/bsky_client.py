@@ -6,6 +6,10 @@ from typing import Optional, Tuple, List, Dict, Any
 
 from .client_base import SocialClient
 
+import logging
+
+logger = logging.getLogger("socialbot.bsky_client")
+
 
 class BlueskySocialClient(SocialClient):
     """
@@ -48,14 +52,24 @@ class BlueskySocialClient(SocialClient):
                 # Retry on 5xx and on 429/408; otherwise raise if error
                 if resp.status_code >= 500 or resp.status_code in (429, 408):
                     if attempt < max_retries:
-                        await asyncio.sleep(backoff_ms / 1000.0)
+                        delay = backoff_ms / 1000.0
+                        logger.warning(
+                            f"Retrying {method} {path} after status {resp.status_code} "
+                            f"(attempt {attempt}/{max_retries}) in {delay:.2f}s"
+                        )
+                        await asyncio.sleep(delay)
                         continue
                 resp.raise_for_status()
                 return resp
             except (httpx.TransportError, httpx.TimeoutException) as e:
                 last_exc = e
                 if attempt < max_retries:
-                    await asyncio.sleep(backoff_ms / 1000.0)
+                    delay = backoff_ms / 1000.0
+                    logger.warning(
+                        f"Retrying {method} {path} after transport/timeout error: {e} "
+                        f"(attempt {attempt}/{max_retries}) in {delay:.2f}s"
+                    )
+                    await asyncio.sleep(delay)
                     continue
                 raise
             except httpx.HTTPStatusError as e:
@@ -68,7 +82,12 @@ class BlueskySocialClient(SocialClient):
                         or e.response.status_code in (429, 408)
                     )
                 ):
-                    await asyncio.sleep(backoff_ms / 1000.0)
+                    delay = backoff_ms / 1000.0
+                    logger.warning(
+                        f"Retrying {method} {path} after HTTPStatusError {e.response.status_code} "
+                        f"(attempt {attempt}/{max_retries}) in {delay:.2f}s"
+                    )
+                    await asyncio.sleep(delay)
                     continue
                 raise
         if last_exc:
@@ -91,17 +110,13 @@ class BlueskySocialClient(SocialClient):
                 json_body={"identifier": username, "password": password},
                 timeout=30.0,
             )
-            if resp.status_code == 200:
-                data = resp.json()
-                self.access_jwt = data.get("accessJwt")
-                self.refresh_jwt = data.get("refreshJwt")
-                self.did = data.get("did")
-                # username may be handle if using email; attempt to resolve handle
-                self.handle = data.get("handle") or username
-                return True
-            else:
-                print(f"Bluesky authentication failed: {resp.status_code} {resp.text}")
-                return False
+            data = resp.json()
+            self.access_jwt = data.get("accessJwt")
+            self.refresh_jwt = data.get("refreshJwt")
+            self.did = data.get("did")
+            # username may be handle if using email; attempt to resolve handle
+            self.handle = data.get("handle") or username
+            return True
         except Exception as e:
             print(f"Error authenticating with Bluesky: {e}")
             return False
