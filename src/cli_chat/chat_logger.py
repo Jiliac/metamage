@@ -2,6 +2,7 @@
 
 import json
 from typing import Dict, Any, Optional
+from sqlalchemy import func
 
 from ..ops_model.base import get_ops_session_factory
 from ..ops_model.chat_models import ChatSession, ChatMessage, ToolCall, ToolResult
@@ -10,10 +11,19 @@ from ..ops_model.chat_models import ChatSession, ChatMessage, ToolCall, ToolResu
 class ChatLogger:
     """Handles logging of chat conversations to PostgreSQL database."""
 
-    def __init__(self):
+    def __init__(self, session_id: Optional[str] = None):
         self.SessionFactory = get_ops_session_factory()
         self.current_session_id = None
         self.sequence_counter = 0
+        if session_id:
+            try:
+                resumed = self.resume_session(session_id)
+                if not resumed:
+                    print(
+                        f"⚠️  ChatLogger: session '{session_id}' not found; starting new session when created."
+                    )
+            except Exception as e:
+                print(f"⚠️  ChatLogger: failed to resume session '{session_id}': {e}")
 
     def create_session(self, provider: str) -> str:
         """Create a new chat session and return its ID."""
@@ -35,6 +45,29 @@ class ChatLogger:
             raise
         finally:
             session.close()
+
+    def resume_session(self, session_id: str) -> bool:
+        """Load state from an existing session so sequence ordering continues."""
+        sess = self.SessionFactory()
+        try:
+            exists = sess.query(ChatSession.id).filter_by(id=session_id).first()
+            if not exists:
+                return False
+            max_seq = (
+                sess.query(func.coalesce(func.max(ChatMessage.sequence_order), 0))
+                .filter(ChatMessage.session_id == session_id)
+                .scalar()
+                or 0
+            )
+            self.current_session_id = session_id
+            self.sequence_counter = max_seq
+            print(f"➕ Resumed chat session: {session_id} (next seq {max_seq + 1})")
+            return True
+        except Exception as e:
+            print(f"❌ Error resuming chat session: {e}")
+            return False
+        finally:
+            sess.close()
 
     def log_user_message(self, session_id: str, content: str) -> str:
         """Log a user message and return its ID."""

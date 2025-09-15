@@ -5,6 +5,7 @@ from typing import Optional, Tuple, List
 
 from .agent_runner import run_agent_with_logging
 from .summarizer import summarize
+from ..ops_model.models import SocialNotification
 
 logger = logging.getLogger("socialbot.processor")
 
@@ -273,9 +274,28 @@ async def process_one_notification(session, client, notif, provider: str) -> Non
             user_text = f"Bluesky mention by @{notif.actor_handle or 'unknown'}:\n{notif.text or ''}\n\nPlease answer the question based on MTG tournament data. The full thread JSON is available but omitted here."
             messages = [("user", user_text)]
 
+        # Reuse prior session for this thread if available
+        reuse_session_id = None
+        if notif.root_uri:
+            reuse_session_id = (
+                session.query(SocialNotification.session_id)
+                .filter(
+                    SocialNotification.platform == "bluesky",
+                    SocialNotification.root_uri == notif.root_uri,
+                    SocialNotification.session_id.isnot(None),
+                )
+                .order_by(SocialNotification.created_at.asc())
+                .limit(1)
+                .scalar()
+            )
+
         # Run agent
-        logger.info("Running MTG agent with conversation context...")
-        answer, session_id = await run_agent_with_logging(messages, provider=provider)
+        logger.info(
+            f"Running MTG agent with conversation context (reuse_session_id={reuse_session_id})..."
+        )
+        answer, session_id = await run_agent_with_logging(
+            messages, provider=provider, session_id=reuse_session_id
+        )
         logger.info(
             f"Agent completed with session {session_id}, answer length: {len(answer)}"
         )

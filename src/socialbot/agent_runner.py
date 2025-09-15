@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from langchain_anthropic import ChatAnthropic
 from langgraph.prebuilt import create_react_agent
@@ -48,7 +48,7 @@ agent_container = AgentContainer()
 
 
 async def run_agent_with_logging(
-    messages: List[tuple], provider: str
+    messages: List[tuple], provider: str, session_id: Optional[str] = None
 ) -> Tuple[str, str]:
     """
     Run the agent with streaming and log thoughts/tool calls/results.
@@ -59,12 +59,16 @@ async def run_agent_with_logging(
     )
 
     try:
-        chat_logger = ChatLogger()
+        chat_logger = ChatLogger(session_id=session_id)
         titler = Titler()
         logger.info("Created ChatLogger and Titler")
 
-        session_id = chat_logger.create_session(provider)
-        logger.info(f"Created session: {session_id}")
+        if chat_logger.current_session_id:
+            session_id = chat_logger.current_session_id
+            logger.info(f"Continuing session: {session_id}")
+        else:
+            session_id = chat_logger.create_session(provider)
+            logger.info(f"Created session: {session_id}")
 
         # Attempt to log the latest user input if present
         try:
