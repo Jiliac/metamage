@@ -21,46 +21,57 @@ def _extract_parent_root_from_thread(
     for the node matching target_uri.
     """
 
-    def find_node(node: dict, root: Optional[dict]) -> Optional[dict]:
+    def find_node(node: dict) -> Optional[dict]:
         if not node:
             return None
         post = node.get("post") or {}
         if post.get("uri") == target_uri:
-            return {"node": node, "root": root or node}
+            return node
         # Search parent chain
         parent = node.get("parent")
         if parent and isinstance(parent, dict):
-            res = find_node(parent, root or parent)
+            res = find_node(parent)
             if res:
                 return res
         # Search replies
         for child in node.get("replies") or []:
-            res = find_node(child, root or node)
+            res = find_node(child)
             if res:
                 return res
         return None
 
     root_obj = thread_json.get("thread")
-    found = find_node(root_obj, None)
-    if not found:
+    node = find_node(root_obj)
+    if not node:
         return None, None
 
-    node = found["node"]
-    root = found["root"]
+    # Get the post record to check its reply references
+    post = node.get("post") or {}
+    record = post.get("record") or {}
+    reply_ref = record.get("reply") or {}
 
-    # Parent is node.get("parent")
-    parent = node.get("parent")
+    # Extract parent from the node structure (immediate parent)
+    parent_node = node.get("parent")
     parent_uri = None
     parent_cid = None
-    if isinstance(parent, dict):
-        ppost = parent.get("post") or {}
+    if isinstance(parent_node, dict):
+        ppost = parent_node.get("post") or {}
         parent_uri = ppost.get("uri")
         parent_cid = ppost.get("cid")
 
-    # Root is topmost root
-    rpost = (root.get("post") if isinstance(root, dict) else {}) or {}
-    root_uri = rpost.get("uri")
-    root_cid = rpost.get("cid")
+    # Extract root from the post's reply reference (the actual thread root)
+    # If the post has a reply.root, use that; otherwise it IS the root
+    root_uri = None
+    root_cid = None
+    if reply_ref:
+        root_ref = reply_ref.get("root") or {}
+        root_uri = root_ref.get("uri")
+        root_cid = root_ref.get("cid")
+
+    # If no reply reference exists, this post IS the root
+    if not root_uri:
+        root_uri = post.get("uri")
+        root_cid = post.get("cid")
 
     parent_tuple = (parent_uri, parent_cid) if parent_uri else None
     root_tuple = (root_uri, root_cid) if root_uri else None
@@ -277,8 +288,9 @@ async def process_one_notification(session, client, notif, provider: str) -> Non
         logger.info(f"Summarized (+ link) to {len(post_text)} chars")
 
         # Determine reply StrongRefs; ensure CIDs
-        parent_uri = notif.parent_uri or notif.post_uri
-        parent_cid = notif.parent_cid or notif.post_cid
+        # We reply to the user's post (notif.post_uri), not to what the user replied to
+        parent_uri = notif.post_uri
+        parent_cid = notif.post_cid
         root_uri = notif.root_uri or notif.post_uri
         root_cid = notif.root_cid or notif.post_cid
 
