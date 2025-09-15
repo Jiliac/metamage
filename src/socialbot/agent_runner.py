@@ -12,6 +12,10 @@ from ..cli_chat.system_prompt import get_metamage_system_prompt
 
 logger = logging.getLogger("socialbot.agent")
 
+# Reduce verbosity of HTTP and MCP logs
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("mcp.client.streamable_http").setLevel(logging.WARNING)
+
 
 class AgentContainer:
     """Lazy-initialized container for the ReAct agent."""

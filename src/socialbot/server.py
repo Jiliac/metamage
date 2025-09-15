@@ -135,7 +135,7 @@ async def poll_and_upsert(session, client, last_processed_time):
         reason = n.get("reason")
 
         # Skip notification types we don't handle
-        if reason not in ("mention", "reply", "quote"):
+        if reason not in ("mention", "reply"):
             continue
 
         # Skip notifications older than our last processed time
@@ -239,7 +239,7 @@ async def process_notification(session, client, notif, provider: str) -> None:
     """Process a single claimed notification end-to-end and update its row."""
     try:
         # Skip non-post notifications (follow, like, etc.)
-        if notif.reason not in ("mention", "reply", "quote"):
+        if notif.reason not in ("mention", "reply"):
             notif.status = "skipped"
             notif.error_message = f"Notification type '{notif.reason}' is not supported"
             session.commit()
