@@ -24,8 +24,7 @@ from ..ops_model.models import DiscordPost  # noqa: F401  # ensure table exists
 from ..ops_model.models import FocusedChannel  # noqa: F401  # ensure table exists
 from ..ops_model.models import SocialNotification
 from .bsky_client import BlueskySocialClient
-from .agent_runner import run_agent_with_logging
-from .summarizer import summarize
+from .processor import process_one_notification
 
 logger = logging.getLogger("socialbot.server")
 logging.basicConfig(level=logging.INFO)
@@ -235,132 +234,6 @@ def claim_next_pending(session, platform: str = "bluesky"):
     return None
 
 
-async def process_notification(session, client, notif, provider: str) -> None:
-    """Process a single claimed notification end-to-end and update its row."""
-    try:
-        # Skip non-post notifications (follow, like, etc.)
-        if notif.reason not in ("mention", "reply"):
-            notif.status = "skipped"
-            notif.error_message = f"Notification type '{notif.reason}' is not supported"
-            session.commit()
-            return
-
-        # Fetch thread
-        logger.info(f"Fetching thread for {notif.post_uri}")
-        thread = await client.get_post_thread(notif.post_uri, depth=10)
-        notif.thread_json = thread
-
-        # Fill parent/root from thread
-        parent_tuple, root_tuple = _extract_parent_root_from_thread(
-            thread, notif.post_uri
-        )
-        if parent_tuple:
-            notif.parent_uri, notif.parent_cid = parent_tuple
-            logger.info(f"Found parent: {notif.parent_uri}")
-        if root_tuple:
-            notif.root_uri, notif.root_cid = root_tuple
-            logger.info(f"Found root: {notif.root_uri}")
-
-        # Extract text for target node if missing
-        def _get_post_text_from_thread(thread_json: dict, target_uri: str) -> str:
-            node = thread_json.get("thread") or {}
-            stack = [node]
-            while stack:
-                cur = stack.pop()
-                post = cur.get("post") or {}
-                if post.get("uri") == target_uri:
-                    rec = post.get("record") or {}
-                    return rec.get("text") or ""
-                parent = cur.get("parent")
-                if isinstance(parent, dict):
-                    stack.append(parent)
-                for child in cur.get("replies") or []:
-                    if isinstance(child, dict):
-                        stack.append(child)
-            return ""
-
-        notif.text = notif.text or _get_post_text_from_thread(thread, notif.post_uri)
-        logger.info(
-            f"Extracted text: {notif.text[:100]}..." if notif.text else "No text found"
-        )
-        session.commit()
-
-        # Build messages for agent
-        user_text = f"Bluesky mention by @{notif.actor_handle or 'unknown'}:\n{notif.text or ''}\n\nPlease answer the question based on MTG tournament data. The full thread JSON is available but omitted here."
-        messages = [("user", user_text)]
-
-        logger.info("Running MTG agent...")
-        answer, session_id = await run_agent_with_logging(messages, provider=provider)
-        logger.info(
-            f"Agent completed with session {session_id}, answer length: {len(answer)}"
-        )
-
-        # Summarize and reply (append session link; keep under Bluesky 300-char limit)
-        logger.info("Summarizing answer...")
-        site_url = os.getenv(
-            "NEXT_PUBLIC_SITE_URL", "https://www.metamages.com"
-        ).rstrip("/")
-        session_link = f"{site_url}/sessions/{session_id}"
-        suffix = f"\n\nFull analysis: {session_link}"
-        allowed_len = 300 - len(suffix)
-
-        if allowed_len < 50:
-            allowed_len = 50
-        short = await summarize(
-            answer, provider=provider, limit=allowed_len, max_retries=2
-        )
-
-        post_text = short.rstrip() + suffix
-
-        if len(post_text) > 300:
-            # Ensure we don't cut off the URL - shorten the summary instead
-            max_summary_len = 300 - len(suffix) - 3  # -3 for "..."
-            post_text = short[:max_summary_len].rstrip() + "..." + suffix
-
-        logger.info(
-            f"Summarized to {len(short)} chars (+ link -> {len(post_text)}): {short[:100]}..."
-        )
-
-        parent_uri = notif.parent_uri or notif.post_uri
-        parent_cid = notif.parent_cid or notif.post_cid
-        root_uri = notif.root_uri or notif.post_uri
-        root_cid = notif.root_cid or notif.post_cid
-
-        logger.info(f"Posting reply to parent {parent_uri}")
-        created_uri = await client.reply(
-            post_text,
-            parent_uri=parent_uri,
-            parent_cid=parent_cid,
-            root_uri=root_uri,
-            root_cid=root_cid,
-            link_url=session_link,
-        )
-
-        # Update row
-        notif.status = "answered"
-        notif.response_text = post_text
-        notif.response_uri = created_uri
-        notif.answered_at = _iso_now()
-        notif.session_id = session_id
-        session.commit()
-
-        logger.info(
-            f"Successfully answered notification {notif.id} with post: {created_uri}"
-        )
-    except Exception as e:
-        logger.exception(f"Error processing notification {notif.id}")
-        try:
-            notif.status = "error"
-            notif.error_message = str(e)
-            session.commit()
-            logger.info(f"Marked notification {notif.id} as error")
-        except Exception as commit_error:
-            logger.exception(
-                f"Failed to mark notification {notif.id} as error: {commit_error}"
-            )
-            session.rollback()
-
-
 async def poll_and_process_once(
     client: BlueskySocialClient,
     provider: str = "claude",
@@ -399,7 +272,7 @@ async def poll_and_process_once(
             if not notif:
                 break
             try:
-                await process_notification(session, client, notif, provider)
+                await process_one_notification(session, client, notif, provider)
                 processed += 1
             except Exception as e:
                 logger.exception("Unhandled error during notification processing")
