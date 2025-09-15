@@ -199,12 +199,20 @@ async def mage(interaction: discord.Interaction, query: str):
             answer = "I couldn't produce a response this time."
 
         # Echo the query + response (like ChatGPT/Claude) and append session link
-        full_response = f"**Question:** {query}\n\n{answer}\n\nFor more details see: <https://www.metamages.com/sessions/{session_id}>"
+        session_link = f"\n\nFor more details see: <https://www.metamages.com/sessions/{session_id}>"
+        query_header = f"**Question:** {query}\n\n"
 
-        # Discord message length safety
+        # Discord message length safety - ensure session link is always preserved
         max_len = 1900
-        if len(full_response) > max_len:
-            full_response = full_response[:max_len] + "\n… (truncated)"
+        available_length = (
+            max_len - len(query_header) - len(session_link) - len("\n… (truncated)")
+        )
+
+        if len(answer) > available_length:
+            truncated_answer = answer[:available_length] + "\n… (truncated)"
+            full_response = query_header + truncated_answer + session_link
+        else:
+            full_response = query_header + answer + session_link
 
         await interaction.followup.send(full_response)
     except Exception as e:
