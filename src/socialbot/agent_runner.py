@@ -48,7 +48,10 @@ agent_container = AgentContainer()
 
 
 async def run_agent_with_logging(
-    messages: List[tuple], provider: str, session_id: Optional[str] = None
+    messages: List[tuple],
+    provider: str,
+    session_id: Optional[str] = None,
+    anonymize_fn=None,
 ) -> Tuple[str, str]:
     """
     Run the agent with streaming and log thoughts/tool calls/results.
@@ -77,8 +80,13 @@ async def run_agent_with_logging(
                 and isinstance(messages[-1], (list, tuple))
                 and len(messages[-1]) >= 2
             ):
-                logger.info(f"Logging user message: {messages[-1][1][:100]}...")
-                chat_logger.log_user_message(session_id, messages[-1][1])
+                user_message = messages[-1][1]
+                # Anonymize for database storage if function provided
+                db_message = (
+                    anonymize_fn(user_message) if anonymize_fn else user_message
+                )
+                logger.info(f"Logging user message: {db_message[:100]}...")
+                chat_logger.log_user_message(session_id, db_message)
                 logger.info("User message logged successfully")
             else:
                 logger.warning(f"Invalid messages format: {messages}")

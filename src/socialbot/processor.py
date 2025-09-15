@@ -10,6 +10,18 @@ from ..ops_model.models import SocialNotification
 logger = logging.getLogger("socialbot.processor")
 
 
+def _anonymize_user_content(content: str) -> str:
+    """
+    Anonymize user handles in content for database storage to respect GDPR.
+    Removes @handle.domain patterns entirely to avoid storing PII.
+    """
+    import re
+
+    # Remove @handle.domain.ext patterns and clean up any leading ": " that might remain
+    anonymized = re.sub(r"@[a-zA-Z0-9._-]+\.[a-zA-Z]{2,}:\s*", "", content)
+    return anonymized
+
+
 def _iso_now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -294,7 +306,10 @@ async def process_one_notification(session, client, notif, provider: str) -> Non
             f"Running MTG agent with conversation context (reuse_session_id={reuse_session_id})..."
         )
         answer, session_id = await run_agent_with_logging(
-            messages, provider=provider, session_id=reuse_session_id
+            messages,
+            provider=provider,
+            session_id=reuse_session_id,
+            anonymize_fn=_anonymize_user_content,
         )
         logger.info(
             f"Agent completed with session {session_id}, answer length: {len(answer)}"
