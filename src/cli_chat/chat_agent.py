@@ -11,7 +11,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 
 from .mcp_client import create_mcp_client
-from .system_prompt import get_metamage_system_prompt
+from .system_prompt import get_social_system_prompt
 from .chat_logger import ChatLogger
 from .titler import Titler
 
@@ -80,7 +80,7 @@ class MTGChatAgent:
 
             # Create ReAct agent with MCP tools
             print("🤖 Creating ReAct agent...")
-            system_prompt = get_metamage_system_prompt() + format_context
+            system_prompt = get_social_system_prompt() + format_context
             self.agent = create_react_agent(llm, tools, prompt=system_prompt)
 
             print("✅ Agent setup complete!")

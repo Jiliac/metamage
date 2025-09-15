@@ -8,7 +8,7 @@ from langgraph.prebuilt import create_react_agent
 from ..cli_chat.mcp_client import create_mcp_client
 from ..cli_chat.chat_logger import ChatLogger
 from ..cli_chat.titler import Titler
-from ..cli_chat.system_prompt import get_metamage_system_prompt
+from ..cli_chat.system_prompt import get_social_system_prompt
 
 logger = logging.getLogger("socialbot.agent")
 
@@ -37,7 +37,7 @@ class AgentContainer:
                         max_tokens=4096,
                     )
 
-                    system_prompt = get_metamage_system_prompt() + format_context
+                    system_prompt = get_social_system_prompt() + format_context
                     logger.info("Creating ReAct agent for SocialBot...")
                     self._agent = create_react_agent(llm, tools, prompt=system_prompt)
                     logger.info("SocialBot Agent ready.")
