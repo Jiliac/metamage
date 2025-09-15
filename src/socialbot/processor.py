@@ -6,6 +6,7 @@ from typing import Optional, Tuple, List
 from .agent_runner import run_agent_with_logging
 from .summarizer import summarize
 from ..ops_model.models import SocialNotification
+from .triage import should_answer_notification
 
 logger = logging.getLogger("socialbot.processor")
 
@@ -285,6 +286,24 @@ async def process_one_notification(session, client, notif, provider: str) -> Non
             )
             user_text = f"Bluesky mention by @{notif.actor_handle or 'unknown'}:\n{notif.text or ''}\n\nPlease answer the question based on MTG tournament data. The full thread JSON is available but omitted here."
             messages = [("user", user_text)]
+
+        # Triage: decide if we should answer
+        try:
+            ok_to_answer, triage_reason = await should_answer_notification(
+                notif, messages, provider=provider
+            )
+        except Exception as triage_err:
+            logger.warning(f"Triage error (fail-open, will answer): {triage_err}")
+            ok_to_answer, triage_reason = True, f"triage error: {triage_err}"
+
+        if not ok_to_answer:
+            logger.info(
+                f"Triage refused to answer for {notif.post_uri}: {triage_reason}"
+            )
+            notif.status = "skipped"
+            notif.error_message = f"Triage skip: {triage_reason}"
+            session.commit()
+            return
 
         # Reuse prior session for this thread if available
         reuse_session_id = None
