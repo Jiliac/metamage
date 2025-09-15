@@ -107,6 +107,10 @@ def build_conversation_messages(
     - our_did messages are treated as 'assistant'; others as 'user'.
     - Limits by last max_turns and overall character budget max_chars.
     """
+    logger.info(
+        f"Building conversation messages for target_uri: {target_uri}, our_did: {our_did}"
+    )
+
     if max_turns is None:
         try:
             max_turns = int(os.getenv("SOCIALBOT_MAX_TURNS", "8"))
@@ -120,25 +124,35 @@ def build_conversation_messages(
 
     target = _find_target_node(thread_json, target_uri)
     if not target:
+        logger.info(f"Could not find target node for URI: {target_uri}")
         return []
 
     path = _ancestor_path(target)
+    logger.info(f"Ancestor path has {len(path)} nodes")
+
     msgs: List[tuple] = []
-    for n in path:
+    for i, n in enumerate(path):
         post = n.get("post") or {}
         rec = post.get("record") or {}
         text = (rec.get("text") or "").strip()
         if not text:
+            logger.info(f"Skipping node {i} due to empty text")
             continue
         author = post.get("author") or {}
         handle = author.get("handle") or "unknown"
         did = author.get("did")
         role = "assistant" if (our_did and did == our_did) else "user"
-        msgs.append((role, f"@{handle}: {text}"))
+        msg = (role, f"@{handle}: {text}")
+        msgs.append(msg)
+        logger.info(
+            f"Added message {i}: role={role}, handle={handle}, text_len={len(text)}"
+        )
 
     # Trim by turns (keep tail)
     if len(msgs) > max_turns:
+        original_len = len(msgs)
         msgs = msgs[-max_turns:]
+        logger.info(f"Trimmed by turns: {original_len} -> {len(msgs)} messages")
 
     # Trim by chars (keep tail)
     total = 0
@@ -147,6 +161,9 @@ def build_conversation_messages(
         s = f"{m[0]}:{m[1]}"
         add = len(s)
         if total + add > max_chars and trimmed_reversed:
+            logger.info(
+                f"Stopping char trimming: total={total}, add={add}, max_chars={max_chars}"
+            )
             break
         total += add
         trimmed_reversed.append(m)
@@ -239,6 +256,9 @@ async def process_one_notification(session, client, notif, provider: str) -> Non
         )
         if not messages:
             # Fallback to simple prompt if we couldn't parse conversation
+            logger.info(
+                f"No conversation messages found for {notif.post_uri}, using fallback prompt"
+            )
             user_text = f"Bluesky mention by @{notif.actor_handle or 'unknown'}:\n{notif.text or ''}\n\nPlease answer the question based on MTG tournament data. The full thread JSON is available but omitted here."
             messages = [("user", user_text)]
 
