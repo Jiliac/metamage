@@ -35,6 +35,7 @@ class BlueskySocialClient(SocialClient):
         timeout: float = 30.0,
         max_retries: int = 3,
         backoff_ms: int = 500,
+        _auth_retry: bool = True,
     ) -> httpx.Response:
         url = f"{self.base_url}{path}"
         last_exc: Optional[Exception] = None
@@ -74,6 +75,34 @@ class BlueskySocialClient(SocialClient):
                 raise
             except httpx.HTTPStatusError as e:
                 last_exc = e
+                # Handle auth errors with token refresh (400 or 401)
+                if (
+                    _auth_retry
+                    and e.response is not None
+                    and e.response.status_code in (400, 401)
+                    and headers
+                    and "Authorization" in headers
+                ):
+                    logger.info(
+                        f"Got {e.response.status_code}, attempting to refresh session"
+                    )
+                    refresh_ok = await self.refresh_session()
+                    if refresh_ok:
+                        # Update headers with new token and retry once
+                        new_headers = headers.copy()
+                        new_headers["Authorization"] = f"Bearer {self.access_jwt}"
+                        return await self._request(
+                            method,
+                            path,
+                            headers=new_headers,
+                            params=params,
+                            json_body=json_body,
+                            timeout=timeout,
+                            max_retries=max_retries,
+                            backoff_ms=backoff_ms,
+                            _auth_retry=False,  # Prevent infinite recursion
+                        )
+
                 if (
                     attempt < max_retries
                     and e.response is not None
@@ -120,6 +149,32 @@ class BlueskySocialClient(SocialClient):
         except Exception as e:
             print(f"Error authenticating with Bluesky: {e}")
             return False
+
+    async def refresh_session(self) -> bool:
+        """Refresh the access token using the refresh token."""
+        if not self.refresh_jwt:
+            logger.warning(
+                "No refresh token available, attempting full re-authentication"
+            )
+            return await self.authenticate()
+
+        try:
+            resp = await self._request(
+                "POST",
+                "/xrpc/com.atproto.server.refreshSession",
+                headers={"Authorization": f"Bearer {self.refresh_jwt}"},
+                timeout=30.0,
+            )
+            data = resp.json()
+            self.access_jwt = data.get("accessJwt")
+            self.refresh_jwt = data.get("refreshJwt")
+            logger.info("Successfully refreshed Bluesky session")
+            return True
+        except Exception as e:
+            logger.warning(
+                f"Failed to refresh session: {e}, attempting full re-authentication"
+            )
+            return await self.authenticate()
 
     async def _auth_headers(self) -> Dict[str, str]:
         if not self.access_jwt:
