@@ -1,0 +1,46 @@
+graph TB
+    %% Step 1: Data Collection
+    subgraph Step1["Step 1: Data Collection"]
+        MTGO["MTGO"]
+        Melee["Melee.gg"]
+        Cache["MTG_decklistcache<br/>github.com/fbettega/MTG_decklistcache"]
+        Listener["MTGO-listener<br/>github.com/Jiliac/MTGO-listener"]
+        
+        Melee -->|"Decklists"| Cache
+        MTGO -->|"Decklists"| Cache
+        MTGO -->|"Matchups"| Listener
+    end
+
+    %% Step 2: Data Treatment
+    subgraph Step2["Step 2: Data Treatment"]
+        CombinedCache["MTGODecklistCache<br/>github.com/Jiliac/MTGODecklistCache"]
+        Parser["MTGOArchetypeParser<br/>github.com/Badaro/MTGOArchetypeParser"]
+        FormatData["MTGOFormatData<br/>github.com/Badaro/MTGOFormatData<br/>(Archetype Rules)"]
+        
+        Cache -->|"Decklists"| CombinedCache
+        Listener -->|"Matchups"| CombinedCache
+        CombinedCache -->|"Combined data"| Parser
+        FormatData -->|"Rules"| Parser
+    end
+
+    %% Step 3: Visualization
+    subgraph Step3["Step 3: Visualization"]
+        MetaMage["MetaMage<br/>github.com/Jiliac/metamage"]
+        Output["Charts & Matchup Matrices"]
+        
+        Parser -->|"Categorized archetypes"| MetaMage
+        MetaMage -->|"Generates"| Output
+    end
+
+    %% Styling
+    classDef stepStyle fill:#e1e4e8,stroke:#586069,stroke-width:2px,color:#24292e
+    classDef sourceStyle fill:#ffd93d,stroke:#ffd93d,stroke-width:2px,color:#24292e
+    classDef toolStyle fill:#0366d6,stroke:#0366d6,stroke-width:2px,color:#ffffff
+    classDef dataStyle fill:#28a745,stroke:#28a745,stroke-width:2px,color:#ffffff
+    classDef outputStyle fill:#6f42c1,stroke:#6f42c1,stroke-width:2px,color:#ffffff
+    
+    class Step1,Step2,Step3 stepStyle
+    class MTGO,Melee sourceStyle
+    class Cache,Listener,CombinedCache,Parser,MetaMage toolStyle
+    class FormatData dataStyle
+    class Output outputStyle
