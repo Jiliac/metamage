@@ -116,17 +116,20 @@ Tip: In Discord, keep messages under ~2000 chars; the bot truncates if needed.
   - SQL validator allows only a single SELECT/WITH statement (no semicolons, no PRAGMAs)
 
 Exposed tools include (non-exhaustive):
-- list_formats
-- get_format_meta_changes
-- query_database (SELECT-only)
-- get_meta_report
-- get_archetype_winrate
-- get_matchup_winrate
-- get_card_presence
-- get_archetype_cards
-- get_archetype_trends
-- get_tournament_results
-- search_card
+- list_formats — List all supported formats with IDs and names.
+- get_format_meta_changes — Show bans and set releases that affected a format.
+- get_archetype_overview — Resolve an archetype name and show recent performance and key cards.
+- get_archetype_trends — Weekly presence and winrate trend for an archetype over time.
+- get_meta_report — Top archetypes in a window with presence and winrate.
+- get_archetype_winrate — Wins/losses/draws and winrate for one archetype in a date range.
+- get_matchup_winrate — Head-to-head winrate between two archetypes.
+- get_card_presence — Most played cards in a format (optionally main or side).
+- get_archetype_cards — Most played cards within a specific archetype.
+- get_tournament_results — Recent winners and top 8 archetype breakdowns.
+- get_sources — Recent tournament links to cite for a given window (format and optional archetype).
+- search_card — Find a card by name (local DB + Scryfall details).
+- get_player — Player profile with recent results and activity.
+- query_database — Run read-only custom SELECT queries against the database.
 
 A simple tool lister lives at:
 - src/cli_chat/list_tool.py
