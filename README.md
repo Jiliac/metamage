@@ -74,29 +74,29 @@ Uses TOURNAMENT_DB_PATH if the DB is not at data/tournament.db.
 - MCP Server — src/mcp_server
   - Read-only DB access (PRAGMA query_only=ON; tool-level SELECT/WITH-only gate)
   - Tools: list_formats, get_format_meta_changes, get_meta_report, get_archetype_overview, get_archetype_trends, get_archetype_winrate, get_matchup_winrate, get_card_presence, get_archetype_cards, get_tournament_results, get_sources, search_card, get_player, query_database
-  - Details: src/mcp_server/README.md
+  - [Details](src/mcp_server/README.md)
 
 - CLI Chat Agent + Discord Bot — src/cli_chat
   - LangGraph ReAct agent using MCP tools; logs sessions and tool results to an Ops DB
   - Providers: Claude (default), Opus, GPT-5 (if configured)
-  - Details: src/cli_chat/README.md
+  - [Details](src/cli_chat/README.md)
 
 - SocialBot — src/socialbot
   - Polls Bluesky notifications, triages, answers with MCP-backed summaries (<=300 chars), appends session link
   - Stores notifications, replies, and session linkage in Ops DB
-  - Details: src/socialbot/README.md
+  - [Details](src/socialbot/README.md)
 
 - Web UI — ui/
   - Next.js app to browse sessions (/sessions), session details (/sessions/[id]), and shareable tool pages (/tool/[id])
-  - Details: ui/README.md
+  - [Details](ui/README.md)
 
 - Visualization (R) — visualize/
   - R scripts to generate meta overview plots and CSV export (marav.csv)
-  - Details: visualize/README.md
+  - [Details](visualize/README.md)
 
 - Ingestion — src/ingest
   - Build/extend the tournament database from JSON inputs and external caches
-  - Details: src/ingest/README.md
+  - [Details](src/ingest/README.md)
 
 ---
 
@@ -129,12 +129,12 @@ Visualization (R)
 
 ## Repository Map
 
-- src/mcp_server — MCP Server (see src/mcp_server/README.md)
-- src/cli_chat — CLI agent and Discord bot (see src/cli_chat/README.md)
-- src/socialbot — Bluesky responder (see src/socialbot/README.md)
-- ui — Web UI (see ui/README.md)
-- visualize — R plotting and CSV exports (see visualize/README.md)
-- src/ingest — Ingestion utilities (see src/ingest/README.md)
+- [src/mcp_server](src/mcp_server/README.md) — MCP Server
+- [src/cli_chat](src/cli_chat/README.md) — CLI agent and Discord bot
+- [src/socialbot](src/socialbot/README.md) — Bluesky responder
+- [ui](ui/README.md) — Web UI
+- [visualize](visualize/README.md) — R plotting and CSV exports
+- [src/ingest](src/ingest/README.md) — Ingestion utilities
 - src/models — SQLAlchemy models and DB helpers
 - src/ops_model — Ops (chat logging) models for sessions, tool calls, social notifications
 - docs/mtg_data_flow.mmd — Data flow diagram (open with a Mermaid viewer)
