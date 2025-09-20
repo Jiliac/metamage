@@ -1,184 +1,158 @@
-# MetaMage — MTG Tournament Analysis (MCP Server + Discord Bot)
+# MetaMage — MTG Tournament Analysis
 
-This repository provides two major pieces:
-1) MCP Server + Chat clients (Discord bot and a local CLI) — the focus of this README.
-2) Data model + ingestion pipeline — advanced/optional; used to build the SQLite database the server queries.
-
-If you just want to run the MCP server and ask questions about the MTG tournament database via Discord or a CLI, you only need:
-- A Python 3.13+ environment
-- uv for package management
-- The SQLite database file (tournament.db)
+MetaMage is a toolkit to analyze Magic: The Gathering tournament data. It includes:
+- MCP Server exposing read-only analysis tools over a SQLite tournament database
+- Chat agents (CLI and Discord) that use those tools via an LLM
+- SocialBot that replies to Bluesky mentions with MCP-backed answers and session links
+- Web UI to browse chat sessions and tool results
+- Visualization (R) scripts to generate meta overview plots
+- Ingestion utilities to build the tournament.db
 
 If you don’t have the database file, email me at: valentinmanes@outlook.fr and I can provide a prebuilt SQLite DB so you can get started quickly.
 
-The ingestion pipeline and model are available in this repo for transparency and customization, but they are complex and depend on public sources that require non-trivial processing.
+See docs/mtg_data_flow.mmd for a high-level diagram of where MetaMage fits in the MTG data landscape.
 
 ---
 
-## Quick Start (MCP Server + Clients)
+## Choose Your Quick Start
 
-### 0) Prerequisites
+Prerequisites for Python components:
 - Python 3.13+
-- uv (https://docs.astral.sh/uv/) for dependency management
-- A SQLite database file at:
-  - data/tournament.db (default), or
-  - set env var TOURNAMENT_DB_PATH to point to your .db file.
+- uv (https://docs.astral.sh/uv/)
+- SQLite tournament DB at data/tournament.db (default) or set TOURNAMENT_DB_PATH
 
-Tip: If you need the DB, contact me at valentinmanes@outlook.fr.
-
-### 1) Install dependencies
-This project uses uv with pyproject.toml.
-
+Install deps:
 ```bash
 uv sync
 ```
 
-### 2) Place the database
-Put the SQLite file at data/tournament.db (recommended), or set:
-- TOURNAMENT_DB_PATH=/absolute/path/to/your/tournament.db
-
-The server is hardened read-only:
-- SQLite PRAGMA query_only=ON per connection
-- The SQL tool only accepts SELECT/WITH queries (no DDL/DML/PRAGMA/transactions)
-
-### 3) Run the MCP server (HTTP)
-The MCP server supports stdio and HTTP. The included clients use HTTP.
-
+- MCP Server (HTTP):
 ```bash
 uv run -m src.mcp_server.server --http
 ```
+Endpoint: http://127.0.0.1:9000/mcp (use --host/--port to customize). For Claude Desktop: uv run -m src.mcp_server.server --stdio
 
-- Defaults to http://127.0.0.1:9000/mcp
-- Pass --host and --port to customize
-- For Claude Desktop (stdio transport), run: uv run -m src.mcp_server.server --stdio
-
-### 4) Try listing tools (optional sanity check)
+- List tools (sanity check):
 ```bash
 uv run -m src.cli_chat.list_tool
 ```
-You should see a list of available MCP tools.
 
----
-
-## Using the Chat Clients
-
-### Option A: Local CLI Chat Agent
-Requirements:
-- ANTHROPIC_API_KEY environment variable set
-
-Run:
+- CLI Chat Agent (Claude by default):
 ```bash
-uv run -m src.cli_chat.chat_agent
+uv run -m src.cli_chat.chat_agent --provider claude
 ```
+Requires ANTHROPIC_API_KEY.
 
-Then type your questions (examples are shown in the CLI prompt).
-- The agent uses the MCP tools to query the DB and formats structured answers.
-- The system prompt guides it to produce concise, data-backed insights.
-
-### Option B: Discord Bot (Slash Commands)
-Requirements:
-- DISCORD_BOT_TOKEN environment variable set to your bot token
-- ANTHROPIC_API_KEY set
-- The MCP server running over HTTP (see step 3)
-
-Run:
+- Discord Bot (slash commands):
 ```bash
 uv run -m src.cli_chat.discord_bot
 ```
+Requires DISCORD_BOT_TOKEN and ANTHROPIC_API_KEY.
 
-- Commands:
-  - /mage query: Ask MetaMage about formats, winrates, matchups, cards, meta reports
-  - /mageping: Health check
+- SocialBot (Bluesky responder):
+```bash
+uv run -m src.socialbot.server
+```
+Requires BLUESKY_USERNAME/BLUESKY_PASSWORD and ANTHROPIC_API_KEY.
 
-Tip: In Discord, keep messages under ~2000 chars; the bot truncates if needed.
+- Web UI (Next.js, browse sessions and tool calls):
+```bash
+cd ui && npm install && npm run dev
+```
+Requires DATABASE_URL (Prisma) and NEXT_PUBLIC_SITE_URL.
 
----
-
-## Configuration and Environment Variables
-
-- TOURNAMENT_DB_PATH
-  - Optional. Absolute path to tournament.db
-  - If not set, the server uses data/tournament.db
-- ANTHROPIC_API_KEY
-  - Required for both CLI agent and Discord bot (uses Claude Sonnet)
-- DISCORD_BOT_TOKEN
-  - Required for running the Discord bot
-
----
-
-## MCP Server Details
-
-- Module: src/mcp_server/server.py
-- Default HTTP endpoint: http://127.0.0.1:9000/mcp
-- Transport: streamable_http (as used by the included clients)
-- Read-only protections:
-  - Engine is opened with SQLite read-only pragmas
-  - SQL validator allows only a single SELECT/WITH statement (no semicolons, no PRAGMAs)
-
-Exposed tools include (non-exhaustive):
-- list_formats — List all supported formats with IDs and names.
-- get_format_meta_changes — Show bans and set releases that affected a format.
-- get_archetype_overview — Resolve an archetype name and show recent performance and key cards.
-- get_archetype_trends — Weekly presence and winrate trend for an archetype over time.
-- get_meta_report — Top archetypes in a window with presence and winrate.
-- get_archetype_winrate — Wins/losses/draws and winrate for one archetype in a date range.
-- get_matchup_winrate — Head-to-head winrate between two archetypes.
-- get_card_presence — Most played cards in a format (optionally main or side).
-- get_archetype_cards — Most played cards within a specific archetype.
-- get_tournament_results — Recent winners and top 8 archetype breakdowns.
-- get_sources — Recent tournament links to cite for a given window (format and optional archetype).
-- search_card — Find a card by name (local DB + Scryfall details).
-- get_player — Player profile with recent results and activity.
-- query_database — Run read-only custom SELECT queries against the database.
-
-A simple tool lister lives at:
-- src/cli_chat/list_tool.py
+- Visualization (R plots):
+```bash
+MTG_FORMAT=Modern START_DATE=2025-08-01 END_DATE=2025-09-15 Rscript visualize/run.R
+```
+Uses TOURNAMENT_DB_PATH if the DB is not at data/tournament.db.
 
 ---
 
-## Project Layout (high level)
+## Components at a Glance
 
-- src/mcp_server/… — MCP server and tools
-- src/cli_chat/… — Local CLI agent, Discord bot, MCP client utilities
-- src/models/… — SQLAlchemy models and DB utilities
-- src/ingest/… — Ingestion utilities (advanced)
-- scripts/… — Maintenance and migration helpers
-- data/ — Database location (git-ignored), sample CSVs and config
-- docs/ — Additional documentation
+- MCP Server — src/mcp_server
+  - Read-only DB access (PRAGMA query_only=ON; tool-level SELECT/WITH-only gate)
+  - Tools: list_formats, get_format_meta_changes, get_meta_report, get_archetype_overview, get_archetype_trends, get_archetype_winrate, get_matchup_winrate, get_card_presence, get_archetype_cards, get_tournament_results, get_sources, search_card, get_player, query_database
+  - Details: src/mcp_server/README.md
+
+- CLI Chat Agent + Discord Bot — src/cli_chat
+  - LangGraph ReAct agent using MCP tools; logs sessions and tool results to an Ops DB
+  - Providers: Claude (default), Opus, GPT-5 (if configured)
+  - Details: src/cli_chat/README.md
+
+- SocialBot — src/socialbot
+  - Polls Bluesky notifications, triages, answers with MCP-backed summaries (<=300 chars), appends session link
+  - Stores notifications, replies, and session linkage in Ops DB
+  - Details: src/socialbot/README.md
+
+- Web UI — ui/
+  - Next.js app to browse sessions (/sessions), session details (/sessions/[id]), and shareable tool pages (/tool/[id])
+  - Details: ui/README.md
+
+- Visualization (R) — visualize/
+  - R scripts to generate meta overview plots and CSV export (marav.csv)
+  - Details: visualize/README.md
+
+- Ingestion — src/ingest
+  - Build/extend the tournament database from JSON inputs and external caches
+  - Details: src/ingest/README.md
 
 ---
 
-## Data Model + Ingestion (Advanced)
+## Environment Variables (summary)
 
-The ingestion and model code are available if you want to build or customize your own database:
-- Schema defined in src/models and reflected in docs/schema.mmd
-- Ingestion helpers under src/ingest and scripts/
-- Alembic migrations under alembic/
+Database
+- TOURNAMENT_DB_PATH — path to tournament.db (default: data/tournament.db)
+- POSTGRES_URL — Ops DB for chat logs (preferred)
+- OPS_DB_PATH or BRIDGE_DB_PATH — fallback Ops SQLite path (default: data/ops.db)
 
-However, producing a high-quality, comprehensive tournament DB involves consolidating multiple public sources and careful normalization. If you would like to evaluate the system without building the data pipeline yourself, email me at:
-- valentinmanes@outlook.fr
-I can share a ready-to-use SQLite tournament.db to get you started quickly.
+LLMs
+- ANTHROPIC_API_KEY — required for CLI/Discord/SocialBot
+- OPENAI_API_KEY — optional (provider=gpt5)
 
-If you still want to experiment:
-- There’s an example ingest entry point at src/ingest/ingest_tournament_data.py
-- You’ll need properly formatted JSON inputs (see docs/ for examples)
-- Be mindful of performance and indexes when scaling
+Discord
+- DISCORD_BOT_TOKEN — required to run the Discord bot
+
+Bluesky
+- BLUESKY_USERNAME, BLUESKY_PASSWORD — account credentials
+- SOCIALBOT_POLL_INTERVAL, SOCIALBOT_MAX_TO_PROCESS, SOCIALBOT_MAX_TURNS, SOCIALBOT_CONTEXT_MAX_CHARS, SOCIALBOT_TRIAGE, SOCIALBOT_FORCE_ANSWER — tuning knobs
+
+UI
+- NEXT_PUBLIC_SITE_URL — e.g., https://www.metamages.com
+- DATABASE_URL — Prisma DB URL for UI (Ops DB with ChatSession/ToolCall/ToolResult)
+
+Visualization (R)
+- MTG_FORMAT, START_DATE, END_DATE, TOP_N, MATRIX_TOP_N, TOURNAMENT_DB_PATH
+
+---
+
+## Repository Map
+
+- src/mcp_server — MCP Server (see src/mcp_server/README.md)
+- src/cli_chat — CLI agent and Discord bot (see src/cli_chat/README.md)
+- src/socialbot — Bluesky responder (see src/socialbot/README.md)
+- ui — Web UI (see ui/README.md)
+- visualize — R plotting and CSV exports (see visualize/README.md)
+- src/ingest — Ingestion utilities (see src/ingest/README.md)
+- src/models — SQLAlchemy models and DB helpers
+- src/ops_model — Ops (chat logging) models for sessions, tool calls, social notifications
+- docs/mtg_data_flow.mmd — Data flow diagram (open with a Mermaid viewer)
 
 ---
 
 ## Troubleshooting
 
-- “Error connecting to MCP server”
-  - Ensure the server is running: uv run -m src.mcp_server.server --http
-  - Confirm the database file exists at data/tournament.db or TOURNAMENT_DB_PATH
-- “Tool pre-load failed”
-  - list_formats pre-load is best-effort; the agent still works if it fails
-- Discord bot doesn’t start
-  - Check DISCORD_BOT_TOKEN and ANTHROPIC_API_KEY are set
-  - Verify network/port accessibility to 127.0.0.1:9000 for MCP HTTP
+- MCP server won’t start: ensure uv sync succeeded and TOURNAMENT_DB_PATH points to an existing DB file
+- Tool pre-load failed: list_formats pre-load is best-effort; tools still work
+- Discord bot: verify DISCORD_BOT_TOKEN and ANTHROPIC_API_KEY
+- Bluesky auth: check username/password; tokens auto-refresh
+- UI: ensure DATABASE_URL (Prisma) points at Ops DB and NEXT_PUBLIC_SITE_URL is set
+- R: packages auto-install; ensure R is available and TOURNAMENT_DB_PATH is correct
 
 ---
 
 ## Contact
+
 Questions or requests for a ready-to-use DB:
 - valentinmanes@outlook.fr

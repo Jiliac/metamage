@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MetaMage UI (Next.js)
 
-## Getting Started
+Overview
+- Browse Chat Sessions and their Messages, Tool Calls, and Tool Results.
+- Shareable pages for individual tool runs (e.g., query_database with a human title).
 
-First, run the development server:
+Pages
+- / — Home
+- /sessions — Session list (ISR)
+- /sessions/[id] — Session details (with tool results)
+- /tool/[id] — Tool result page with SEO metadata and social cards
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Data model
+- Prisma models map to the Ops DB (ChatSession, ChatMessage, ToolCall, ToolResult).
+- The UI reads from the same Ops database written by the agents.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Environment
+- NEXT_PUBLIC_SITE_URL — canonical base URL for OpenGraph/Twitter and links (default http://localhost:3000)
+- DATABASE_URL — Prisma connection to Ops DB (e.g., file:../../data/ops.db or Postgres URL)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Setup
+- npm install  (postinstall runs prisma generate)
+- npm run dev
+- Open http://localhost:3000
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Build
+- npm run build
+- npm start
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Notes
+- API routes under /app/api/sessions provide JSON for session pages and polling.
+- Keep the tournament DB read-only in server code; UI is read-only viewer.
+- If you don’t have a tournament.db yet, email: valentinmanes@outlook.fr for a prebuilt SQLite DB to get started quickly.
