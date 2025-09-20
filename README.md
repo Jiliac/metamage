@@ -1,100 +1,115 @@
 # MetaMage — MTG Tournament Analysis
 
 MetaMage is a toolkit to analyze Magic: The Gathering tournament data. It includes:
-- MCP Server exposing read-only analysis tools over a SQLite tournament database
-- Chat agents (CLI and Discord) that use those tools via an LLM
-- SocialBot that replies to Bluesky mentions with MCP-backed answers and session links
-- Web UI to browse chat sessions and tool results
-- Visualization (R) scripts to generate meta overview plots
-- Ingestion utilities to build the tournament.db
+- [MCP Server](src/mcp_server/README.md) exposing read-only analysis tools over a SQLite tournament database
+- [Chat agents (CLI and Discord)](src/cli_chat/README.md) that use those tools via an LLM
+- [SocialBot](src/socialbot/README.md) that replies to Bluesky mentions with MCP-backed answers and session links
+- [Web UI](ui/README.md) to browse chat sessions and tool results
+- [Visualization (R) scripts](visualize/README.md) to generate meta overview plots
+- [Ingestion utilities](src/ingest/README.md) to build the tournament.db
 
-If you don’t have the database file, email me at: valentinmanes@outlook.fr and I can provide a prebuilt SQLite DB so you can get started quickly.
+If you don't have the database file, email me at: `valentinmanes@outlook.fr` and I can provide a prebuilt SQLite DB so you can get started quickly.
 
-See docs/mtg_data_flow.mmd for a high-level diagram of where MetaMage fits in the MTG data landscape.
+## MTG Data Flow
+
+MetaMage fits into the broader MTG tournament data ecosystem as the final visualization and analysis layer:
+
+![MTG Data Flow](docs/mtg_data_flow.svg)
 
 ---
 
 ## Choose Your Quick Start
 
-Prerequisites for Python components:
+**Prerequisites for Python components:**
 - Python 3.13+
-- uv (https://docs.astral.sh/uv/)
-- SQLite tournament DB at data/tournament.db (default) or set TOURNAMENT_DB_PATH
+- `uv` (https://docs.astral.sh/uv/)
+- SQLite tournament DB at `data/tournament.db` (default) or set `TOURNAMENT_DB_PATH`
 
-Install deps:
+**Install dependencies:**
 ```bash
 uv sync
 ```
 
-- MCP Server (HTTP):
+### MCP Server (HTTP)
+
 ```bash
 uv run -m src.mcp_server.server --http
 ```
-Endpoint: http://127.0.0.1:9000/mcp (use --host/--port to customize). For Claude Desktop: uv run -m src.mcp_server.server --stdio
+Endpoint: `http://127.0.0.1:9000/mcp` (use `--host`/`--port` to customize).
 
-- List tools (sanity check):
+For Claude Desktop:
+```bash
+uv run -m src.mcp_server.server --stdio
+```
+
+### List Tools (sanity check)
 ```bash
 uv run -m src.cli_chat.list_tool
 ```
 
-- CLI Chat Agent (Claude by default):
+### CLI Chat Agent (Claude by default)
+
 ```bash
 uv run -m src.cli_chat.chat_agent --provider claude
 ```
-Requires ANTHROPIC_API_KEY.
+Requires `ANTHROPIC_API_KEY`.
 
-- Discord Bot (slash commands):
+### Discord Bot (slash commands)
+
 ```bash
 uv run -m src.cli_chat.discord_bot
 ```
-Requires DISCORD_BOT_TOKEN and ANTHROPIC_API_KEY.
+Requires `DISCORD_BOT_TOKEN` and `ANTHROPIC_API_KEY`.
 
-- SocialBot (Bluesky responder):
+### SocialBot (Bluesky responder)
+
 ```bash
 uv run -m src.socialbot.server
 ```
-Requires BLUESKY_USERNAME/BLUESKY_PASSWORD and ANTHROPIC_API_KEY.
+Requires `BLUESKY_USERNAME`/`BLUESKY_PASSWORD` and `ANTHROPIC_API_KEY`.
 
-- Web UI (Next.js, browse sessions and tool calls):
+### Web UI (Next.js, browse sessions and tool calls)
+
 ```bash
 cd ui && npm install && npm run dev
 ```
-Requires DATABASE_URL (Prisma) and NEXT_PUBLIC_SITE_URL.
+Requires `DATABASE_URL` (Prisma) and `NEXT_PUBLIC_SITE_URL`.
 
-- Visualization (R plots):
+### Visualization (R plots)
+
 ```bash
 MTG_FORMAT=Modern START_DATE=2025-08-01 END_DATE=2025-09-15 Rscript visualize/run.R
 ```
-Uses TOURNAMENT_DB_PATH if the DB is not at data/tournament.db.
+Uses `TOURNAMENT_DB_PATH` if the DB is not at `data/tournament.db`.
 
 ---
 
 ## Components at a Glance
 
-- MCP Server — src/mcp_server
-  - Read-only DB access (PRAGMA query_only=ON; tool-level SELECT/WITH-only gate)
-  - Tools: list_formats, get_format_meta_changes, get_meta_report, get_archetype_overview, get_archetype_trends, get_archetype_winrate, get_matchup_winrate, get_card_presence, get_archetype_cards, get_tournament_results, get_sources, search_card, get_player, query_database
+- **MCP Server** — `src/mcp_server`
+  - Read-only DB access (`PRAGMA query_only=ON`; tool-level `SELECT`/`WITH`-only gate)
+  - Tools: `list_formats`, `get_format_meta_changes`, `get_meta_report`, `get_archetype_overview`, `get_archetype_trends`, `get_archetype_winrate`, `get_matchup_winrate`, `get_card_presence`, `get_archetype_cards`, `get_tournament_results`, `get_sources`, `search_card`, `get_player`, `query_database`
   - [Details](src/mcp_server/README.md)
 
-- CLI Chat Agent + Discord Bot — src/cli_chat
+- **CLI Chat Agent + Discord Bot** — `src/cli_chat`
   - LangGraph ReAct agent using MCP tools; logs sessions and tool results to an Ops DB
   - Providers: Claude (default), Opus, GPT-5 (if configured)
   - [Details](src/cli_chat/README.md)
 
-- SocialBot — src/socialbot
-  - Polls Bluesky notifications, triages, answers with MCP-backed summaries (<=300 chars), appends session link
+- **SocialBot** — `src/socialbot`
+  - Polls Bluesky notifications, triages, answers with MCP-backed summaries (≤300 chars), appends session link
   - Stores notifications, replies, and session linkage in Ops DB
   - [Details](src/socialbot/README.md)
 
-- Web UI — ui/
-  - Next.js app to browse sessions (/sessions), session details (/sessions/[id]), and shareable tool pages (/tool/[id])
+- **Web UI** — `ui/`
+  - Next.js app to browse sessions (`/sessions`), session details (`/sessions/[id]`), and shareable tool pages (`/tool/[id]`)
   - [Details](ui/README.md)
 
-- Visualization (R) — visualize/
-  - R scripts to generate meta overview plots and CSV export (marav.csv)
+- **Visualization (R)** — `visualize/`
+  - R scripts to generate meta overview plots and CSV export (`marav.csv`)
   - [Details](visualize/README.md)
 
-- Ingestion — src/ingest
+- **Ingestion** — `src/ingest`
   - Build/extend the tournament database from JSON inputs and external caches
   - [Details](src/ingest/README.md)
 
