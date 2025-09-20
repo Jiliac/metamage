@@ -10,12 +10,6 @@ MetaMage is a toolkit to analyze Magic: The Gathering tournament data. It includ
 
 If you don't have the database file, email me at: `valentinmanes@outlook.fr` and I can provide a prebuilt SQLite DB so you can get started quickly.
 
-## MTG Data Flow
-
-MetaMage fits into the broader MTG tournament data ecosystem as the final visualization and analysis layer:
-
-![MTG Data Flow](docs/mtg_data_flow.svg)
-
 ---
 
 ## Choose Your Quick Start
@@ -167,7 +161,15 @@ Visualization (R)
 
 ---
 
+## MTG Data Flow
+
+MetaMage fits into the broader MTG tournament data ecosystem as the final visualization and analysis layer:
+
+![MTG Data Flow](docs/mtg_data_flow.svg)
+
+---
+
 ## Contact
 
 Questions or requests for a ready-to-use DB:
-- valentinmanes@outlook.fr
+- `valentinmanes@outlook.fr`
