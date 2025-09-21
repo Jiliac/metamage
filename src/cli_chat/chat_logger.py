@@ -2,7 +2,7 @@
 
 import json
 from typing import Dict, Any, Optional
-from sqlalchemy import func
+from sqlalchemy import func, inspect, text
 
 from ..ops_model.base import get_ops_session_factory
 from ..ops_model.chat_models import ChatSession, ChatMessage, ToolCall, ToolResult
@@ -15,6 +15,10 @@ class ChatLogger:
         self.SessionFactory = get_ops_session_factory()
         self.current_session_id = None
         self.sequence_counter = 0
+        try:
+            self._ensure_source_columns()
+        except Exception:
+            pass
         if session_id:
             try:
                 resumed = self.resume_session(session_id)
@@ -25,11 +29,18 @@ class ChatLogger:
             except Exception as e:
                 print(f"⚠️  ChatLogger: failed to resume session '{session_id}': {e}")
 
-    def create_session(self, provider: str) -> str:
+    def create_session(
+        self,
+        provider: str,
+        source: Optional[str] = None,
+        source_meta: Optional[Dict[str, Any]] = None,
+    ) -> str:
         """Create a new chat session and return its ID."""
         session = self.SessionFactory()
         try:
-            chat_session = ChatSession(provider=provider)
+            chat_session = ChatSession(
+                provider=provider, source=source, source_meta=source_meta
+            )
             session.add(chat_session)
             session.commit()
 
@@ -66,6 +77,34 @@ class ChatLogger:
         except Exception as e:
             print(f"❌ Error resuming chat session: {e}")
             return False
+        finally:
+            sess.close()
+
+    def _ensure_source_columns(self):
+        """Ensure chat_sessions.source and chat_sessions.source_meta exist (SQLite/Postgres safe)."""
+        sess = self.SessionFactory()
+        try:
+            engine = sess.get_bind()
+            insp = inspect(engine)
+            if "chat_sessions" not in insp.get_table_names():
+                return
+            cols = [c["name"] for c in insp.get_columns("chat_sessions")]
+            stmts = []
+            if "source" not in cols:
+                stmts.append("ALTER TABLE chat_sessions ADD COLUMN source VARCHAR(20)")
+            if "source_meta" not in cols:
+                if engine.dialect.name == "postgresql":
+                    stmts.append(
+                        "ALTER TABLE chat_sessions ADD COLUMN source_meta JSONB"
+                    )
+                else:
+                    stmts.append(
+                        "ALTER TABLE chat_sessions ADD COLUMN source_meta TEXT"
+                    )
+            if stmts:
+                with engine.begin() as conn:
+                    for sql in stmts:
+                        conn.execute(text(sql))
         finally:
             sess.close()
 

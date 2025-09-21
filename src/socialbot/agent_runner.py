@@ -52,6 +52,8 @@ async def run_agent_with_logging(
     provider: str,
     session_id: Optional[str] = None,
     anonymize_fn=None,
+    source: Optional[str] = None,
+    source_meta: Optional[dict] = None,
 ) -> Tuple[str, str]:
     """
     Run the agent with streaming and log thoughts/tool calls/results.
@@ -70,7 +72,9 @@ async def run_agent_with_logging(
             session_id = chat_logger.current_session_id
             logger.info(f"Continuing session: {session_id}")
         else:
-            session_id = chat_logger.create_session(provider)
+            session_id = chat_logger.create_session(
+                provider, source=source, source_meta=source_meta
+            )
             logger.info(f"Created session: {session_id}")
 
         # Attempt to log the latest user input if present

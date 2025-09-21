@@ -86,7 +86,7 @@ class MTGChatAgent:
             print("✅ Agent setup complete!")
 
             # Create chat session for logging
-            self.session_id = self.logger.create_session(self.provider)
+            self.session_id = self.logger.create_session(self.provider, source="cli")
             return True
 
         except Exception as e:

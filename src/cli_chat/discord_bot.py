@@ -64,7 +64,13 @@ class AgentContainer:
 agent_container = AgentContainer()
 
 
-async def run_agent_with_logging(agent, messages, provider: str):
+async def run_agent_with_logging(
+    agent,
+    messages,
+    provider: str,
+    source: str | None = None,
+    source_meta: dict | None = None,
+):
     """Run the agent with streaming to log thoughts, tool calls, and results.
 
     Returns:
@@ -73,7 +79,7 @@ async def run_agent_with_logging(agent, messages, provider: str):
     logger = ChatLogger()
     titler = Titler()
     # Create a new session for each invocation
-    session_id = logger.create_session(provider)
+    session_id = logger.create_session(provider, source=source, source_meta=source_meta)
     # Log the latest user message
     try:
         if (
@@ -193,7 +199,15 @@ async def mage(interaction: discord.Interaction, query: str):
         agent = await agent_container.get_agent()
         messages = [("user", query)]
         answer, session_id = await run_agent_with_logging(
-            agent, messages, provider="claude"
+            agent,
+            messages,
+            provider="claude",
+            source="discord",
+            source_meta={
+                "guild_id": str(interaction.guild_id) if interaction.guild_id else None,
+                "guild_name": interaction.guild.name if interaction.guild else None,
+                "channel_id": str(interaction.channel_id),
+            },
         )
         if not answer:
             answer = "I couldn't produce a response this time."

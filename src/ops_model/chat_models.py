@@ -11,6 +11,8 @@ class ChatSession(Base, TimestampMixin):
     id = uuid_pk()
     provider = Column(String(20), nullable=False)  # claude, xai, opus, gpt5
     title = Column(String(200), nullable=True)
+    source = Column(String(20), nullable=True, index=True)  # cli|discord|social
+    source_meta = Column(JSON, nullable=True)  # platform/server/channel/post context
 
     # Relationships
     messages = relationship(

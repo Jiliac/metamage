@@ -329,6 +329,13 @@ async def process_one_notification(session, client, notif, provider: str) -> Non
             provider=provider,
             session_id=reuse_session_id,
             anonymize_fn=_anonymize_user_content,
+            source="social",
+            source_meta={
+                "platform": "bluesky",
+                "post_uri": notif.post_uri,
+                "root_uri": notif.root_uri,
+                "actor_handle": notif.actor_handle,
+            },
         )
         logger.info(
             f"Agent completed with session {session_id}, answer length: {len(answer)}"
