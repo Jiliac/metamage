@@ -9,6 +9,7 @@ import sys
 import asyncio
 import httpx
 import base64
+import urllib.parse
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -20,6 +21,8 @@ class TwitterClient:
         self.base_url = "https://api.twitter.com"
         self.api_key = os.getenv("TWITTER_API_KEY")
         self.api_secret = os.getenv("TWITTER_API_SECRET")
+        self.access_token = os.getenv("TWITTER_ACCESS_TOKEN")
+        self.access_token_secret = os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
         self.bearer_token = None  # Will be generated
 
     def _check_credentials(self):
@@ -29,6 +32,10 @@ class TwitterClient:
             missing.append("TWITTER_API_KEY")
         if not self.api_secret:
             missing.append("TWITTER_API_SECRET")
+        if not self.access_token:
+            missing.append("TWITTER_ACCESS_TOKEN")
+        if not self.access_token_secret:
+            missing.append("TWITTER_ACCESS_TOKEN_SECRET")
         return missing
 
     async def _generate_bearer_token(self):
@@ -73,16 +80,74 @@ class TwitterClient:
             resp.raise_for_status()
             return resp.json()
 
-    async def post_tweet(self, text: str):
-        """Post a tweet using OAuth 2.0 with PKCE (requires user authentication)."""
-        print("⚠️  Tweet posting requires OAuth 2.0 user authentication")
-        print(
-            "⚠️  For production, implement OAuth 2.0 Authorization Code Flow with PKCE"
-        )
-        print(f"📝 Would post: {text}")
+    def _oauth_signature(self, method: str, url: str, body_params: dict = None) -> str:
+        """Generate OAuth 1.0a signature for tweet posting."""
+        import hmac
+        import hashlib
+        import urllib.parse
+        import secrets
+        import time
 
-        # For now, just simulate success
-        return {"id": "simulated_tweet_id", "text": text}
+        # OAuth parameters
+        oauth_params = {
+            "oauth_consumer_key": self.api_key,
+            "oauth_token": self.access_token,
+            "oauth_signature_method": "HMAC-SHA1",
+            "oauth_timestamp": str(int(time.time())),
+            "oauth_nonce": secrets.token_hex(16),
+            "oauth_version": "1.0",
+        }
+
+        # For OAuth signature, we only include query parameters, not JSON body
+        # Since we're using JSON body, no additional params for signature
+        all_params = oauth_params.copy()
+
+        # Create parameter string
+        param_string = "&".join(
+            [
+                f"{urllib.parse.quote(str(k), safe='~')}={urllib.parse.quote(str(v), safe='~')}"
+                for k, v in sorted(all_params.items())
+            ]
+        )
+
+        # Create signature base string
+        base_string = f"{method}&{urllib.parse.quote(url, safe='~')}&{urllib.parse.quote(param_string, safe='~')}"
+
+        # Create signing key
+        signing_key = f"{urllib.parse.quote(self.api_secret, safe='~')}&{urllib.parse.quote(self.access_token_secret, safe='~')}"
+
+        # Generate signature
+        signature = hmac.new(
+            signing_key.encode(), base_string.encode(), hashlib.sha1
+        ).digest()
+
+        oauth_signature = base64.b64encode(signature).decode()
+        oauth_params["oauth_signature"] = oauth_signature
+
+        return oauth_params
+
+    async def post_tweet(self, text: str):
+        """Post a tweet using OAuth 1.0a authentication."""
+        url = f"{self.base_url}/2/tweets"
+        body = {"text": text}
+
+        # Generate OAuth signature (no body params for signature)
+        oauth_params = self._oauth_signature("POST", url)
+
+        # Create Authorization header
+        auth_header = "OAuth " + ", ".join(
+            [
+                f'{k}="{urllib.parse.quote(str(v), safe="~")}"'
+                for k, v in oauth_params.items()
+            ]
+        )
+
+        headers = {"Authorization": auth_header, "Content-Type": "application/json"}
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(url, headers=headers, json=body, timeout=30.0)
+            resp.raise_for_status()
+            return resp.json()
 
 
 async def main():
@@ -100,24 +165,23 @@ async def main():
         for var in missing:
             print(f"   - {var}")
         print("\n💡 Update your .env file with Twitter API credentials")
-        print("   You only need TWITTER_API_KEY and TWITTER_API_SECRET!")
+        print("   You need all 4 credentials from your Twitter Developer Dashboard!")
         return False
 
     try:
-        # Test authentication
-        print("🔐 Testing authentication...")
-        search_result = await client.test_auth()
-        tweet_count = len(search_result.get("data", []))
-        print(f"✅ API access working! Found {tweet_count} recent tweets with 'hello'")
+        # Skip read testing to avoid rate limits, go straight to posting
+        print("🔐 Skipping read test to avoid rate limits...")
 
-        # Test posting (simulated)
-        print("\n📝 Testing tweet posting...")
+        # Test posting (real!)
+        print("📝 Testing tweet posting...")
         tweet_text = f"Hello from the MetaMage Twitter bot! 🤖✨ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         result = await client.post_tweet(tweet_text)
-        print(f"✅ Tweet posted (simulated): {result['id']}")
+        tweet_id = result.get("data", {}).get("id", "unknown")
+        print(f"✅ Tweet posted successfully! ID: {tweet_id}")
+        print(f"🔗 View at: https://twitter.com/user/status/{tweet_id}")
 
-        print("\n🎉 All tests passed!")
-        print("💡 You're ready to integrate Twitter API with just 2 credentials!")
+        print("\n🎉 Tweet posting works!")
+        print("💡 Twitter API integration working with OAuth 1.0a!")
         return True
 
     except httpx.HTTPStatusError as e:
