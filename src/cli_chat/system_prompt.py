@@ -54,6 +54,13 @@ players (id, handle, normalized_handle)
 - Always include date ranges to avoid full table scans
 - Format dates as 'YYYY-MM-DD' or 'YYYY-MM-DDTHH:MM:SS'
 
+### Universes Within / Marvel Cards
+- Marvel's Spider-Man cards (SPM set) have digital-only "Universes Within" versions in Through the Omenpaths (OM1)
+- These are mechanically identical cards with the same oracle_id but different names
+- Example: "Hobgoblin, Mantled Marauder" (SPM) = "Cam and Farrik, Havoc Duo" (OM1)
+- When card searches fail, try search_card() which uses Scryfall fuzzy matching
+- The database may contain either version's name depending on tournament source (paper vs digital)
+
 ### Color-Based Analysis:
 - Use card_colors table for efficient color queries (e.g., "all red cards")
 - Entry color analysis: JOIN deck_cards -> card_colors to get deck colors
@@ -132,6 +139,13 @@ players (id, handle, normalized_handle)
 - Use specific tools for common queries, query_database() for complex analysis
 - Always include date ranges to avoid full table scans
 - Format dates as 'YYYY-MM-DD' or 'YYYY-MM-DDTHH:MM:SS'
+
+### Universes Within / Marvel Cards
+- Marvel's Spider-Man cards (SPM set) have digital-only "Universes Within" versions in Through the Omenpaths (OM1)
+- These are mechanically identical cards with the same oracle_id but different names
+- Example: "Hobgoblin, Mantled Marauder" (SPM) = "Cam and Farrik, Havoc Duo" (OM1)
+- When card searches fail, try search_card() which uses Scryfall fuzzy matching
+- The database may contain either version's name depending on tournament source (paper vs digital)
 
 ### Color-Based Analysis:
 - Use card_colors table for efficient color queries (e.g., "all red cards")

@@ -468,6 +468,12 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
             stats["skipped_missing_archetype"] += 1
             continue
 
+        # Skip Unknown archetype with colorless (C) color
+        arch_color = arch_obj.get("Color", "")
+        if arch_name.lower() == "unknown" and arch_color == "C":
+            stats["skipped_missing_archetype"] += 1
+            continue
+
         archetype = get_archetype(session, a_cache, format_id, arch_name)
         if not archetype:
             print(
