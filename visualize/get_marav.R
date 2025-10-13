@@ -106,8 +106,6 @@ marav_data <- presence %>%
       archetype_name %in% c("Ramp Eldrazi", "Aggro Eldrazi") ~ "Eldrazi",
       archetype_name %in% c("Dimir Frog", "Esper Frog") ~ "Frog",
       archetype_name %in% c("Mardu Energy", "Boros Energy") ~ "Energy",
-      archetype_name %in% c("Grixis Reanimator", "Goryo Reanimator") ~
-        "Reanimator",
       TRUE ~ archetype_name
     )
   ) %>%

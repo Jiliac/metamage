@@ -8,9 +8,9 @@ env_or <- function(var, default) {
 }
 
 # Get values once
-format_name <- env_or("MTG_FORMAT", "Legacy")
-start_date <- env_or("START_DATE", "2025-09-01")
-end_date <- env_or("END_DATE", "2025-09-29")
+format_name <- env_or("MTG_FORMAT", "Modern")
+start_date <- env_or("START_DATE", "2025-09-25")
+end_date <- env_or("END_DATE", "2025-10-06")
 
 # Build output directory path
 start_year <- format(as.Date(start_date), "%Y")
