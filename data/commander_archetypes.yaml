@@ -1,0 +1,45 @@
+# Commander Archetype Mappings for Duel Commander
+# This file defines how commanders are grouped and named for archetype identification
+
+# Partner commander groupings
+# When a commander with "Partner" appears with different partners, group them together
+# Format: List commanders that should be grouped, and specify the archetype name to use
+partner_groupings:
+  # All Yoshimaru partners get grouped together
+  - commanders:
+      - "Yoshimaru, Ever Faithful // Kediss, Emberclaw Familiar"
+      - "Yoshimaru, Ever Faithful // Rograkh, Son of Rohgahh"
+      - "Yoshimaru, Ever Faithful // Malcolm, Keen-Eyed Navigator"
+      - "Yoshimaru, Ever Faithful // Falthis, Shadowcat Familiar"
+      - "Yoshimaru, Ever Faithful // Esior, Wardwing Familiar"
+    archetype_name: "Yoshimaru"
+
+  # Add more partner groupings as needed
+  # - commanders:
+  #     - "Partner A // Partner B"
+  #     - "Partner A // Partner C"
+  #   archetype_name: "Partner A Partners"
+
+# Name shortening rules
+# Use shorter, more readable names for archetypes
+# Default behavior: if not in this list, use the full commander name
+name_mappings:
+  "Lier, Disciple of the Drowned": "Lier"
+  "Slimefoot and Squee": "Slimefoot & Squee"
+  "Surris, Spidersilk Innovator": "Surris"
+  "Uharis, the Stormspinner": "Uharis"
+  "Aragorn, King of Gondor": "Aragorn"
+  "Satya, Aetherflux Genius": "Satya"
+  "Baral, Chief of Compliance": "Baral"
+  "Azusa, Lost but Seeking": "Azusa"
+  "Golos, Tireless Pilgrim": "Golos"
+  "Magda, the Hoardmaster": "Magda"
+  "Basim Ibn Ishaq": "Basim"
+  "Phelia, Exuberant Shepherd": "Phelia"
+  "Taii Wakeen, Perfect Shot": "Taii Wakeen"
+  "Ghyrson Starn, Kelermorph": "Ghyrson Starn"
+  "Kraum, Ludevic's Opus": "Kraum"
+  "Scions of the Ur-Spider": "Scions of the Ur-Spider"
+
+  # Add more mappings as needed
+  # "Full Commander Name": "Short Name"

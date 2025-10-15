@@ -43,7 +43,9 @@ class TwitterClient:
 
     def __init__(self):
         self.base_url = "https://api.twitter.com"
-        self.upload_url = "https://upload.twitter.com"  # Separate domain for media uploads
+        self.upload_url = (
+            "https://upload.twitter.com"  # Separate domain for media uploads
+        )
         self.api_key = os.getenv("TWITTER_API_KEY")
         self.api_secret = os.getenv("TWITTER_API_SECRET")
         self.access_token = os.getenv("TWITTER_ACCESS_TOKEN")

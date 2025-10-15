@@ -272,7 +272,9 @@ async def main():
     expires_in = tokens.get("expires_in")
 
     print(f"\n✅ Tokens obtained!")
-    print(f"   Access token expires in: {expires_in} seconds ({expires_in // 3600} hours)")
+    print(
+        f"   Access token expires in: {expires_in} seconds ({expires_in // 3600} hours)"
+    )
     print(f"   Refresh token: {'Received' if refresh_token else 'Not received'}")
 
     # Save tokens
