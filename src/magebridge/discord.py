@@ -4,7 +4,7 @@ from discord.ext import commands
 import json
 
 from .logger import logger
-from .bluesky import bluesky_client
+from ..social_clients.bluesky import bluesky_client
 from ..ops_model.base import get_ops_session_factory
 from ..ops_model.models import FocusedChannel, DiscordPost, SocialMessage, Pass
 

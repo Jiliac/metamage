@@ -1,16 +1,43 @@
 import os
 import re
 import httpx
-from datetime import datetime
-from typing import Optional, List, Dict, Any
+from datetime import datetime, timezone
+from typing import Optional, List, Dict, Any, Tuple
 import mimetypes
 from PIL import Image
 import io
+import logging
 
-from .logger import logger
+logger = logging.getLogger("social_clients.bluesky")
 
 
 class BlueskyClient:
+    """
+    Unified Bluesky client implementing the SocialClient protocol.
+    Supports both posting (magebridge) and notifications/replies (socialbot).
+    """
+
+    # Protocol properties
+    @property
+    def platform_name(self) -> str:
+        """Platform identifier for Bluesky."""
+        return "bluesky"
+
+    @property
+    def max_text_len(self) -> int:
+        """Bluesky supports 300 characters."""
+        return 300
+
+    @property
+    def max_images(self) -> int:
+        """Bluesky supports up to 4 images per post."""
+        return 4
+
+    @property
+    def supported_media_types(self) -> Optional[List[str]]:
+        """Bluesky supports common image formats."""
+        return ["image/jpeg", "image/png", "image/webp"]
+
     def __init__(self):
         self.base_url = "https://bsky.social"
         self.session = None
@@ -291,6 +318,46 @@ class BlueskyClient:
         except Exception as e:
             logger.error(f"Error posting with images: {e}")
             return False
+
+    # Notification methods (Phase 2 - stubs for now)
+    async def list_notifications(
+        self,
+        cursor: Optional[str] = None,
+        since: Optional[datetime] = None,
+        types: Optional[List[str]] = None,
+    ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+        """
+        List notifications from Bluesky.
+
+        NOTE: This method is a stub for Phase 1. Full implementation in Phase 2b.
+        """
+        raise NotImplementedError(
+            "Notification support will be implemented in Phase 2b"
+        )
+
+    async def get_post_thread(self, uri: str, depth: int = 10) -> Dict[str, Any]:
+        """
+        Fetch the full post thread for context.
+
+        NOTE: This method is a stub for Phase 1. Full implementation in Phase 2b.
+        """
+        raise NotImplementedError("Thread fetching will be implemented in Phase 2b")
+
+    async def reply(
+        self,
+        text: str,
+        parent_uri: str,
+        parent_cid: Optional[str],
+        root_uri: str,
+        root_cid: Optional[str],
+        link_url: Optional[str] = None,
+    ) -> str:
+        """
+        Post a reply to a given parent/root.
+
+        NOTE: This method is a stub for Phase 1. Full implementation in Phase 2b.
+        """
+        raise NotImplementedError("Reply support will be implemented in Phase 2b")
 
 
 # Global Bluesky client instance
