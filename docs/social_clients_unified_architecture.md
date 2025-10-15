@@ -398,10 +398,8 @@ async def post_with_images(self, text: str, image_urls: List[str]) -> bool:
 
 - Factory pattern in `factory.py` for convenience
 - Enhanced Twitter thread support
-- Additional platforms (Mastodon, Threads, etc.)
 - Unified retry/backoff at protocol level
 - Media type detection and conversion
-- Video support
 
 ### Not Planned
 
@@ -424,13 +422,3 @@ async def post_with_images(self, text: str, image_urls: List[str]) -> bool:
 - ✅ Socialbot responds to Twitter mentions (new functionality)
 - ✅ Separate `SocialNotification` records per platform
 - ✅ Both platforms polled and processed independently
-
-## Open Questions
-
-None at this time. All design decisions have been made.
-
-## Document History
-
-- 2025-01-XX: Initial design document created
-- Decisions made through collaborative discussion
-- Ready for implementation
