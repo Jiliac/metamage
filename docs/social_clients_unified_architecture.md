@@ -57,9 +57,16 @@ src/social_clients/
 ### 3. Protocol Interface
 
 ```python
+from typing import Protocol, Optional, Tuple, List, Dict, Any
+from datetime import datetime
+
 class SocialClient(Protocol):
     # Properties
     platform_name: str  # "bluesky" or "twitter"
+    # Capabilities to avoid hardcoding limits elsewhere
+    max_text_len: int
+    max_images: int
+    supported_media_types: Optional[List[str]]
 
     # Authentication
     async def authenticate() -> bool
@@ -69,12 +76,27 @@ class SocialClient(Protocol):
     async def post_with_images(text: str, image_urls: List[str]) -> bool
 
     # Notifications (Socialbot)
-    async def list_notifications(cursor: Optional[str] = None) -> Tuple[List[Dict], Optional[str]]
+    async def list_notifications(
+        cursor: Optional[str] = None,
+        since: Optional[datetime] = None,
+        types: Optional[List[str]] = None,
+    ) -> Tuple[List[Dict], Optional[str]]
     async def get_post_thread(uri: str, depth: int = 10) -> Dict[str, Any]
-    async def reply(text: str, parent_uri: str, parent_cid: Optional[str],
-                   root_uri: str, root_cid: Optional[str],
-                   link_url: Optional[str] = None) -> str
+    async def reply(
+        text: str,
+        parent_uri: str,
+        parent_cid: Optional[str],
+        root_uri: str,
+        root_cid: Optional[str],
+        link_url: Optional[str] = None,
+    ) -> str
 ```
+
+Notes:
+
+- Normalization: list_notifications must return indexed_at as a timezone-aware UTC datetime; implementations may ignore since/types if unsupported.
+- Error handling: prefer raising exceptions on transport or HTTP 4xx/5xx; boolean returns are reserved for soft failures.
+- reply includes link_url to allow platforms with rich link facets (e.g., Bluesky) to annotate the URL; others may ignore.
 
 ### 4. Database Schema (No Changes Required)
 
