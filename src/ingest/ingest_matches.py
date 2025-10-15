@@ -142,7 +142,7 @@ def process_matchups_from_entries(
             # Parse match result from player perspective
             wins = matchup.get("Wins", 0)
             losses = matchup.get("Losses", 0)
-            draws = matchup.get("Draws", 0)
+            # Note: draws are tracked at entry level but not used for individual match results
 
             # Determine overall match result
             if wins > losses:

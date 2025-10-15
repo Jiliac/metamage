@@ -1,7 +1,7 @@
 import os
 import re
 import httpx
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional, List, Dict, Any, Tuple
 import mimetypes
 from PIL import Image
