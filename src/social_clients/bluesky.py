@@ -234,26 +234,35 @@ class BlueskyClient:
 
         # Download and upload images
         image_blobs = []
-        async with httpx.AsyncClient() as client:
-            for url in image_urls:
-                try:
-                    # Download image from Discord
-                    img_response = await client.get(url)
-                    if img_response.status_code == 200:
-                        filename = url.split("/")[-1].split("?")[
-                            0
-                        ]  # Extract filename from URL
-                        blob = await self.upload_image(img_response.content, filename)
-                        if blob:
-                            image_blobs.append(
-                                {
-                                    "$type": "app.bsky.embed.images#image",
-                                    "image": blob,
-                                    "alt": f"Image from Discord: {filename}",
-                                }
-                            )
-                except Exception as e:
-                    logger.error(f"Error processing image {url}: {e}")
+        for url in image_urls[:4]:  # Bluesky supports max 4 images
+            try:
+                # Check if it's a local file path
+                if os.path.exists(url):
+                    # Local file
+                    with open(url, "rb") as f:
+                        image_data = f.read()
+                    filename = os.path.basename(url)
+                else:
+                    # Remote URL - download it
+                    async with httpx.AsyncClient() as client:
+                        img_response = await client.get(url, timeout=30.0)
+                        if img_response.status_code != 200:
+                            logger.error(f"Failed to download image from {url}")
+                            continue
+                        image_data = img_response.content
+                        filename = url.split("/")[-1].split("?")[0]
+
+                blob = await self.upload_image(image_data, filename)
+                if blob:
+                    image_blobs.append(
+                        {
+                            "$type": "app.bsky.embed.images#image",
+                            "image": blob,
+                            "alt": f"Image: {filename}",
+                        }
+                    )
+            except Exception as e:
+                logger.error(f"Error processing image {url}: {e}")
 
         if not image_blobs:
             # If no images could be processed, post text only
