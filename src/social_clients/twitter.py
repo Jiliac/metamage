@@ -43,6 +43,7 @@ class TwitterClient:
 
     def __init__(self):
         self.base_url = "https://api.twitter.com"
+        self.upload_url = "https://upload.twitter.com"  # Separate domain for media uploads
         self.api_key = os.getenv("TWITTER_API_KEY")
         self.api_secret = os.getenv("TWITTER_API_SECRET")
         self.access_token = os.getenv("TWITTER_ACCESS_TOKEN")
@@ -164,25 +165,23 @@ class TwitterClient:
         Upload image to Twitter using v1.1 media upload endpoint.
         Returns media_id string on success, None on failure.
 
-        Note: For multipart uploads, OAuth signature is computed on the URL only,
-        not the body content.
+        Note: Twitter uses upload.twitter.com domain for media uploads.
+        OAuth signature is computed on the URL only, not the body content.
         """
         if not await self.authenticate():
             return None
 
         try:
-            url = f"{self.base_url}/1.1/media/upload.json"
+            # Use upload.twitter.com domain for media uploads
+            url = f"{self.upload_url}/1.1/media/upload.json"
 
-            # For multipart uploads, we need to use form-data with base64 encoding
-            # Or simpler: use the media_data parameter with base64
-            import base64
-
+            # Use media_data parameter with base64 encoding
             encoded_image = base64.b64encode(image_data).decode("utf-8")
 
-            # Use form data instead of JSON
+            # Use form data (application/x-www-form-urlencoded)
             form_data = {"media_data": encoded_image}
 
-            # Generate OAuth header (for the URL only, not the body)
+            # Generate OAuth header
             headers = {
                 "Authorization": self._oauth_header("POST", url),
             }
