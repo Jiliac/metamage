@@ -91,6 +91,108 @@ def _apply_standings(
     return updated
 
 
+def process_matchups_from_entries(
+    session: Session,
+    tournament_id: str,
+    entries_with_matchups: List[Tuple[str, List[Dict[str, Any]], str]],
+) -> Dict[str, int]:
+    """
+    Process match data from Matchups field in entry JSON.
+    Each entry has a list of matchups with opponent handle, archetype, and W/L/D.
+
+    Args:
+        session: Database session
+        tournament_id: Tournament ID
+        entries_with_matchups: List of (entry_id, matchups_list, player_handle)
+
+    Returns:
+        Stats dict with counts
+    """
+    stats = {
+        "pairings_seen": 0,
+        "pairings_created": 0,
+        "pairings_skipped_missing_entry": 0,
+        "pairings_skipped_existing": 0,
+        "matches_rows_inserted": 0,
+        "ranks_updated": 0,
+    }
+
+    # Process each entry's matchups
+    for entry_id, matchups, player_handle in entries_with_matchups:
+        for matchup in matchups:
+            stats["pairings_seen"] += 1
+
+            opponent_handle = matchup.get("Opponent")
+            if not opponent_handle:
+                continue
+
+            # Find opponent's entry in this tournament
+            opponent_entry = _get_entry_for_player(
+                session, tournament_id, opponent_handle
+            )
+            if not opponent_entry:
+                stats["pairings_skipped_missing_entry"] += 1
+                continue
+
+            # Check if pairing already exists (avoid duplicates)
+            if _pairing_already_present(session, entry_id, opponent_entry.id):
+                stats["pairings_skipped_existing"] += 1
+                continue
+
+            # Parse match result from player perspective
+            wins = matchup.get("Wins", 0)
+            losses = matchup.get("Losses", 0)
+            draws = matchup.get("Draws", 0)
+
+            # Determine overall match result
+            if wins > losses:
+                player_result = MatchResult.WIN
+                opponent_result = MatchResult.LOSS
+            elif losses > wins:
+                player_result = MatchResult.LOSS
+                opponent_result = MatchResult.WIN
+            else:
+                player_result = MatchResult.DRAW
+                opponent_result = MatchResult.DRAW
+
+            # Get entry objects to check archetype
+            player_entry = (
+                session.query(TournamentEntry)
+                .filter(TournamentEntry.id == entry_id)
+                .first()
+            )
+            if not player_entry:
+                continue
+
+            pair_uuid = str(uuid4())
+            mirror = player_entry.archetype_id == opponent_entry.archetype_id
+
+            # Create bidirectional match records
+            m1 = Match(
+                entry_id=entry_id,
+                opponent_entry_id=opponent_entry.id,
+                result=player_result,
+                mirror=mirror,
+                pair_id=pair_uuid,
+            )
+            m2 = Match(
+                entry_id=opponent_entry.id,
+                opponent_entry_id=entry_id,
+                result=opponent_result,
+                mirror=mirror,
+                pair_id=pair_uuid,
+            )
+            session.add(m1)
+            session.add(m2)
+            stats["pairings_created"] += 1
+            stats["matches_rows_inserted"] += 2
+
+    # Recompute W/L/D for all entries in tournament
+    _recompute_wld_for_tournament(session, tournament_id)
+
+    return stats
+
+
 def process_rounds_for_tournament(
     session: Session,
     tournament: Tournament,
