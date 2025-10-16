@@ -73,13 +73,15 @@ def extract_commander_from_deck(deck: Dict[str, Any]) -> Optional[str]:
     """
     Extract the commander name from a deck dictionary.
 
-    In Duel Commander, the commander is always in the Sideboard as a single card.
+    In Duel Commander, the commander is in the Sideboard:
+    - Single commander: 1 card in sideboard
+    - Partner commanders: 2 cards in sideboard (combined as "Card1 // Card2")
 
     Args:
         deck: Deck dictionary containing 'Sideboard' key
 
     Returns:
-        str: Commander name, or None if not found
+        str: Commander name (or partner combination), or None if not found
     """
     if "Sideboard" not in deck:
         return None
@@ -88,13 +90,25 @@ def extract_commander_from_deck(deck: Dict[str, Any]) -> Optional[str]:
     if not isinstance(sideboard, list) or len(sideboard) == 0:
         return None
 
-    # Commander is always the first (and only) card in sideboard
-    commander_entry = sideboard[0]
-    if not isinstance(commander_entry, dict):
-        return None
+    # Extract all commander card names from sideboard
+    commander_names = []
+    for commander_entry in sideboard:
+        if not isinstance(commander_entry, dict):
+            continue
+        card_name = commander_entry.get("CardName", "").strip()
+        if card_name:
+            commander_names.append(card_name)
 
-    commander_name = commander_entry.get("CardName", "").strip()
-    return commander_name if commander_name else None
+    if len(commander_names) == 0:
+        return None
+    elif len(commander_names) == 1:
+        # Single commander
+        return commander_names[0]
+    else:
+        # Partner commanders - combine as "Card1 // Card2" (alphabetically sorted)
+        # Sort to ensure consistent naming regardless of card order in JSON
+        commander_names.sort()
+        return " // ".join(commander_names)
 
 
 def _check_partner_grouping(

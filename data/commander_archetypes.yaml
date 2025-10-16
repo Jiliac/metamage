@@ -6,13 +6,44 @@
 # Format: List commanders that should be grouped, and specify the archetype name to use
 partner_groupings:
   # All Yoshimaru partners get grouped together
+  # Note: Partners are alphabetically sorted: "Card1 // Card2"
   - commanders:
-      - "Yoshimaru, Ever Faithful // Kediss, Emberclaw Familiar"
-      - "Yoshimaru, Ever Faithful // Rograkh, Son of Rohgahh"
-      - "Yoshimaru, Ever Faithful // Malcolm, Keen-Eyed Navigator"
-      - "Yoshimaru, Ever Faithful // Falthis, Shadowcat Familiar"
-      - "Yoshimaru, Ever Faithful // Esior, Wardwing Familiar"
+      - "Bruse Tarl, Boorish Herder // Yoshimaru, Ever Faithful"
+      - "Dargo, the Shipwrecker // Yoshimaru, Ever Faithful"
+      - "Esior, Wardwing Familiar // Yoshimaru, Ever Faithful"
+      - "Falthis, Shadowcat Familiar // Yoshimaru, Ever Faithful"
+      - "Francisco, Fowl Marauder // Lurrus of the Dream-Den // Yoshimaru, Ever Faithful"
+      - "Kediss, Emberclaw Familiar // Yoshimaru, Ever Faithful"
+      - "Kraum, Ludevic's Opus // Yoshimaru, Ever Faithful"
+      - "Ludevic, Necro-Alchemist // Yoshimaru, Ever Faithful"
+      - "Malcolm, Keen-Eyed Navigator // Yoshimaru, Ever Faithful"
+      - "Rograkh, Son of Rohgahh // Yoshimaru, Ever Faithful"
+      - "Silas Renn, Seeker Adept // Yoshimaru, Ever Faithful"
     archetype_name: "Yoshimaru"
+
+  # Rograkh, Son of Rohgahh partners
+  - commanders:
+      - "Ikra Shidiqi, the Usurper // Rograkh, Son of Rohgahh"
+      - "Reyhan, Last of the Abzan // Rograkh, Son of Rohgahh"
+      - "Rograkh, Son of Rohgahh // Silas Renn, Seeker Adept"
+      - "Rograkh, Son of Rohgahh // Tevesh Szat, Doom of Fools"
+      - "Rograkh, Son of Rohgahh // Tymna the Weaver"
+    archetype_name: "Rograkh"
+
+  # Thrasios, Triton Hero partners
+  - commanders:
+      - "Ravos, Soultender // Thrasios, Triton Hero"
+      - "Thrasios, Triton Hero // Tymna the Weaver"
+    archetype_name: "Thrasios"
+
+  # Lurrus of the Dream-Den partners
+  - commanders:
+      - "Amalia Benavides Aguirre // Lurrus of the Dream-Den"
+      - "Cecil, Dark Knight // Lurrus of the Dream-Den"
+      - "Elas il-Kor, Sadistic Pilgrim // Lurrus of the Dream-Den"
+      - "Lurrus of the Dream-Den // The Wandering Minstrel"
+      - "Lurrus of the Dream-Den // Zahur, Glory's Past"
+    archetype_name: "Lurrus"
 
   # Add more partner groupings as needed
   # - commanders:
@@ -45,9 +76,15 @@ name_mappings:
   "Asmoranomardicadaistinaculdacar": "Asmo"
   "Jenson Carthalion, Druid Exile": "Jenson"
   "Sheoldred, the Apocalypse": "Sheoldred"
+  "Juri, Master of the Revue": "Juri"
   "Atraxa, Grand Unifier": "Atraxa"
   "Merata, Neuron Hacker": "Merata"
   "Kavaero, Mind-Bitten": "Kavaero"
+  "Phlage, Titan of Fire's Fury": "Phlage"
+  "Bruse Tarl, Boorish Herder": "Bruse Tarl"
+  "Flamewar, Brash Veteran": "Flamewar"
+  "Glarb, Calamity's Augur": "Glarb"
+  "Aminatou, the Fateshifter": "Aminatou"
 
   # Add more mappings as needed
   # "Full Commander Name": "Short Name"
