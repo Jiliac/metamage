@@ -16,7 +16,7 @@ import sys
 import json
 import argparse
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, Any
 from collections import Counter
 
 # Add the src directory to the path
@@ -25,9 +25,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from ingest.commander_archetypes import (
     get_commander_archetype,
     extract_commander_from_deck,
-    normalize_commander_name,
-    load_commander_mappings,
 )
+from ingest.rounds_finder import find_rounds_file, TournamentSearchCriteria
+from models import TournamentSource
+from datetime import datetime
 
 
 def load_tournament_json(file_path: str) -> Dict[str, Any]:
@@ -58,9 +59,6 @@ def analyze_tournament(data: Dict[str, Any]) -> Dict[str, Any]:
     if not decks:
         print("⚠️  No decks found in tournament data")
         return {}
-
-    # Load commander mappings once
-    mappings = load_commander_mappings()
 
     # Statistics
     stats = {
@@ -149,6 +147,103 @@ def print_statistics(stats: Dict[str, Any], tournament_info: Dict[str, Any]):
     print("\n" + "=" * 70)
 
 
+def test_rounds_finder(
+    file_path: Path, tournament_info: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Test if rounds_finder can locate the MTGORecorder rounds file.
+
+    Returns:
+        dict: Results of the rounds finder test
+    """
+    print("\n" + "=" * 70)
+    print("🔍 TESTING ROUNDS FINDER")
+    print("=" * 70)
+
+    # Extract tournament ID from filename
+    # Pattern: duel-commander-trial-16-2025-10-1512819571.json -> 12819571
+    filename = file_path.stem  # Remove .json extension
+    import re
+
+    match = re.search(r"-(\d{4})-(\d{2})-(\d{2})(\d+)$", filename)
+
+    if not match:
+        print("❌ Could not extract tournament ID from filename")
+        print(f"   Filename: {filename}")
+        return {"found": False, "error": "No tournament ID in filename"}
+
+    tournament_id = match.group(4)
+    print(f"📋 Extracted Tournament ID: {tournament_id}")
+
+    # Parse tournament date
+    tournament_date_str = tournament_info.get("Date", "")
+    if not tournament_date_str:
+        print("❌ No date found in tournament info")
+        return {"found": False, "error": "No date in tournament"}
+
+    try:
+        # Handle date formats: "2025-10-15" or "2025-10-15T15:00:00"
+        if "T" in tournament_date_str:
+            tournament_date = datetime.fromisoformat(tournament_date_str)
+        else:
+            tournament_date = datetime.strptime(tournament_date_str, "%Y-%m-%d")
+    except Exception as e:
+        print(f"❌ Could not parse tournament date: {tournament_date_str}")
+        return {"found": False, "error": f"Invalid date: {e}"}
+
+    print(f"📅 Tournament Date: {tournament_date.date()}")
+    print(f"🏷️  Tournament Name: {tournament_info.get('Name', 'Unknown')}")
+
+    # Create search criteria
+    criteria = TournamentSearchCriteria(
+        date=tournament_date,
+        format_name="Duel Commander",
+        source=TournamentSource.MTGO,
+        tournament_name=tournament_info.get("Name"),
+        tournament_id=tournament_id,
+    )
+
+    print("\n🔎 Searching for rounds file...")
+    rounds_path = find_rounds_file(criteria)
+
+    if not rounds_path:
+        print("❌ Rounds file NOT found")
+        return {"found": False, "error": "rounds_finder returned None"}
+
+    print(f"✅ Rounds file FOUND: {rounds_path}")
+
+    # Load and compare rounds data
+    try:
+        with open(rounds_path, "r", encoding="utf-8") as f:
+            rounds_data = json.load(f)
+
+        rounds_count = len(rounds_data.get("Rounds", []))
+        print("\n📊 Rounds File Statistics:")
+        print(f"   Rounds: {rounds_count}")
+
+        # Count total matches
+        total_matches = 0
+        for rnd in rounds_data.get("Rounds", []):
+            total_matches += len(rnd.get("Matches", []))
+        print(f"   Total Matches: {total_matches}")
+
+        print("\n📝 Comparison:")
+        print("   Tournament file (top 8 only): ~3 rounds")
+        print(f"   Rounds file (full Swiss+top8): {rounds_count} rounds")
+        print("   ✅ MTGORecorder file has complete match data!")
+
+        return {
+            "found": True,
+            "path": str(rounds_path),
+            "rounds_count": rounds_count,
+            "total_matches": total_matches,
+        }
+
+    except Exception as e:
+        print(f"❌ Error reading rounds file: {e}")
+        return {"found": True, "error": f"Could not read file: {e}"}
+
+
 def main():
     """Main function."""
     parser = argparse.ArgumentParser(
@@ -177,7 +272,15 @@ def main():
     # Print statistics
     print_statistics(stats, tournament_info)
 
+    # Test rounds finder
+    rounds_result = test_rounds_finder(file_path, tournament_info)
+
     print("\n✅ Test completed successfully!")
+
+    # Return non-zero exit code if rounds file not found
+    if not rounds_result.get("found"):
+        print("⚠️  Warning: Rounds file not found - match data will be incomplete")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -39,7 +39,15 @@ name_mappings:
   "Taii Wakeen, Perfect Shot": "Taii Wakeen"
   "Ghyrson Starn, Kelermorph": "Ghyrson Starn"
   "Kraum, Ludevic's Opus": "Kraum"
-  "Scions of the Ur-Spider": "Scions of the Ur-Spider"
+  "Scions of the Ur-Spider": "Scions"
+  "Cloud, Midgar Mercenary": "Cloud"
+  "Kefka, Court Mage": "Kefka"
+  "Asmoranomardicadaistinaculdacar": "Asmo"
+  "Jenson Carthalion, Druid Exile": "Jenson"
+  "Sheoldred, the Apocalypse": "Sheoldred"
+  "Atraxa, Grand Unifier": "Atraxa"
+  "Merata, Neuron Hacker": "Merata"
+  "Kavaero, Mind-Bitten": "Kavaero"
 
   # Add more mappings as needed
   # "Full Commander Name": "Short Name"

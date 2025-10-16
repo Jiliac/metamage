@@ -105,7 +105,7 @@ async def get_authorization_code(client_id, redirect_uri, code_challenge, scopes
 
     auth_url = f"https://twitter.com/i/oauth2/authorize?{urlencode(auth_params)}"
 
-    print(f"\n🌐 Opening browser for authorization...")
+    print("\n🌐 Opening browser for authorization...")
     print(f"📋 If browser doesn't open, visit this URL:\n{auth_url}\n")
 
     # Open browser
@@ -248,7 +248,7 @@ async def main():
 
     # Generate PKCE pair
     code_verifier, code_challenge = generate_pkce_pair()
-    print(f"\n🔐 Generated PKCE challenge")
+    print("\n🔐 Generated PKCE challenge")
 
     # Get authorization code
     code = await get_authorization_code(client_id, redirect_uri, code_challenge, scopes)
@@ -256,7 +256,7 @@ async def main():
     if not code:
         return False
 
-    print(f"\n✅ Authorization code received")
+    print("\n✅ Authorization code received")
 
     # Exchange code for tokens
     print("\n🔄 Exchanging code for tokens...")
@@ -271,7 +271,7 @@ async def main():
     refresh_token = tokens.get("refresh_token")
     expires_in = tokens.get("expires_in")
 
-    print(f"\n✅ Tokens obtained!")
+    print("\n✅ Tokens obtained!")
     print(
         f"   Access token expires in: {expires_in} seconds ({expires_in // 3600} hours)"
     )

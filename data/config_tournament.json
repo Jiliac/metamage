@@ -4,6 +4,10 @@
     "data_folder": "/Users/valentin/Development/dev-win/MTG_decklistcache/Tournaments/MTGmelee"
   },
   {
+    "source": "DC",
+    "data_folder": "/Users/valentin/Development/dev-win/MTG_decklistcache/Tournaments/MTGO"
+  },
+  {
     "source": "MTGO",
     "data_folder": "/Users/valentin/Development/dev-win/MTGORecorder/Data"
   }

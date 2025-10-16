@@ -187,14 +187,29 @@ color_map <- assign_archetype_colors(c(
   if ("Other" %in% presence_top_other$bucket) "Other"
 ))
 
+# Format-specific display names and sources
+format_display_name <- if (tolower(params$format_name) == "duel-commander") {
+  "DC"
+} else {
+  params$format_name
+}
+
+source_text <- if (tolower(params$format_name) == "duel-commander") {
+  "MTGO Trials"
+} else {
+  "MTGO Top32 & Melee"
+}
+
 # Build plots
 p_presence <- plot_presence(
   presence_top_other,
   color_map,
   top_order,
-  title = paste0(params$format_name, " Metagame Share"),
+  title = paste0(format_display_name, " Metagame Share"),
   caption = paste0(
-    "Source: MTGO Top32 & Melee  •  ",
+    "Source: ",
+    source_text,
+    "  •  ",
     params$start_date,
     " → ",
     params$end_date,
@@ -205,10 +220,12 @@ p_wr_ci <- plot_wr_ci(
   wr,
   color_map,
   top_order,
-  title = paste0(params$format_name, " Win Rates"),
+  title = paste0(format_display_name, " Win Rates"),
   subtitle = "Bars show 95% confidence intervals",
   caption = paste0(
-    "Source: MTGO Top32 & Melee  •  ",
+    "Source: ",
+    source_text,
+    "  •  ",
     params$start_date,
     " → ",
     params$end_date
@@ -220,9 +237,11 @@ p_matrix <- plot_matrix(
   presence %>% filter(archetype_name %in% matrix_order),
   color_map,
   matrix_order,
-  title = paste0(params$format_name, " Matchups"),
+  title = paste0(format_display_name, " Matchups"),
   caption = paste0(
-    "Source: MTGO Top32 & Melee  •  ",
+    "Source: ",
+    source_text,
+    "  •  ",
     params$start_date,
     " → ",
     params$end_date
@@ -231,9 +250,11 @@ p_matrix <- plot_matrix(
 p_bubble <- plot_wr_vs_presence(
   wr_pres,
   color_map,
-  title = paste0(params$format_name, " Win Rate vs Presence"),
+  title = paste0(format_display_name, " Win Rate vs Presence"),
   caption = paste0(
-    "Source: MTGO Top32 & Melee  •  ",
+    "Source: ",
+    source_text,
+    "  •  ",
     params$start_date,
     " → ",
     params$end_date
@@ -241,9 +262,11 @@ p_bubble <- plot_wr_vs_presence(
 )
 p_tiers <- plot_tiers(
   wr,
-  title = paste0(params$format_name, " Tier Rankings"),
+  title = paste0(format_display_name, " Tier Rankings"),
   caption = paste0(
-    "Source: MTGO Top32 & Melee  •  ",
+    "Source: ",
+    source_text,
+    "  •  ",
     params$start_date,
     " → ",
     params$end_date
