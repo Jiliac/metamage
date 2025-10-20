@@ -99,7 +99,7 @@ def simulate_game(
 
 def run_simulation(
     config: SimulationConfig,
-    good_lands_range: range = range(6, 25),
+    good_lands_range: range = None,
     mulligan_strategy: MulliganStrategy = None,
     verbose: bool = True,
 ) -> Dict[int, float]:
@@ -110,7 +110,7 @@ def run_simulation(
 
     Args:
         config: Base simulation configuration
-        good_lands_range: Range of good_lands counts to test
+        good_lands_range: Range of good_lands counts to test (defaults to total_lands in config)
         mulligan_strategy: Strategy to use (defaults to Vancouver)
         verbose: Whether to print progress
 
@@ -119,6 +119,11 @@ def run_simulation(
     """
     if mulligan_strategy is None:
         mulligan_strategy = VancouverMulligan()
+
+    # Set default range based on deck's total lands
+    if good_lands_range is None:
+        # Test from 6 up to the total number of lands in the deck
+        good_lands_range = range(6, config.total_lands + 1)
 
     results = {}
 

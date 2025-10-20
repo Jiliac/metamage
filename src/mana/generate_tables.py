@@ -6,7 +6,6 @@ Reproduces Frank Karsten's 2013 tables for different deck sizes.
 Run this script to generate tables for 40-card and 99-card decks.
 """
 
-import sys
 from typing import Dict, List
 from .types import SimulationConfig
 from .simulation import find_minimum_sources
@@ -148,6 +147,31 @@ def compare_to_published(
 
 def main():
     """Main entry point."""
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Frank Karsten Manabase Simulation (2013 baseline)"
+    )
+    parser.add_argument(
+        "--full",
+        action="store_true",
+        help="Use 1M iterations instead of 100k (slower but more accurate)",
+    )
+    parser.add_argument(
+        "--deck-size",
+        type=int,
+        choices=[40, 99],
+        help="Only run simulation for specific deck size (40 or 99)",
+    )
+    parser.add_argument(
+        "--mana",
+        type=int,
+        choices=[1, 2, 3],
+        help="Only run simulation for specific colored mana (1=C, 2=CC, 3=CCC)",
+    )
+
+    args = parser.parse_args()
+
     print("=" * 70)
     print("Frank Karsten Manabase Simulation")
     print("Reproducing 2013 Tables (Vancouver Mulligan)")
@@ -169,33 +193,38 @@ def main():
     }
 
     # Configuration
-    iterations = 100_000  # Use 100k for faster testing (1M for production)
+    iterations = 1_000_000 if args.full else 100_000
 
-    if len(sys.argv) > 1 and sys.argv[1] == "--full":
-        iterations = 1_000_000
+    if args.full:
         print("\n🔥 Running FULL simulation with 1M iterations per configuration")
         print("⚠️  This will take a while (10-30 minutes)...\n")
     else:
         print(f"\n⚡ Running FAST mode with {iterations:,} iterations")
         print("💡 Use --full flag for 1M iterations (exact 2013 reproduction)\n")
 
-    # Generate 40-card table
-    print(f"\n{'#' * 70}")
-    print("# GENERATING 40-CARD DECK TABLE (Limited)")
-    print(f"{'#' * 70}")
+    # Determine which colored mana counts to test
+    if args.mana:
+        colored_mana_counts = [args.mana]
+        print(f"📊 Testing only {args.mana}C configurations\n")
+    else:
+        colored_mana_counts = [1, 2, 3]
 
-    table_40 = generate_table(40, iterations=iterations)
-    print_table(40, table_40)
-    compare_to_published(40, table_40, PUBLISHED_40)
+    # Generate tables based on arguments
+    deck_sizes = [args.deck_size] if args.deck_size else [40, 99]
 
-    # Generate 99-card table
-    print(f"\n{'#' * 70}")
-    print("# GENERATING 99-CARD DECK TABLE (Commander)")
-    print(f"{'#' * 70}")
+    for deck_size in deck_sizes:
+        print(f"\n{'#' * 70}")
+        print(f"# GENERATING {deck_size}-CARD DECK TABLE")
+        print(f"{'#' * 70}")
 
-    table_99 = generate_table(99, iterations=iterations)
-    print_table(99, table_99)
-    compare_to_published(99, table_99, PUBLISHED_99)
+        table = generate_table(
+            deck_size, colored_mana_counts=colored_mana_counts, iterations=iterations
+        )
+        print_table(deck_size, table)
+
+        # Compare to published results
+        published = PUBLISHED_40 if deck_size == 40 else PUBLISHED_99
+        compare_to_published(deck_size, table, published)
 
     print(f"\n{'=' * 70}")
     print("COMPLETE!")
