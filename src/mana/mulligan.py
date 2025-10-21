@@ -1,11 +1,11 @@
 """
 Mulligan strategies for simulation.
 
-Implements Vancouver Mulligan (2013) and placeholder for London (2019+).
+Implements London Mulligan (2019+ standard).
 """
 
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Tuple
 from .types import CardType
 
 
@@ -30,24 +30,31 @@ class MulliganStrategy(ABC):
         pass
 
 
-class VancouverMulligan(MulliganStrategy):
+class LondonMulligan(MulliganStrategy):
     """
-    Vancouver Mulligan strategy (pre-2019).
+    London Mulligan strategy (2019+).
 
-    Rules from Karsten's 2013 code:
+    Based on teryror's Rust implementation:
+    https://gist.github.com/teryror/57a3099a6566d1ab75bd3fd515ab0380
+
+    Keep rules (same as old Vancouver):
     - 7 cards: keep if 2-5 lands
     - 6 cards: keep if 2-4 lands
     - 5 cards: keep if 1-4 lands
     - 4 cards: always keep
+
+    Key difference from Vancouver:
+    - Always draw 7 cards each mulligan (not 7, 6, 5, 4)
+    - After keeping, put N cards on bottom of library (N = mulligans taken)
     """
 
     def should_keep(
         self, hand: List[CardType], hand_size: int, lands_in_hand: int
     ) -> bool:
         """
-        Implement Vancouver Mulligan decision.
+        Decide whether to keep this hand.
 
-        Matches the exact logic from karsten_code_2013.java.
+        Keep rules from Rust implementation: [2..6, 2..5, 1..5, 0..5]
         """
         if hand_size == 7:
             return 2 <= lands_in_hand <= 5
@@ -58,29 +65,49 @@ class VancouverMulligan(MulliganStrategy):
         else:  # 4 or fewer
             return True
 
-
-class LondonMulligan(MulliganStrategy):
-    """
-    London Mulligan strategy (2019+).
-
-    TODO: Implement based on 2020/2022 Karsten articles when available.
-    For now, this raises NotImplementedError.
-    """
-
-    def should_keep(
-        self, hand: List[CardType], hand_size: int, lands_in_hand: int
-    ) -> bool:
-        raise NotImplementedError(
-            "London Mulligan logic pending 2020/2022 Karsten articles. "
-            "Use VancouverMulligan for 2013 baseline."
-        )
-
     def choose_cards_to_bottom(
-        self, hand: List[CardType], num_to_bottom: int
-    ) -> List[int]:
+        self,
+        lands_in_hand: int,
+        good_lands_in_hand: int,
+        hand_size: int,
+        num_to_bottom: int,
+    ) -> Tuple[int, int]:
         """
-        Select which cards to put on bottom (indices).
+        Choose which cards to put on bottom of library.
 
-        TODO: Implement card selection logic when articles available.
+        Heuristic from teryror's Rust implementation:
+        - Bottom lands when: lands > hand_size/2 AND lands > 2
+        - Prefer bottoming bad lands (non-colored) over good lands
+
+        Args:
+            lands_in_hand: Total lands in hand
+            good_lands_in_hand: Lands that produce required color
+            hand_size: Current hand size (always 7 with London)
+            num_to_bottom: Number of cards to put on bottom
+
+        Returns:
+            Tuple of (total_lands_to_bottom, good_lands_to_bottom)
         """
-        raise NotImplementedError("Card selection logic pending 2020/2022 articles.")
+        lands_to_bottom = 0
+        good_lands_to_bottom = 0
+
+        for _ in range(num_to_bottom):
+            # Should we bottom a land?
+            # Heuristic: bottom lands if we have too many
+            if lands_in_hand > (hand_size // 2) and lands_in_hand > 2:
+                lands_to_bottom += 1
+
+                # Calculate bad lands (lands that don't produce required color)
+                bad_lands = lands_in_hand - good_lands_in_hand
+
+                if bad_lands > 0:
+                    # Prefer bottoming a bad land (don't touch good_lands count)
+                    lands_in_hand -= 1
+                else:
+                    # Only good lands left, must bottom one
+                    good_lands_to_bottom += 1
+                    good_lands_in_hand -= 1
+                    lands_in_hand -= 1
+            # else: bottom a spell (doesn't affect our land counts)
+
+        return lands_to_bottom, good_lands_to_bottom

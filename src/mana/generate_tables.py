@@ -2,8 +2,7 @@
 """
 Generate manabase requirement tables.
 
-Reproduces Frank Karsten's methodology for different deck sizes.
-Run this script to generate tables for 60-card Constructed and 99-card Duel Commander.
+Uses London Mulligan (2019+ standard) for 60-card Constructed and 99-card Duel Commander.
 """
 
 from typing import Dict, List
@@ -98,53 +97,6 @@ def print_table(deck_size: int, table: Dict[int, Dict[int, int]], max_turn: int 
         print()
 
 
-def compare_to_published(
-    deck_size: int,
-    table: Dict[int, Dict[int, int]],
-    published: Dict[int, Dict[int, int]],
-):
-    """
-    Compare generated table to published 2013 results.
-
-    Args:
-        deck_size: Size of deck
-        table: Generated table
-        published: Published table from 2013 article
-    """
-    print(f"\n{'=' * 70}")
-    print(f"VALIDATION: {deck_size}-CARD DECK vs 2013 PUBLISHED RESULTS")
-    print(f"{'=' * 70}\n")
-
-    all_match = True
-
-    for colored_mana in sorted(published.keys()):
-        mana_str = "C" * colored_mana
-        print(f"{mana_str}:")
-
-        for turn in sorted(published[colored_mana].keys()):
-            published_val = published[colored_mana][turn]
-            generated_val = table.get(colored_mana, {}).get(turn)
-
-            if published_val is None:
-                continue
-
-            match = "✓" if generated_val == published_val else "✗"
-            status = "MATCH" if generated_val == published_val else "DIFFER"
-
-            print(
-                f"  Turn {turn}: {generated_val:2} vs {published_val:2} {match} {status}"
-            )
-
-            if generated_val != published_val:
-                all_match = False
-
-    if all_match:
-        print("\n✅ All values match 2013 published results!")
-    else:
-        print("\n⚠️  Some values differ from published results.")
-        print("This may be due to random variation or implementation differences.")
-
-
 def main():
     """Main entry point."""
     import argparse
@@ -174,23 +126,9 @@ def main():
 
     print("=" * 70)
     print("Frank Karsten Manabase Simulation")
-    print("Generating tables for 60-card Constructed & 99-card Duel Commander")
+    print("London Mulligan (2019+)")
+    print("60-card Constructed & 99-card Duel Commander")
     print("=" * 70)
-
-    # Published 2013 results for validation
-    # From docs/karsten/TECHNICAL_REPORT.md Appendix A
-
-    PUBLISHED_60 = {
-        1: {1: 14, 2: 13, 3: 12, 4: 11, 5: 10, 6: 9, 7: 9},
-        2: {1: None, 2: 20, 3: 19, 4: 18, 5: 16, 6: 15, 7: 14},
-        3: {1: None, 2: None, 3: 22, 4: 22, 5: 21, 6: 20, 7: 19},
-    }
-
-    PUBLISHED_99 = {
-        1: {1: 23, 2: 21, 3: 20, 4: 18, 5: 17, 6: 16, 7: 15},
-        2: {1: None, 2: 33, 3: 31, 4: 29, 5: 27, 6: 26, 7: 24},
-        3: {1: None, 2: None, 3: 37, 4: 36, 5: 34, 6: 33, 7: 32},
-    }
 
     # Configuration
     iterations = 1_000_000 if args.full else 100_000
@@ -200,7 +138,7 @@ def main():
         print("⚠️  This will take a while (10-30 minutes)...\n")
     else:
         print(f"\n⚡ Running FAST mode with {iterations:,} iterations")
-        print("💡 Use --full flag for 1M iterations (exact 2013 reproduction)\n")
+        print("💡 Use --full flag for 1M iterations (more accurate results)\n")
 
     # Determine which colored mana counts to test
     if args.mana:
@@ -221,10 +159,6 @@ def main():
             deck_size, colored_mana_counts=colored_mana_counts, iterations=iterations
         )
         print_table(deck_size, table)
-
-        # Compare to published results
-        published = PUBLISHED_60 if deck_size == 60 else PUBLISHED_99
-        compare_to_published(deck_size, table, published)
 
     print(f"\n{'=' * 70}")
     print("COMPLETE!")

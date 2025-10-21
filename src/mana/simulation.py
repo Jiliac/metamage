@@ -7,7 +7,7 @@ Based on Frank Karsten's 2013 Monte Carlo simulation methodology.
 from typing import Dict, Tuple
 from .types import CardType, SimulationConfig
 from .deck import Deck
-from .mulligan import MulliganStrategy, VancouverMulligan
+from .mulligan import MulliganStrategy, LondonMulligan
 
 
 def simulate_hand(deck: Deck, hand_size: int) -> Tuple[int, int]:
@@ -38,14 +38,18 @@ def simulate_game(
     deck: Deck, config: SimulationConfig, mulligan_strategy: MulliganStrategy
 ) -> Tuple[int, int]:
     """
-    Simulate one game (mulligans + draws to turn).
+    Simulate one game with London Mulligan (2019+).
 
-    Implements the exact algorithm from karsten_code_2013.java.
+    London Mulligan:
+    - Always draw 7 cards
+    - Keep or mulligan based on hand quality
+    - If keeping after mulligan, put N cards on bottom (N = mulligans taken)
+    - Repeat until kept or reached 4 mulligans
 
     Args:
         deck: Deck instance (will be reset as needed)
         config: Simulation configuration
-        mulligan_strategy: Strategy for mulligan decisions
+        mulligan_strategy: Strategy for mulligan decisions (LondonMulligan)
 
     Returns:
         Tuple of (total_lands_by_turn, good_lands_by_turn)
@@ -53,31 +57,39 @@ def simulate_game(
     # Track the number of good lands we started with (for reset)
     initial_good_lands = deck.good_lands
 
-    # Opening hand with mulligans
-    hand_size = 7
+    # London Mulligan loop (always draw 7)
     kept = False
     lands = 0
     good = 0
 
-    # Mulligan loop (7 -> 6 -> 5 -> 4)
-    while hand_size >= 4 and not kept:
-        # Reset deck for this hand size
+    for mulligan_count in range(4):  # 0, 1, 2, 3 mulligans
+        # Reset deck
         deck.reset(config.total_lands, initial_good_lands, config.deck_size)
 
-        # Draw hand
-        lands, good = simulate_hand(deck, hand_size)
+        # London: always draw 7 cards
+        lands, good = simulate_hand(deck, 7)
 
         # Check if we should keep
-        if mulligan_strategy.should_keep(None, hand_size, lands):
+        if mulligan_strategy.should_keep(None, 7, lands):
             kept = True
-        else:
-            # Mulligan to smaller hand
-            hand_size -= 1
 
-    # If we never kept (got down to 3 or less), draw 4
+            # If we mulliganed, put cards on bottom
+            if mulligan_count > 0:
+                lands_to_bottom, good_lands_to_bottom = (
+                    mulligan_strategy.choose_cards_to_bottom(
+                        lands, good, 7, mulligan_count
+                    )
+                )
+                lands -= lands_to_bottom
+                good -= good_lands_to_bottom
+
+            break
+
+    # If we never kept (mulliganed 4 times), draw and keep 4
     if not kept:
         deck.reset(config.total_lands, initial_good_lands, config.deck_size)
         lands, good = simulate_hand(deck, 4)
+        # Don't bottom cards on a 4-card hand
 
     # Draw for additional turns
     # Turn 1 on play = 0 additional draws
@@ -111,14 +123,14 @@ def run_simulation(
     Args:
         config: Base simulation configuration
         good_lands_range: Range of good_lands counts to test (defaults to total_lands in config)
-        mulligan_strategy: Strategy to use (defaults to Vancouver)
+        mulligan_strategy: Strategy to use (defaults to London)
         verbose: Whether to print progress
 
     Returns:
         Dictionary mapping {good_lands_count: probability}
     """
     if mulligan_strategy is None:
-        mulligan_strategy = VancouverMulligan()
+        mulligan_strategy = LondonMulligan()
 
     # Set default range based on deck's total lands
     if good_lands_range is None:
@@ -171,7 +183,7 @@ def find_minimum_sources(
     Args:
         config: Simulation configuration
         target_probability: Target probability (default 0.90 = 90%)
-        mulligan_strategy: Strategy to use (defaults to Vancouver)
+        mulligan_strategy: Strategy to use (defaults to London)
         verbose: Whether to print progress
 
     Returns:
