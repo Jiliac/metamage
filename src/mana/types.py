@@ -24,9 +24,8 @@ class CardType(Enum):
 
 # Standard deck configurations (deck_size -> land_count)
 STANDARD_LAND_COUNTS = {
-    40: 17,  # Limited (Draft/Sealed)
-    60: 24,  # Constructed (Standard/Modern/etc)
-    99: 40,  # Commander
+    60: 24,  # Constructed (Standard/Modern/Pioneer)
+    99: 40,  # Duel Commander
 }
 
 
@@ -35,7 +34,7 @@ class SimulationConfig:
     """Configuration for manabase simulation."""
 
     deck_size: int
-    """Total cards in deck (40, 60, or 99)"""
+    """Total cards in deck (60 or 99)"""
 
     total_lands: int
     """Total lands in deck"""

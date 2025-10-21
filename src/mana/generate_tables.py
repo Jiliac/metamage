@@ -2,8 +2,8 @@
 """
 Generate manabase requirement tables.
 
-Reproduces Frank Karsten's 2013 tables for different deck sizes.
-Run this script to generate tables for 40-card and 99-card decks.
+Reproduces Frank Karsten's methodology for different deck sizes.
+Run this script to generate tables for 60-card Constructed and 99-card Duel Commander.
 """
 
 from typing import Dict, List
@@ -160,8 +160,8 @@ def main():
     parser.add_argument(
         "--deck-size",
         type=int,
-        choices=[40, 99],
-        help="Only run simulation for specific deck size (40 or 99)",
+        choices=[60, 99],
+        help="Only run simulation for specific deck size (60 or 99)",
     )
     parser.add_argument(
         "--mana",
@@ -174,16 +174,16 @@ def main():
 
     print("=" * 70)
     print("Frank Karsten Manabase Simulation")
-    print("Reproducing 2013 Tables (Vancouver Mulligan)")
+    print("Generating tables for 60-card Constructed & 99-card Duel Commander")
     print("=" * 70)
 
     # Published 2013 results for validation
     # From docs/karsten/TECHNICAL_REPORT.md Appendix A
 
-    PUBLISHED_40 = {
-        1: {1: 10, 2: 9, 3: 8, 4: 7, 5: 7, 6: 6, 7: 6},
-        2: {1: None, 2: 14, 3: 13, 4: 12, 5: 11, 6: 10, 7: 10},
-        3: {1: None, 2: None, 3: 16, 4: 15, 5: 14, 6: 14, 7: 13},
+    PUBLISHED_60 = {
+        1: {1: 14, 2: 13, 3: 12, 4: 11, 5: 10, 6: 9, 7: 9},
+        2: {1: None, 2: 20, 3: 19, 4: 18, 5: 16, 6: 15, 7: 14},
+        3: {1: None, 2: None, 3: 22, 4: 22, 5: 21, 6: 20, 7: 19},
     }
 
     PUBLISHED_99 = {
@@ -210,7 +210,7 @@ def main():
         colored_mana_counts = [1, 2, 3]
 
     # Generate tables based on arguments
-    deck_sizes = [args.deck_size] if args.deck_size else [40, 99]
+    deck_sizes = [args.deck_size] if args.deck_size else [60, 99]
 
     for deck_size in deck_sizes:
         print(f"\n{'#' * 70}")
@@ -223,7 +223,7 @@ def main():
         print_table(deck_size, table)
 
         # Compare to published results
-        published = PUBLISHED_40 if deck_size == 40 else PUBLISHED_99
+        published = PUBLISHED_60 if deck_size == 60 else PUBLISHED_99
         compare_to_published(deck_size, table, published)
 
     print(f"\n{'=' * 70}")
