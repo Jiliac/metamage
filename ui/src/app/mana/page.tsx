@@ -191,7 +191,7 @@ export default function ManaPage() {
                   <TabsTrigger
                     key={pattern}
                     value={pattern}
-                    className="text-xs md:text-sm text-white"
+                    className="text-xs md:text-sm text-white data-[state=active]:text-slate-900"
                   >
                     {PATTERN_INFO[pattern]?.label || pattern}
                   </TabsTrigger>
