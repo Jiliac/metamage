@@ -39,6 +39,12 @@ export default function Navbar() {
           >
             Sessions
           </Link>
+          <Link
+            href="/mana"
+            className={`hover:text-sky-400 transition ${pathname.startsWith('/mana') ? 'text-sky-400' : ''}`}
+          >
+            Mana Tables
+          </Link>
         </div>
       </div>
     </nav>
