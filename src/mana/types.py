@@ -59,17 +59,29 @@ class SimulationConfig:
         turn_allowed: int,
         iterations: int = 1_000_000,
         on_play: bool = True,
+        land_count: int = None,
     ):
-        """Create config with standard land count for deck size."""
-        if deck_size not in STANDARD_LAND_COUNTS:
-            raise ValueError(
-                f"Unknown deck size {deck_size}. "
-                f"Valid sizes: {list(STANDARD_LAND_COUNTS.keys())}"
-            )
+        """Create config with standard land count for deck size.
+
+        Args:
+            deck_size: Total cards in deck (60 or 99)
+            good_lands_needed: Required colored sources
+            turn_allowed: Turn by which to cast
+            iterations: Number of simulation iterations
+            on_play: True if on play, False if on draw
+            land_count: Override default land count (optional)
+        """
+        if land_count is None:
+            if deck_size not in STANDARD_LAND_COUNTS:
+                raise ValueError(
+                    f"Unknown deck size {deck_size}. "
+                    f"Valid sizes: {list(STANDARD_LAND_COUNTS.keys())}"
+                )
+            land_count = STANDARD_LAND_COUNTS[deck_size]
 
         return cls(
             deck_size=deck_size,
-            total_lands=STANDARD_LAND_COUNTS[deck_size],
+            total_lands=land_count,
             good_lands_needed=good_lands_needed,
             turn_allowed=turn_allowed,
             iterations=iterations,
