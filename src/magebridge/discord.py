@@ -3,6 +3,10 @@ import discord
 from discord.ext import commands
 import json
 import os
+from dotenv import load_dotenv
+
+# Load environment variables early (before creating clients)
+load_dotenv()
 
 from .logger import logger
 from ..social_clients import BlueskyClient, TwitterClient, SocialMultiplexer
