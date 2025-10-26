@@ -308,6 +308,7 @@ for client in [bluesky, twitter]:
 - Add `await asyncio.sleep(1)` between API calls in implementation
 - No protocol-level retry/backoff
 - Implementation-specific rate limit handling
+- Tweepy handles low-level retries and error handling
 
 ### Bluesky
 
@@ -326,10 +327,12 @@ for client in [bluesky, twitter]:
 
 ### Twitter Process
 
-1. Download image from URL
-2. Upload via `POST /1.1/media/upload.json` (v1.1 endpoint)
+**Note**: Implementation uses tweepy library to handle v1.1/v2 API complexity.
+
+1. Download image from URL (if remote)
+2. Upload via tweepy.API.media_upload() (v1.1 endpoint wrapper)
 3. Get `media_id`
-4. Create tweet via v2 API with `media.media_ids` array
+4. Create tweet via tweepy.Client.create_tweet() (v2 API wrapper) with `media_ids` array
 
 ### Protocol Abstraction
 
@@ -446,24 +449,25 @@ async def post_with_images(self, text: str, image_urls: List[str]) -> bool:
 
 #### 1c. Twitter Implementation
 
-- ⚠️ **Blocked**: Twitter client created but image posting fails
+- ✅ **Complete**: Twitter client refactored to use tweepy library
 - ✅ Text-only posting works
-- ❌ Image upload to Twitter API v1.1 endpoint fails
-- 🔄 **Skipped for now**: Will revisit when Twitter API issue resolved
+- ✅ Image upload via tweepy (v1.1 media upload) works
+- ✅ Post with images via tweepy (v2 tweet creation) works
+- 🔧 **Solution**: Used tweepy library to handle v1.1/v2 API complexity
 
 #### 1d. Magebridge Integration
 
-- ⚠️ **Partially Complete**: Only Bluesky integrated (Twitter blocked by 1c)
+- ⏸️ **Ready to implement**: Twitter client now working
 - ✅ Bluesky posting via unified client works
 - ✅ `SocialMessage` records created with `platform="bluesky"`
 - ✅ Historical Discord messages processed for Bluesky
-- ⏸️ **Deferred**: Multi-platform loop deferred until Twitter images work
+- 🔄 **Next**: Add Twitter to magebridge multi-platform posting loop
 
 ### Phase 1 Complete When:
 
-- ⏸️ Magebridge posts to both Bluesky and Twitter
+- 🔄 Magebridge posts to both Bluesky and Twitter (ready to implement)
 - ⚠️ Separate `SocialMessage` records per platform (Bluesky only for now)
-- ⏸️ Image posting works on both platforms
+- ✅ Image posting works on both platforms
 - ⚠️ Historical Discord messages processed for both platforms (Bluesky only for now)
 
 ### Phase 2 Complete When:
