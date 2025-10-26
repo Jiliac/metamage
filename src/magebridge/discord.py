@@ -2,9 +2,10 @@ from datetime import datetime, timezone
 import discord
 from discord.ext import commands
 import json
+import os
 
 from .logger import logger
-from ..social_clients.bluesky import bluesky_client
+from ..social_clients import BlueskyClient, TwitterClient, SocialMultiplexer
 from ..ops_model.base import get_ops_session_factory
 from ..ops_model.models import FocusedChannel, DiscordPost, SocialMessage, Pass
 
@@ -17,6 +18,31 @@ intents.messages = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Database session factory will be created when needed
+
+
+# Initialize social multiplexer with available clients
+def create_social_multiplexer():
+    """Create a social multiplexer with all configured clients."""
+    clients = []
+
+    # Add Bluesky if credentials available
+    if os.getenv("BLUESKY_USERNAME") and os.getenv("BLUESKY_PASSWORD"):
+        clients.append(BlueskyClient())
+        logger.info("Bluesky client enabled for magebridge")
+
+    # Add Twitter if credentials available
+    if os.getenv("TWITTER_API_KEY") and os.getenv("TWITTER_ACCESS_TOKEN"):
+        clients.append(TwitterClient())
+        logger.info("Twitter client enabled for magebridge")
+
+    if not clients:
+        logger.warning("No social media clients configured - magebridge will not post")
+        return None
+
+    return SocialMultiplexer(clients)
+
+
+social_multiplexer = create_social_multiplexer()
 
 
 @bot.event
@@ -173,20 +199,30 @@ async def process_historical_messages():
                             message_time = message_time.replace(tzinfo=timezone.utc)
                         latest_time = max(latest_time, message_time)
 
-                    # Check if successful social media post exists for this Discord post
-                    successful_social_exists = (
-                        session.query(SocialMessage)
-                        .filter_by(discord_post_id=discord_post.id, success=True)
-                        .first()
-                    )
+                    # Check if successful social media posts exist for all enabled platforms
+                    if social_multiplexer:
+                        needs_posting = False
+                        for client in social_multiplexer.clients:
+                            platform_post_exists = (
+                                session.query(SocialMessage)
+                                .filter_by(
+                                    discord_post_id=discord_post.id,
+                                    platform=client.platform_name,
+                                    success=True,
+                                )
+                                .first()
+                            )
+                            if not platform_post_exists:
+                                needs_posting = True
+                                break
 
-                    if not successful_social_exists:
-                        await process_message_for_social(
-                            message, discord_post, focused_channel, session
-                        )
-                        logger.info(
-                            f"[HISTORY] Posted to social: {message.created_at}: {message.author.display_name}: {message.id}"
-                        )
+                        if needs_posting:
+                            await process_message_for_social(
+                                message, discord_post, focused_channel, session
+                            )
+                            logger.info(
+                                f"[HISTORY] Posted to social: {message.created_at}: {message.author.display_name}: {message.id}"
+                            )
 
                 # Update pass record
                 current_pass.end_time = datetime.now(timezone.utc)
@@ -270,12 +306,16 @@ async def process_message(message):
 
 
 async def process_message_for_social(message, discord_post, focused_channel, session):
-    """Process a Discord message for social media posting"""
+    """Process a Discord message for social media posting via multiplexer"""
+    if not social_multiplexer:
+        logger.warning("No social multiplexer configured - skipping social posting")
+        return
+
     logger.info(f"Processing message from {message.author}: {message.content}")
 
-    # Generate custom text for Bluesky based on format
+    # Generate custom text based on format
     format_name = focused_channel.format.capitalize()
-    bluesky_text = f"{format_name} meta update #mtg #{focused_channel.format}"
+    post_text = f"{format_name} meta update #mtg #{focused_channel.format}"
 
     # Handle images
     image_urls = []
@@ -284,35 +324,48 @@ async def process_message_for_social(message, discord_post, focused_channel, ses
             if attachment.content_type and attachment.content_type.startswith("image/"):
                 image_urls.append(attachment.url)
 
-    # Post to Bluesky
-    success = False
-    error_msg = None
-
+    # Post to all platforms via multiplexer
     try:
         if image_urls:
-            success = await bluesky_client.post_with_images(bluesky_text, image_urls)
+            results = await social_multiplexer.post_with_images(post_text, image_urls)
         else:
-            success = await bluesky_client.post_text(bluesky_text)
+            results = await social_multiplexer.post_text(post_text)
+
+        # Create SocialMessage record for each platform
+        for platform, success in results.items():
+            social_message = SocialMessage(
+                platform=platform,
+                discord_post_id=discord_post.id,
+                content=post_text,
+                post_time=datetime.now(timezone.utc),
+                success=success,
+                error_message=None if success else "Post failed",
+            )
+            session.add(social_message)
+
+        session.commit()
+
+        # Log results
+        success_count = sum(1 for s in results.values() if s)
+        total_count = len(results)
+        logger.info(
+            f"✅ Bridged message to {success_count}/{total_count} platforms: {results}"
+        )
+
     except Exception as e:
-        error_msg = str(e)
-        logger.error(f"Error posting to Bluesky: {e}")
-
-    # Record the social media post attempt
-    social_message = SocialMessage(
-        platform="bluesky",
-        discord_post_id=discord_post.id,
-        content=bluesky_text,
-        post_time=datetime.now(timezone.utc),
-        success=success,
-        error_message=error_msg,
-    )
-    session.add(social_message)
-    session.commit()
-
-    if success:
-        logger.info("✅ Successfully bridged message to Bluesky")
-    else:
-        logger.error("❌ Failed to bridge message to Bluesky")
+        logger.error(f"Error posting to social platforms: {e}")
+        # Create failed records for all platforms
+        for client in social_multiplexer.clients:
+            social_message = SocialMessage(
+                platform=client.platform_name,
+                discord_post_id=discord_post.id,
+                content=post_text,
+                post_time=datetime.now(timezone.utc),
+                success=False,
+                error_message=str(e),
+            )
+            session.add(social_message)
+        session.commit()
 
 
 @bot.event

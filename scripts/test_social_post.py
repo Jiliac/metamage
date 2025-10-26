@@ -19,7 +19,7 @@ from pathlib import Path
 # Add src to path so we can import our modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.social_clients import BlueskyClient, TwitterClient
+from src.social_clients import BlueskyClient, TwitterClient, SocialMultiplexer
 
 
 async def test_bluesky(with_images: bool = False):
@@ -121,15 +121,103 @@ async def test_twitter(with_images: bool = False):
         return False
 
 
+async def test_multiplexer(with_images: bool = False):
+    """Test multiplexer posting to all platforms."""
+    print("🌐 Testing SocialMultiplexer (all platforms)")
+    print("=" * 50)
+
+    # Initialize clients based on available credentials
+    clients = []
+
+    if os.getenv("BLUESKY_USERNAME") and os.getenv("BLUESKY_PASSWORD"):
+        clients.append(BlueskyClient())
+        print("✓ Bluesky client added")
+
+    if os.getenv("TWITTER_API_KEY") and os.getenv("TWITTER_ACCESS_TOKEN"):
+        clients.append(TwitterClient())
+        print("✓ Twitter client added")
+
+    if not clients:
+        print("❌ No social platform credentials found")
+        return False
+
+    print(f"\nMultiplexer configured with {len(clients)} platforms")
+    print()
+
+    multiplexer = SocialMultiplexer(clients)
+
+    # Display platform limits
+    limits = multiplexer.get_platform_limits()
+    print("Platform limits:")
+    for platform, platform_limits in limits.items():
+        print(
+            f"  {platform}: {platform_limits['max_text_len']} chars, {platform_limits['max_images']} images"
+        )
+
+    restrictive = multiplexer.get_most_restrictive_limits()
+    print(
+        f"\nMost restrictive: {restrictive['max_text_len']} chars, {restrictive['max_images']} images"
+    )
+    print()
+
+    # Test authentication
+    print("🔐 Authenticating all platforms...")
+    auth_results = await multiplexer.authenticate()
+    for platform, success in auth_results.items():
+        status = "✅" if success else "❌"
+        print(f"  {status} {platform}: {'success' if success else 'failed'}")
+
+    if not any(auth_results.values()):
+        print("\n❌ All authentications failed")
+        return False
+    print()
+
+    # Test posting
+    if with_images:
+        print("📝 Posting to all platforms with image...")
+        test_text = f"Hello from SocialMultiplexer with image! 🤖 Testing Phase 1d at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        logo_path = Path(__file__).parent.parent / "docs" / "logo.png"
+        if not logo_path.exists():
+            print(f"❌ Image not found: {logo_path}")
+            return False
+        print(f"Using image: {logo_path} ({logo_path.stat().st_size / 1024:.1f} KB)")
+        post_results = await multiplexer.post_with_images(test_text, [str(logo_path)])
+    else:
+        print("📝 Posting to all platforms...")
+        test_text = f"Hello from SocialMultiplexer! 🤖 Testing Phase 1d at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        post_results = await multiplexer.post_text(test_text)
+
+    print("\nPost results:")
+    for platform, success in post_results.items():
+        status = "✅" if success else "❌"
+        print(f"  {status} {platform}: {'success' if success else 'failed'}")
+
+    all_success = all(post_results.values())
+    some_success = any(post_results.values())
+
+    print()
+    if all_success:
+        print("✅ All platforms posted successfully!")
+        print(f"Message: {test_text}")
+        return True
+    elif some_success:
+        print("⚠️  Some platforms posted successfully")
+        print(f"Message: {test_text}")
+        return True
+    else:
+        print("❌ All platforms failed to post")
+        return False
+
+
 async def main():
     load_dotenv()
 
     parser = argparse.ArgumentParser(description="Test social client posting")
     parser.add_argument(
         "--platform",
-        choices=["bluesky", "twitter"],
-        default="bluesky",
-        help="Platform to test (default: bluesky)",
+        choices=["bluesky", "twitter", "all"],
+        default="all",
+        help="Platform to test (default: all via multiplexer)",
     )
     parser.add_argument(
         "--with-images",
@@ -138,7 +226,7 @@ async def main():
     )
     args = parser.parse_args()
 
-    phase = "Phase 1c" if args.with_images else "Phase 1b/1c"
+    phase = "Phase 1d" if args.platform == "all" else "Phase 1c"
     print(f"\n🧪 Social Client Posting Test - {phase}")
     print(f"Platform: {args.platform}")
     print(f"With images: {args.with_images}")
@@ -148,6 +236,8 @@ async def main():
         success = await test_bluesky(with_images=args.with_images)
     elif args.platform == "twitter":
         success = await test_twitter(with_images=args.with_images)
+    elif args.platform == "all":
+        success = await test_multiplexer(with_images=args.with_images)
     else:
         print(f"❌ Unknown platform: {args.platform}")
         return False

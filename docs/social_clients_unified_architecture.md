@@ -127,21 +127,28 @@ The existing schema already supports multi-platform:
 
 ### 5. Multi-Platform Support
 
-**Magebridge:**
+**Magebridge (Implemented):**
 
 ```python
-enabled_clients = []
-if os.getenv("BLUESKY_USERNAME"):
-    enabled_clients.append(BlueskyClient())
-if os.getenv("TWITTER_API_KEY"):
-    enabled_clients.append(TwitterClient())
+# Initialize multiplexer with available clients
+def create_social_multiplexer():
+    clients = []
+    if os.getenv("BLUESKY_USERNAME"):
+        clients.append(BlueskyClient())
+    if os.getenv("TWITTER_API_KEY"):
+        clients.append(TwitterClient())
+    return SocialMultiplexer(clients) if clients else None
 
-# Post to all enabled platforms
-for client in enabled_clients:
-    success = await client.post_with_images(text, image_urls)
-    # Create one SocialMessage per platform
+multiplexer = create_social_multiplexer()
+
+# Post to all platforms simultaneously
+results = await multiplexer.post_with_images(text, image_urls)
+# Returns: {"bluesky": True, "twitter": True}
+
+# Create one SocialMessage per platform
+for platform, success in results.items():
     social_message = SocialMessage(
-        platform=client.platform_name,
+        platform=platform,
         discord_post_id=discord_post.id,
         success=success,
         ...
@@ -457,18 +464,19 @@ async def post_with_images(self, text: str, image_urls: List[str]) -> bool:
 
 #### 1d. Magebridge Integration
 
-- ⏸️ **Ready to implement**: Twitter client now working
-- ✅ Bluesky posting via unified client works
-- ✅ `SocialMessage` records created with `platform="bluesky"`
-- ✅ Historical Discord messages processed for Bluesky
-- 🔄 **Next**: Add Twitter to magebridge multi-platform posting loop
+- ✅ **Complete**: SocialMultiplexer integrated into magebridge
+- ✅ Auto-detects available platforms via environment variables
+- ✅ Posts to all platforms simultaneously via multiplexer
+- ✅ Creates separate `SocialMessage` records per platform
+- ✅ Historical messages check per-platform success before reposting
+- 🔧 **Implementation**: Uses `SocialMultiplexer` for clean multi-platform support
 
-### Phase 1 Complete When:
+### Phase 1 Status: ✅ COMPLETE
 
-- 🔄 Magebridge posts to both Bluesky and Twitter (ready to implement)
-- ⚠️ Separate `SocialMessage` records per platform (Bluesky only for now)
+- ✅ Magebridge posts to both Bluesky and Twitter via SocialMultiplexer
+- ✅ Separate `SocialMessage` records per platform
 - ✅ Image posting works on both platforms
-- ⚠️ Historical Discord messages processed for both platforms (Bluesky only for now)
+- ✅ Historical Discord messages processed for both platforms with per-platform tracking
 
 ### Phase 2 Complete When:
 
