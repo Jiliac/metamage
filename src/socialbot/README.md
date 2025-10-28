@@ -1,6 +1,7 @@
 # SocialBot (Bluesky)
 
 ## Overview
+
 - Polls Bluesky notifications, triages which to answer, builds conversation context,
   runs the MCP-backed agent, summarizes to ≤300 chars, appends a session link, and replies
 - Persists notifications, replies, and session linkage in the Ops DB
@@ -10,11 +11,13 @@
 ![SocialBot Flow](../../docs/socialbot_flow.svg)
 
 ## Run
+
 ```bash
 uv run -m src.socialbot.server
 ```
 
 ## Environment
+
 - `BLUESKY_USERNAME`, `BLUESKY_PASSWORD` — account credentials
 - `ANTHROPIC_API_KEY` — for the agent
 - `NEXT_PUBLIC_SITE_URL` — used to build the per-session URL in replies
@@ -24,6 +27,7 @@ uv run -m src.socialbot.server
 - `SOCIALBOT_TRIAGE=1|0` to enable/disable triage; `SOCIALBOT_FORCE_ANSWER=1` to force replies
 
 ## Notes
+
 - Replies require valid parent/root StrongRefs (URI+CID)
 - The agent reuses prior `session_id` for a thread when available to keep continuity
 

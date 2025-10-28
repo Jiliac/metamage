@@ -1,6 +1,7 @@
 # MetaMage — MTG Tournament Analysis
 
 MetaMage is a toolkit to analyze Magic: The Gathering tournament data. It includes:
+
 - [MCP Server](src/mcp_server/README.md) exposing read-only analysis tools over a SQLite tournament database
 - [Chat agents (CLI and Discord)](src/cli_chat/README.md) that use those tools via an LLM
 - [SocialBot](src/socialbot/README.md) that replies to Bluesky mentions with MCP-backed answers and session links
@@ -15,11 +16,13 @@ If you don't have the database file, email me at: `valentinmanes@outlook.fr` and
 ## Choose Your Quick Start
 
 **Prerequisites for Python components:**
+
 - Python 3.13+
 - `uv` (https://docs.astral.sh/uv/)
 - SQLite tournament DB at `data/tournament.db` (default) or set `TOURNAMENT_DB_PATH`
 
 **Install dependencies:**
+
 ```bash
 uv sync
 ```
@@ -29,14 +32,17 @@ uv sync
 ```bash
 uv run -m src.mcp_server.server --http
 ```
+
 Endpoint: `http://127.0.0.1:9000/mcp` (use `--host`/`--port` to customize).
 
 For Claude Desktop:
+
 ```bash
 uv run -m src.mcp_server.server --stdio
 ```
 
 ### List Tools (sanity check)
+
 ```bash
 uv run -m src.cli_chat.list_tool
 ```
@@ -46,6 +52,7 @@ uv run -m src.cli_chat.list_tool
 ```bash
 uv run -m src.cli_chat.chat_agent --provider claude
 ```
+
 Requires `ANTHROPIC_API_KEY`.
 
 ### Discord Bot (slash commands)
@@ -53,6 +60,7 @@ Requires `ANTHROPIC_API_KEY`.
 ```bash
 uv run -m src.cli_chat.discord_bot
 ```
+
 Requires `DISCORD_BOT_TOKEN` and `ANTHROPIC_API_KEY`.
 
 ### SocialBot (Bluesky responder)
@@ -60,6 +68,7 @@ Requires `DISCORD_BOT_TOKEN` and `ANTHROPIC_API_KEY`.
 ```bash
 uv run -m src.socialbot.server
 ```
+
 Requires `BLUESKY_USERNAME`/`BLUESKY_PASSWORD` and `ANTHROPIC_API_KEY`.
 
 ### Web UI (Next.js, browse sessions and tool calls)
@@ -67,6 +76,7 @@ Requires `BLUESKY_USERNAME`/`BLUESKY_PASSWORD` and `ANTHROPIC_API_KEY`.
 ```bash
 cd ui && npm install && npm run dev
 ```
+
 Requires `DATABASE_URL` (Prisma) and `NEXT_PUBLIC_SITE_URL`.
 
 ### Visualization (R plots)
@@ -74,6 +84,7 @@ Requires `DATABASE_URL` (Prisma) and `NEXT_PUBLIC_SITE_URL`.
 ```bash
 MTG_FORMAT=Modern START_DATE=2025-08-01 END_DATE=2025-09-15 Rscript visualize/run.R
 ```
+
 Uses `TOURNAMENT_DB_PATH` if the DB is not at `data/tournament.db`.
 
 ---
@@ -112,26 +123,32 @@ Uses `TOURNAMENT_DB_PATH` if the DB is not at `data/tournament.db`.
 ## Environment Variables (summary)
 
 Database
+
 - TOURNAMENT_DB_PATH — path to tournament.db (default: data/tournament.db)
 - POSTGRES_URL — Ops DB for chat logs (preferred)
 - OPS_DB_PATH or BRIDGE_DB_PATH — fallback Ops SQLite path (default: data/ops.db)
 
 LLMs
+
 - ANTHROPIC_API_KEY — required for CLI/Discord/SocialBot
 - OPENAI_API_KEY — optional (provider=gpt5)
 
 Discord
+
 - DISCORD_BOT_TOKEN — required to run the Discord bot
 
 Bluesky
+
 - BLUESKY_USERNAME, BLUESKY_PASSWORD — account credentials
 - SOCIALBOT_POLL_INTERVAL, SOCIALBOT_MAX_TO_PROCESS, SOCIALBOT_MAX_TURNS, SOCIALBOT_CONTEXT_MAX_CHARS, SOCIALBOT_TRIAGE, SOCIALBOT_FORCE_ANSWER — tuning knobs
 
 UI
+
 - NEXT_PUBLIC_SITE_URL — e.g., https://www.metamages.com
 - DATABASE_URL — Prisma DB URL for UI (Ops DB with ChatSession/ToolCall/ToolResult)
 
 Visualization (R)
+
 - MTG_FORMAT, START_DATE, END_DATE, TOP_N, MATRIX_TOP_N, TOURNAMENT_DB_PATH
 
 ---
@@ -172,4 +189,5 @@ MetaMage fits into the broader MTG tournament data ecosystem as the final visual
 ## Contact
 
 Questions or requests for a ready-to-use DB:
+
 - `valentinmanes@outlook.fr`

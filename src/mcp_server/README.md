@@ -5,12 +5,15 @@ FastMCP server exposing read-only analysis tools over a SQLite tournament databa
 ## Run
 
 ### HTTP (used by included clients)
+
 ```bash
 uv run -m src.mcp_server.server --http
 ```
+
 Endpoint: `http://127.0.0.1:9000/mcp` (use `--host`/`--port` to customize)
 
 ### stdio (Claude Desktop)
+
 ```bash
 uv run -m src.mcp_server.server --stdio
 ```
@@ -35,6 +38,7 @@ uv run -m src.mcp_server.server --stdio
 ## Schema Quick Reference
 
 **Main tables:**
+
 - `formats`, `sets`, `players`, `cards`, `card_colors`, `archetypes`
 - `tournaments`, `tournament_entries`, `deck_cards`, `matches`, `meta_changes`
 
