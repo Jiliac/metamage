@@ -145,7 +145,6 @@ def run_simulation(
             continue
 
         count_ok = 0
-        count_conditional = 0
 
         # Run iterations
         for _ in range(config.iterations):
@@ -156,13 +155,10 @@ def run_simulation(
             if good >= config.good_lands_needed:
                 count_ok += 1
 
-            # Check conditional: did we hit land drops?
-            if lands >= config.good_lands_needed:
-                count_conditional += 1
-
-        # Calculate conditional probability
-        # P(have colored sources | hit land drops)
-        probability = count_ok / count_conditional if count_conditional > 0 else 0.0
+        # Calculate unconditional probability
+        # P(have colored sources by turn T)
+        # This includes both hitting land drops AND having the right colors
+        probability = count_ok / config.iterations
         results[good_lands] = probability
 
         if verbose:
