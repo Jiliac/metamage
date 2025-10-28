@@ -5,14 +5,13 @@ import json
 import os
 from dotenv import load_dotenv
 
-# Load environment variables early (before creating clients)
-load_dotenv()
-
 from .logger import logger
 from ..social_clients import BlueskyClient, TwitterClient, SocialMultiplexer
 from ..ops_model.base import get_ops_session_factory
 from ..ops_model.models import FocusedChannel, DiscordPost, SocialMessage, Pass
 
+# Load environment variables early (before creating clients)
+load_dotenv()
 
 # Bot setup
 intents = discord.Intents.default()
