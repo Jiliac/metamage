@@ -183,7 +183,7 @@ def find_minimum_sources(
         verbose: Whether to print progress
 
     Returns:
-        Minimum number of good lands needed
+        Minimum number of good lands needed, or -1 if target is impossible to reach
     """
     results = run_simulation(
         config, mulligan_strategy=mulligan_strategy, verbose=verbose
@@ -194,5 +194,10 @@ def find_minimum_sources(
         if results[good_lands] >= target_probability:
             return good_lands
 
-    # If none found, return maximum tested
-    return max(results.keys())
+    # If none found, return -1 to indicate impossible
+    if verbose:
+        max_lands = max(results.keys())
+        max_prob = results[max_lands]
+        print(f"\n⚠️  WARNING: Target {target_probability:.0%} not achievable!")
+        print(f"   Maximum with {max_lands} sources: {max_prob:.1%}")
+    return -1

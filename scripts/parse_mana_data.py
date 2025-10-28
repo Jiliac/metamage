@@ -33,7 +33,7 @@ def parse_mana_file(file_path: Path) -> Dict[str, Any]:
     # Extract all pattern results
     # Pattern: "99-card deck, 40 lands, pattern C, turn 1:"
     pattern_regex = r"deck, \d+ lands, pattern ([A-Z0-9]+), turn (\d+):"
-    result_regex = r"✓ Result: (\d+) sources needed"
+    result_regex = r"✓ Result: (-?\d+) sources needed"
 
     patterns = {}
 
@@ -61,7 +61,14 @@ def parse_mana_file(file_path: Path) -> Dict[str, Any]:
             if pattern_name not in patterns:
                 patterns[pattern_name] = {}
 
-            patterns[pattern_name][turn] = sources_needed
+            # Convert -1 to null for JSON (indicates impossible)
+            # ALSO: If sources_needed equals the total land count, that means
+            # even with ALL lands being the right color, we can't hit 90%.
+            # This happens because we don't hit land drops consistently enough.
+            if sources_needed == -1 or sources_needed >= land_count:
+                patterns[pattern_name][turn] = None
+            else:
+                patterns[pattern_name][turn] = sources_needed
 
     return {"deck_size": deck_size, "land_count": land_count, "patterns": patterns}
 

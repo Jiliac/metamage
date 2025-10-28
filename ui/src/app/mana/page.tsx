@@ -21,7 +21,7 @@ import { Badge } from '@/components/ui/badge'
 import manaData from '@/data/mana-tables.json'
 
 interface PatternData {
-  [turn: string]: number
+  [turn: string]: number | null // null means 90% is impossible to achieve
 }
 
 interface ManaConfig {
@@ -255,9 +255,18 @@ export default function ManaPage() {
                                   key={turn}
                                   className="text-center text-white font-bold text-lg"
                                 >
-                                  <span className="inline-block px-3 py-1 bg-cyan-600/30 rounded">
-                                    {sources}
-                                  </span>
+                                  {sources === null ? (
+                                    <span
+                                      className="inline-block px-3 py-1 bg-red-600/30 rounded text-red-300"
+                                      title="90% consistency is impossible to achieve with this land count"
+                                    >
+                                      N/A
+                                    </span>
+                                  ) : (
+                                    <span className="inline-block px-3 py-1 bg-cyan-600/30 rounded">
+                                      {sources}
+                                    </span>
+                                  )}
                                 </TableCell>
                               )
                             })}
@@ -268,16 +277,29 @@ export default function ManaPage() {
 
                     {/* Explanation */}
                     <div className="mt-4 p-3 bg-slate-700/20 rounded text-sm text-slate-300">
-                      <p>
-                        <strong className="text-cyan-400">How to use:</strong>{' '}
-                        If you want to cast a {pattern} spell on turn {turns[0]}
-                        , you need at least{' '}
-                        <strong className="text-white">
-                          {patternData[turns[0]]}
-                        </strong>{' '}
-                        sources of that color in your deck with{' '}
-                        {selectedLandCount} total lands.
-                      </p>
+                      {patternData[turns[0]] === null ? (
+                        <p>
+                          <strong className="text-red-400">⚠️ Note:</strong> 90%
+                          consistency for this pattern on turn {turns[0]} is{' '}
+                          <strong className="text-red-300">
+                            impossible to achieve
+                          </strong>{' '}
+                          with {selectedLandCount} total lands. Consider
+                          increasing your land count or accepting lower
+                          consistency.
+                        </p>
+                      ) : (
+                        <p>
+                          <strong className="text-cyan-400">How to use:</strong>{' '}
+                          If you want to cast a {pattern} spell on turn{' '}
+                          {turns[0]}, you need at least{' '}
+                          <strong className="text-white">
+                            {patternData[turns[0]]}
+                          </strong>{' '}
+                          sources of that color in your deck with{' '}
+                          {selectedLandCount} total lands.
+                        </p>
+                      )}
                     </div>
                   </TabsContent>
                 )
