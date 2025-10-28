@@ -478,9 +478,32 @@ async def post_with_images(self, text: str, image_urls: List[str]) -> bool:
 - ✅ Image posting works on both platforms
 - ✅ Historical Discord messages processed for both platforms with per-platform tracking
 
-### Phase 2 Complete When:
+### Phase 2 Status:
 
-- ✅ Socialbot responds to Bluesky mentions (existing functionality preserved)
-- ✅ Socialbot responds to Twitter mentions (new functionality)
-- ✅ Separate `SocialNotification` records per platform
-- ✅ Both platforms polled and processed independently
+#### 2a. Extend Protocol for Notifications
+
+- ✅ **Complete**: Protocol in `base.py` already includes all notification methods
+
+#### 2b. Bluesky Socialbot Migration
+
+- ✅ **Complete**: Implemented notification methods in modular `bluesky/notifications.py`
+- ✅ `list_notifications()` - Fetches and normalizes notifications from Bluesky API
+- ✅ `get_post_thread()` - Fetches full thread context via XRPC
+- ✅ `reply()` - Posts replies with rich text facets for clickable links
+- ✅ Updated `src/socialbot/server.py` to use unified `BlueskyClient`
+- ✅ All existing functionality preserved with robust retry logic and token refresh
+
+#### 2c. Twitter Socialbot (Limited)
+
+- ⏳ **Pending**: Twitter notification support to be implemented
+- Needs: `list_notifications()`, `get_post_thread()`, `reply()` in `twitter/notifications.py`
+
+#### 2d. Socialbot Multi-Platform
+
+- ⏳ **Pending**: Multi-platform polling to be implemented after 2c
+
+### Phase 2b Status: ✅ COMPLETE
+
+- ✅ Socialbot uses unified BlueskyClient for notifications and replies
+- ✅ Notification methods fully implemented with thread context support
+- ✅ Backward compatibility maintained - existing socialbot functionality preserved

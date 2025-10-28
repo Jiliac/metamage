@@ -23,7 +23,7 @@ from ..ops_model.models import SocialMessage  # noqa: F401  # ensure table exist
 from ..ops_model.models import DiscordPost  # noqa: F401  # ensure table exists
 from ..ops_model.models import FocusedChannel  # noqa: F401  # ensure table exists
 from ..ops_model.models import SocialNotification
-from .bsky_client import BlueskySocialClient
+from ..social_clients import BlueskyClient
 from .processor import process_one_notification
 
 logger = logging.getLogger("socialbot.server")
@@ -235,7 +235,7 @@ def claim_next_pending(session, platform: str = "bluesky"):
 
 
 async def poll_and_process_once(
-    client: BlueskySocialClient,
+    client: BlueskyClient,
     provider: str = "claude",
     max_to_process: Optional[int] = None,
 ) -> None:
@@ -297,7 +297,7 @@ async def main():
     load_dotenv()
     ensure_tables()
 
-    client = BlueskySocialClient()
+    client = BlueskyClient()
     ok = await client.authenticate()
     if not ok:
         raise SystemExit("Failed to authenticate to Bluesky")
