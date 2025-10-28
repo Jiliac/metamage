@@ -1,108 +1,18 @@
-"""
-Unified Twitter/X client implementing the SocialClient protocol.
-Uses tweepy library to handle v1.1 (media upload) and v2 (tweet creation) APIs.
-"""
+"""Posting mixin for Twitter client."""
 
 import os
 import asyncio
 import tempfile
-from pathlib import Path
-from datetime import datetime
-from typing import Optional, List, Dict, Any, Tuple
 import logging
+from pathlib import Path
+from typing import Optional, List
 import httpx
-import tweepy
 
-logger = logging.getLogger("social_clients.twitter")
+logger = logging.getLogger("social_clients.twitter.posting")
 
 
-class TwitterClient:
-    """
-    Unified Twitter/X client implementing the SocialClient protocol.
-    Supports both posting (magebridge) and notifications/replies (socialbot).
-
-    Uses tweepy to handle the complexity of mixing v1.1 and v2 APIs:
-    - v1.1 API for media uploads (via tweepy.API)
-    - v2 API for tweet creation (via tweepy.Client)
-    """
-
-    # Protocol properties
-    @property
-    def platform_name(self) -> str:
-        """Platform identifier for Twitter."""
-        return "twitter"
-
-    @property
-    def max_text_len(self) -> int:
-        """Twitter supports 280 characters."""
-        return 280
-
-    @property
-    def max_images(self) -> int:
-        """Twitter supports up to 4 images per tweet."""
-        return 4
-
-    @property
-    def supported_media_types(self) -> Optional[List[str]]:
-        """Twitter supports common image formats."""
-        return ["image/jpeg", "image/png", "image/gif", "image/webp"]
-
-    def __init__(self):
-        self.api_key = os.getenv("TWITTER_API_KEY")
-        self.api_secret = os.getenv("TWITTER_API_SECRET")
-        self.access_token = os.getenv("TWITTER_ACCESS_TOKEN")
-        self.access_token_secret = os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
-
-        # Initialize tweepy clients (will be set during authenticate)
-        self.api_v1: Optional[tweepy.API] = None
-        self.client_v2: Optional[tweepy.Client] = None
-
-    def _check_credentials(self) -> List[str]:
-        """Check if all required credentials are present."""
-        missing = []
-        if not self.api_key:
-            missing.append("TWITTER_API_KEY")
-        if not self.api_secret:
-            missing.append("TWITTER_API_SECRET")
-        if not self.access_token:
-            missing.append("TWITTER_ACCESS_TOKEN")
-        if not self.access_token_secret:
-            missing.append("TWITTER_ACCESS_TOKEN_SECRET")
-        return missing
-
-    async def authenticate(self) -> bool:
-        """
-        Authenticate with Twitter.
-        Initializes both v1.1 and v2 API clients using tweepy.
-        """
-        missing = self._check_credentials()
-        if missing:
-            logger.error(f"Missing Twitter credentials: {', '.join(missing)}")
-            return False
-
-        try:
-            # Initialize v1.1 API for media upload
-            auth = tweepy.OAuth1UserHandler(
-                self.api_key,
-                self.api_secret,
-            )
-            auth.set_access_token(self.access_token, self.access_token_secret)
-            self.api_v1 = tweepy.API(auth)
-
-            # Initialize v2 API for tweeting
-            self.client_v2 = tweepy.Client(
-                consumer_key=self.api_key,
-                consumer_secret=self.api_secret,
-                access_token=self.access_token,
-                access_token_secret=self.access_token_secret,
-            )
-
-            logger.info("Twitter credentials verified and clients initialized")
-            return True
-
-        except Exception as e:
-            logger.error(f"Failed to initialize Twitter clients: {e}")
-            return False
+class PostingMixin:
+    """Handles posting text and images to Twitter using tweepy."""
 
     async def _download_image(self, url: str) -> Path:
         """
@@ -252,43 +162,3 @@ class TwitterClient:
                     temp_file.unlink()
                 except Exception as e:
                     logger.warning(f"Failed to delete temp file {temp_file}: {e}")
-
-    # Notification methods (Phase 2 - stubs for now)
-    async def list_notifications(
-        self,
-        cursor: Optional[str] = None,
-        since: Optional[datetime] = None,
-        types: Optional[List[str]] = None,
-    ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
-        """
-        List notifications from Twitter.
-
-        NOTE: This method is a stub for Phase 1. Full implementation in Phase 2c.
-        """
-        raise NotImplementedError(
-            "Notification support will be implemented in Phase 2c"
-        )
-
-    async def get_post_thread(self, uri: str, depth: int = 10) -> Dict[str, Any]:
-        """
-        Fetch the full post thread for context.
-
-        NOTE: This method is a stub for Phase 1. Full implementation in Phase 2c.
-        """
-        raise NotImplementedError("Thread fetching will be implemented in Phase 2c")
-
-    async def reply(
-        self,
-        text: str,
-        parent_uri: str,
-        parent_cid: Optional[str],
-        root_uri: str,
-        root_cid: Optional[str],
-        link_url: Optional[str] = None,
-    ) -> str:
-        """
-        Post a reply to a given parent/root.
-
-        NOTE: This method is a stub for Phase 1. Full implementation in Phase 2c.
-        """
-        raise NotImplementedError("Reply support will be implemented in Phase 2c")
