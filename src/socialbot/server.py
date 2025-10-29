@@ -23,7 +23,7 @@ from ..ops_model.models import SocialMessage  # noqa: F401  # ensure table exist
 from ..ops_model.models import DiscordPost  # noqa: F401  # ensure table exists
 from ..ops_model.models import FocusedChannel  # noqa: F401  # ensure table exists
 from ..ops_model.models import SocialNotification
-from ..social_clients import BlueskyClient
+from ..social_clients import BlueskyClient, TwitterClient
 from .processor import process_one_notification
 
 logger = logging.getLogger("socialbot.server")
@@ -110,9 +110,13 @@ def _extract_parent_root_from_thread(
     return parent_tuple, root_tuple
 
 
-async def poll_and_upsert(session, client, last_processed_time):
-    """Poll Bluesky notifications and upsert into DB. Returns (seen_count, latest_indexed)."""
-    notifs, _ = await client.list_notifications()  # Always fetch latest, no cursor
+async def poll_and_upsert(session, client, last_processed_time, platform: str):
+    """Poll notifications and upsert into DB. Returns (seen_count, latest_indexed, actually_polled)."""
+    (
+        notifs,
+        _,
+        actually_polled,
+    ) = await client.list_notifications()  # Always fetch latest, no cursor
 
     messages_processed = 0
     latest_indexed = None
@@ -129,7 +133,8 @@ async def poll_and_upsert(session, client, last_processed_time):
 
     for n in notifs:
         actor_id = n.get("actor_id")
-        is_self = bool(client.did and actor_id == client.did)
+        client_did = getattr(client, "did", None)
+        is_self = bool(client_did and actor_id == client_did)
         idx_at = _parse_indexed_at(n.get("indexed_at"))
         reason = n.get("reason")
 
@@ -148,7 +153,7 @@ async def poll_and_upsert(session, client, last_processed_time):
         existing = (
             session.query(SocialNotification)
             .filter_by(
-                platform="bluesky",
+                platform=platform,
                 post_uri=n.get("post_uri"),
                 actor_id=actor_id,
                 reason=n.get("reason"),
@@ -173,7 +178,7 @@ async def poll_and_upsert(session, client, last_processed_time):
             existing.is_self = is_self
         else:
             sn = SocialNotification(
-                platform="bluesky",
+                platform=platform,
                 post_uri=n.get("post_uri"),
                 post_cid=n.get("post_cid"),
                 actor_id=actor_id,
@@ -193,7 +198,7 @@ async def poll_and_upsert(session, client, last_processed_time):
             )
 
     session.commit()
-    return messages_processed, latest_indexed
+    return messages_processed, latest_indexed, actually_polled
 
 
 def claim_next_pending(session, platform: str = "bluesky"):
@@ -235,13 +240,15 @@ def claim_next_pending(session, platform: str = "bluesky"):
 
 
 async def poll_and_process_once(
-    client: BlueskyClient,
+    client,
+    platform: str,
     provider: str = "claude",
     max_to_process: Optional[int] = None,
 ) -> None:
     """
     Poll notifications once, upsert to DB, then process up to N pending notifications.
     N defaults to env SOCIALBOT_MAX_TO_PROCESS or 1.
+    Only updates Pass record if actually_polled=True.
     """
     if max_to_process is None:
         try:
@@ -252,23 +259,31 @@ async def poll_and_process_once(
     SessionFactory = get_ops_session_factory()
     session = SessionFactory()
     try:
-        pass_rec = _get_or_create_pass(session, "bsky_notifications")
+        pass_type = f"{platform}_notifications"
+        pass_rec = _get_or_create_pass(session, pass_type)
         last_processed = pass_rec.last_processed_time
 
-        seen, latest_idx = await poll_and_upsert(session, client, last_processed)
+        seen, latest_idx, actually_polled = await poll_and_upsert(
+            session, client, last_processed, platform
+        )
 
-        # Update pass record
-        pass_rec.last_processed_time = latest_idx or pass_rec.last_processed_time
-        pass_rec.notes = None  # No longer using cursor
-        pass_rec.messages_processed = (pass_rec.messages_processed or 0) + (seen or 0)
-        pass_rec.end_time = _iso_now()
-        pass_rec.success = True
-        session.commit()
+        # Only update pass record if we actually polled (not throttled)
+        if actually_polled:
+            pass_rec.last_processed_time = latest_idx or pass_rec.last_processed_time
+            pass_rec.notes = None  # No longer using cursor
+            pass_rec.messages_processed = (pass_rec.messages_processed or 0) + (
+                seen or 0
+            )
+            pass_rec.end_time = _iso_now()
+            pass_rec.success = True
+            session.commit()
+        else:
+            logger.debug(f"Skipped {platform} pass update: throttled")
 
         # Process up to N pending notifications
         processed = 0
         for _ in range(max_to_process):
-            notif = claim_next_pending(session, platform="bluesky")
+            notif = claim_next_pending(session, platform=platform)
             if not notif:
                 break
             try:
@@ -297,16 +312,42 @@ async def main():
     load_dotenv()
     ensure_tables()
 
-    client = BlueskyClient()
-    ok = await client.authenticate()
-    if not ok:
-        raise SystemExit("Failed to authenticate to Bluesky")
+    # Initialize available clients based on environment variables
+    clients = []
+
+    # Bluesky
+    if os.getenv("BLUESKY_USERNAME") and os.getenv("BLUESKY_PASSWORD"):
+        logger.info("Initializing Bluesky client...")
+        bsky = BlueskyClient()
+        if await bsky.authenticate():
+            clients.append(("bluesky", bsky))
+            logger.info("✓ Bluesky client authenticated")
+        else:
+            logger.warning("✗ Bluesky authentication failed")
+
+    # Twitter
+    if os.getenv("TWITTER_API_KEY") and os.getenv("TWITTER_ACCESS_TOKEN"):
+        logger.info("Initializing Twitter client...")
+        twitter = TwitterClient()
+        if await twitter.authenticate():
+            clients.append(("twitter", twitter))
+            logger.info("✓ Twitter client authenticated")
+        else:
+            logger.warning("✗ Twitter authentication failed")
+
+    if not clients:
+        raise SystemExit(
+            "No social media clients configured. Set BLUESKY_USERNAME/PASSWORD or TWITTER_API_KEY/ACCESS_TOKEN."
+        )
 
     poll_interval = int(os.getenv("SOCIALBOT_POLL_INTERVAL", "30"))
 
-    logger.info("SocialBot started. Polling Bluesky notifications...")
+    logger.info(
+        f"SocialBot started. Polling {len(clients)} platform(s): {', '.join(p for p, _ in clients)}"
+    )
     while True:
-        await poll_and_process_once(client, provider="claude")
+        for platform, client in clients:
+            await poll_and_process_once(client, platform, provider="claude")
         await asyncio.sleep(poll_interval)
 
 

@@ -16,7 +16,7 @@ class NotificationsMixin:
         cursor: Optional[str] = None,
         since: Optional[datetime] = None,
         types: Optional[List[str]] = None,
-    ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+    ) -> Tuple[List[Dict[str, Any]], Optional[str], bool]:
         """
         List notifications (mentions) from Twitter.
 
@@ -29,7 +29,7 @@ class NotificationsMixin:
             logger.info(
                 f"Throttling Twitter notifications poll: {wait_time:.0f}s until next poll"
             )
-            return [], None
+            return [], None, False
 
         # Get authenticated user ID (cached)
         if self._me_cache is None:
@@ -38,7 +38,7 @@ class NotificationsMixin:
                 self._me_cache = {"id": me.data.id, "username": me.data.username}
             except Exception as e:
                 logger.error(f"Failed to get authenticated user: {e}")
-                return [], None
+                return [], None, False
 
         user_id = self._me_cache["id"]
 
@@ -59,7 +59,7 @@ class NotificationsMixin:
 
             if not response.data:
                 logger.info("No Twitter mentions found")
-                return [], None
+                return [], None, True
 
             # Normalize to protocol format
             notifications: List[Dict[str, Any]] = []
@@ -102,7 +102,7 @@ class NotificationsMixin:
 
             next_token = response.meta.get("next_token") if response.meta else None
             logger.info(f"Fetched {len(notifications)} Twitter mentions")
-            return notifications, next_token
+            return notifications, next_token, True
 
         except tweepy.errors.TooManyRequests as e:
             logger.warning(f"Hit Twitter rate limit (429): {e}")
@@ -110,11 +110,11 @@ class NotificationsMixin:
             self._last_notifications_poll = datetime.now(timezone.utc)
             self._poll_interval = self._backoff_seconds
             logger.info(f"Applied {self._backoff_seconds}s backoff after 429")
-            return [], None
+            return [], None, True  # Counted as actual poll attempt
 
         except Exception as e:
             logger.error(f"Error fetching Twitter mentions: {e}")
-            return [], None
+            return [], None, False  # Error, don't count as successful poll
 
     async def get_post_thread(self, uri: str, depth: int = 10) -> Dict[str, Any]:
         """

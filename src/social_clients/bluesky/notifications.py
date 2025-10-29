@@ -12,7 +12,7 @@ class NotificationsMixin:
         cursor: Optional[str] = None,
         since: Optional[datetime] = None,
         types: Optional[List[str]] = None,
-    ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+    ) -> Tuple[List[Dict[str, Any]], Optional[str], bool]:
         """List notifications and normalize to SocialClient shape."""
         headers = await self._auth_headers()
         params: Dict[str, Any] = {"limit": 50}
@@ -62,7 +62,7 @@ class NotificationsMixin:
                 }
             )
 
-        return notifications, next_cursor
+        return notifications, next_cursor, True
 
     async def get_post_thread(self, uri: str, depth: int = 10) -> Dict[str, Any]:
         """Fetch the full post thread for context."""

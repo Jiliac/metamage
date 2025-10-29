@@ -64,9 +64,13 @@ class SocialClient(Protocol):
         cursor: Optional[str] = None,
         since: Optional[datetime] = None,
         types: Optional[List[str]] = None,
-    ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+    ) -> Tuple[List[Dict[str, Any]], Optional[str], bool]:
         """
-        Return (notifications, next_cursor).
+        Return (notifications, next_cursor, actually_polled).
+
+        The `actually_polled` boolean indicates whether an API call was made.
+        False when throttled/rate-limited; True when API was called.
+        Used by socialbot to determine if Pass record should be updated.
 
         Optional filters:
         - since: only notifications strictly after this UTC datetime (server-side if supported; otherwise ignored)
