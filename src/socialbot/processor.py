@@ -348,19 +348,21 @@ async def process_one_notification(session, client, notif, provider: str) -> Non
         )
         logger.info(f"Summarized (+ link) to {len(post_text)} chars")
 
-        # Determine reply StrongRefs; ensure CIDs
+        # Determine reply StrongRefs; ensure CIDs for Bluesky
         # We reply to the user's post (notif.post_uri), not to what the user replied to
         parent_uri = notif.post_uri
         parent_cid = notif.post_cid
         root_uri = notif.root_uri or notif.post_uri
         root_cid = notif.root_cid or notif.post_cid
 
-        if not parent_cid or not root_cid:
-            logger.error("Missing StrongRef CIDs for reply; aborting")
-            notif.status = "error"
-            notif.error_message = "Missing parent/root CID for reply"
-            session.commit()
-            return
+        # Bluesky requires CIDs for StrongRefs; Twitter doesn't use CIDs
+        if notif.platform == "bluesky":
+            if not parent_cid or not root_cid:
+                logger.error("Missing StrongRef CIDs for Bluesky reply; aborting")
+                notif.status = "error"
+                notif.error_message = "Missing parent/root CID for reply"
+                session.commit()
+                return
 
         # Post reply
         logger.info(f"Posting reply to parent {parent_uri}")
