@@ -97,37 +97,6 @@ async def test_get_single_tweet():
     print("Skipping actual API call to avoid rate limits...\n")
 
 
-async def test_reply():
-    """Test posting a reply to a mention."""
-    print("\n=== Testing reply ===\n")
-    print("NOTE: This will actually post a reply. Comment out if not testing!")
-    print("Skipping actual reply for safety...")
-    return
-
-    # Uncomment below to test actual replies
-    """
-    client = get_authenticated_client()
-
-    # Get a mention to reply to
-    me = client.get_me()
-    mentions = client.get_users_mentions(id=me.data.id, max_results=1)
-
-    if not mentions.data:
-        print("No mentions to reply to!")
-        return
-
-    mention_id = mentions.data[0].id
-    print(f"Replying to tweet ID: {mention_id}")
-
-    response = client.create_tweet(
-        text="Test reply from sandbox script",
-        in_reply_to_tweet_id=mention_id
-    )
-
-    print(f"Reply posted! ID: {response.data['id']}")
-    """
-
-
 async def explore_conversation():
     """Explore how to fetch conversation threads on Twitter."""
     print("\n=== Exploring conversation threads ===\n")
@@ -149,7 +118,6 @@ async def main():
         await test_get_mentions()
         await test_get_single_tweet()
         await explore_conversation()
-        await test_reply()
 
         print("\n" + "=" * 60)
         print("Sandbox exploration complete!")
@@ -158,9 +126,10 @@ async def main():
         print("✅ get_users_mentions() works with Free tier + user_auth=True")
         print("✅ Mentions contain: id, text, created_at, conversation_id, author_id")
         print("✅ Pagination supported via next_token")
-        print("✅ reply() uses create_tweet(in_reply_to_tweet_id=...)")
         print("✅ Minimal thread context is sufficient (mention has the text)")
-        print("\n🚀 Ready to implement twitter/notifications.py!")
+        print("⚠️  Rate limit: 1 request per 15 minutes on Free tier")
+        print("\n📝 Next: Test reply with scripts/twitter_reply_test.py")
+        print("🚀 Then: Implement twitter/notifications.py!")
 
     except Exception as e:
         print(f"\nError: {e}")
