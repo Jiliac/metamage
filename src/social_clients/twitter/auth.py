@@ -2,7 +2,8 @@
 
 import os
 import logging
-from typing import Optional, List
+from typing import Optional, List, Tuple, Dict, Any
+from datetime import datetime, timezone
 import tweepy
 
 logger = logging.getLogger("social_clients.twitter.auth")
@@ -20,6 +21,16 @@ class AuthMixin:
         # Initialize tweepy clients (will be set during authenticate)
         self.api_v1: Optional[tweepy.API] = None
         self.client_v2: Optional[tweepy.Client] = None
+
+        # Rate limiting for notifications polling (Phase 2c)
+        self._last_notifications_poll: Optional[datetime] = None
+        self._poll_interval = int(os.getenv("TWITTER_POLL_INTERVAL_SECONDS", "900"))
+        self._backoff_seconds = int(
+            os.getenv("TWITTER_RATE_LIMIT_BACKOFF_SECONDS", "300")
+        )
+
+        # Cache for authenticated user info
+        self._me_cache: Optional[Dict[str, Any]] = None
 
     def _check_credentials(self) -> List[str]:
         """Check if all required credentials are present."""
@@ -67,3 +78,26 @@ class AuthMixin:
         except Exception as e:
             logger.error(f"Failed to initialize Twitter clients: {e}")
             return False
+
+    def _should_throttle_notifications_poll(self) -> Tuple[bool, Optional[float]]:
+        """
+        Check if we should throttle notification polling due to rate limits.
+
+        Returns:
+            (should_throttle, seconds_to_wait)
+        """
+        if self._last_notifications_poll is None:
+            return False, None
+
+        now = datetime.now(timezone.utc)
+        elapsed = (now - self._last_notifications_poll).total_seconds()
+        required = self._poll_interval
+
+        if elapsed < required:
+            wait_time = required - elapsed
+            logger.debug(
+                f"Throttling notifications poll: {elapsed:.0f}s elapsed, {wait_time:.0f}s remaining"
+            )
+            return True, wait_time
+
+        return False, None
