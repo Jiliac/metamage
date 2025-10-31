@@ -1,10 +1,26 @@
 """Utilities for ChatGPT MCP app."""
 
 from datetime import datetime
-from src.models import get_engine
+from contextlib import contextmanager
+from src.models import get_engine, get_session_factory
 
 # Create engine for database access
 engine = get_engine()
+
+# Session factory for ORM usage
+session_factory = get_session_factory()
+
+
+@contextmanager
+def get_session():
+    """
+    Yield a SQLAlchemy ORM Session.
+    """
+    session = session_factory()
+    try:
+        yield session
+    finally:
+        session.close()
 
 
 def validate_date_range(start_date: str, end_date: str) -> tuple[datetime, datetime]:

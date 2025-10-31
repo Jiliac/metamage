@@ -11,12 +11,15 @@ import json
 try:
     from src.analysis.meta import compute_meta_report
     from src.analysis.archetype import compute_archetype_overview
-    from .utils import engine as db_engine, validate_date_range
+    from src.models import Format
+    from .utils import engine as db_engine, validate_date_range, get_session
 except Exception:
     compute_meta_report = None
     compute_archetype_overview = None
+    Format = None
     db_engine = None
     validate_date_range = None
+    get_session = None
 
 # Create the MCP server
 mcp = FastMCP(
@@ -112,6 +115,21 @@ async def _list_tools() -> List[types.Tool]:
                     }
                 },
                 "required": ["archetype_name"],
+                "additionalProperties": False,
+            },
+            annotations={
+                "destructiveHint": False,
+                "openWorldHint": False,
+                "readOnlyHint": True,
+            },
+        ),
+        types.Tool(
+            name="list-formats",
+            title="List Formats",
+            description="List all available MTG formats with their IDs and names.",
+            inputSchema={
+                "type": "object",
+                "properties": {},
                 "additionalProperties": False,
             },
             annotations={
@@ -256,6 +274,52 @@ async def _call_tool_request(req: types.CallToolRequest) -> types.ServerResult:
             )
         try:
             result = compute_archetype_overview(db_engine, arch.strip())
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text=json.dumps(result, default=str),
+                        )
+                    ],
+                )
+            )
+        except Exception as e:
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text=f"Error: {e}",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+
+    if req.params.name == "list-formats":
+        if Format is None or get_session is None:
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text="Server misconfigured: list-formats tool unavailable",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        try:
+            with get_session() as session:
+                formats = session.query(Format).order_by(Format.name).all()
+
+            if not formats:
+                result = {"formats": [], "message": "No formats found in database"}
+            else:
+                format_list = [{"id": row.id, "name": row.name} for row in formats]
+                result = {"formats": format_list, "total_count": len(format_list)}
+
             return types.ServerResult(
                 types.CallToolResult(
                     content=[
