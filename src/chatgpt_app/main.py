@@ -1,4 +1,4 @@
-"""ChatGPT MCP app for MTG Tournament Analysis."""
+"""Simple ChatGPT MCP app with a hello world tool."""
 
 from __future__ import annotations
 
@@ -6,202 +6,89 @@ from typing import List
 
 import mcp.types as types
 from mcp.server.fastmcp import FastMCP
+import json
 
-# Import the existing MCP server instance and its tools
-from ..mcp_server.mcp import mcp as mtg_mcp
+try:
+    from src.analysis.meta import compute_meta_report
+    from .utils import engine as db_engine, validate_date_range
+except Exception:
+    compute_meta_report = None
+    db_engine = None
+    validate_date_range = None
 
-# Create the ChatGPT-compatible MCP server
+# Create the MCP server
 mcp = FastMCP(
-    name="mtg-tournament-app",
+    name="hello-world-app",
     stateless_http=True,
 )
 
 
 @mcp._mcp_server.list_tools()
 async def _list_tools() -> List[types.Tool]:
-    """List available tools for ChatGPT."""
+    """List available tools."""
     return [
         types.Tool(
+            name="say-hello",
+            title="Say Hello",
+            description="A simple tool that returns 'Hello, World!'",
+            inputSchema={
+                "type": "object",
+                "properties": {},
+                "additionalProperties": False,
+            },
+            annotations={
+                "destructiveHint": False,
+                "openWorldHint": False,
+                "readOnlyHint": True,
+            },
+        ),
+        types.Tool(
+            name="multiply",
+            title="Multiply Numbers",
+            description="Multiplies two numbers together and returns the result",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "a": {
+                        "type": "number",
+                        "description": "First number",
+                    },
+                    "b": {
+                        "type": "number",
+                        "description": "Second number",
+                    },
+                },
+                "required": ["a", "b"],
+                "additionalProperties": False,
+            },
+            annotations={
+                "destructiveHint": False,
+                "openWorldHint": False,
+                "readOnlyHint": True,
+            },
+        ),
+        types.Tool(
             name="get-meta-report",
-            title="Get Meta Report",
-            description="Get a meta report showing archetype presence % and winrates for a format in a date range",
+            title="Metagame Report",
+            description="Returns archetype presence and winrate (excluding draws) over a date window.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "format_id": {
-                        "type": "string",
-                        "description": "Format UUID (e.g., Modern: '402d2a82-3ba6-4369-badf-a51f3eff4375')",
-                    },
+                    "format_id": {"type": "string", "description": "Format UUID"},
                     "start_date": {
                         "type": "string",
-                        "description": "Start date (YYYY-MM-DD)",
+                        "description": "ISO date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)",
                     },
                     "end_date": {
                         "type": "string",
-                        "description": "End date (YYYY-MM-DD)",
+                        "description": "ISO date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)",
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "Maximum number of archetypes to return (default: 20)",
-                        "default": 20,
+                        "description": "Max archetypes (default 15, max 20)",
                     },
                 },
                 "required": ["format_id", "start_date", "end_date"],
-                "additionalProperties": False,
-            },
-            annotations={
-                "destructiveHint": False,
-                "openWorldHint": False,
-                "readOnlyHint": True,
-            },
-        ),
-        types.Tool(
-            name="get-archetype-overview",
-            title="Get Archetype Overview",
-            description="Get detailed overview of an archetype including recent performance and key cards",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "archetype_name": {
-                        "type": "string",
-                        "description": "Name of the archetype (e.g., 'Mono Black Coffers', 'Rakdos Scam')",
-                    },
-                },
-                "required": ["archetype_name"],
-                "additionalProperties": False,
-            },
-            annotations={
-                "destructiveHint": False,
-                "openWorldHint": False,
-                "readOnlyHint": True,
-            },
-        ),
-        types.Tool(
-            name="get-matchup-winrate",
-            title="Get Matchup Winrate",
-            description="Get head-to-head winrate between two archetypes in a date range",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "format_id": {
-                        "type": "string",
-                        "description": "Format UUID",
-                    },
-                    "archetype1_name": {
-                        "type": "string",
-                        "description": "First archetype name",
-                    },
-                    "archetype2_name": {
-                        "type": "string",
-                        "description": "Second archetype name",
-                    },
-                    "start_date": {
-                        "type": "string",
-                        "description": "Start date (YYYY-MM-DD)",
-                    },
-                    "end_date": {
-                        "type": "string",
-                        "description": "End date (YYYY-MM-DD)",
-                    },
-                },
-                "required": [
-                    "format_id",
-                    "archetype1_name",
-                    "archetype2_name",
-                    "start_date",
-                    "end_date",
-                ],
-                "additionalProperties": False,
-            },
-            annotations={
-                "destructiveHint": False,
-                "openWorldHint": False,
-                "readOnlyHint": True,
-            },
-        ),
-        types.Tool(
-            name="get-card-presence",
-            title="Get Card Presence",
-            description="Get top cards by presence % in a format during a date range",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "format_id": {
-                        "type": "string",
-                        "description": "Format UUID",
-                    },
-                    "start_date": {
-                        "type": "string",
-                        "description": "Start date (YYYY-MM-DD)",
-                    },
-                    "end_date": {
-                        "type": "string",
-                        "description": "End date (YYYY-MM-DD)",
-                    },
-                    "board": {
-                        "type": "string",
-                        "enum": ["MAIN", "SIDE"],
-                        "description": "Deck board to analyze (MAIN or SIDE)",
-                    },
-                    "exclude_lands": {
-                        "type": "boolean",
-                        "description": "Exclude lands from results",
-                        "default": False,
-                    },
-                    "limit": {
-                        "type": "integer",
-                        "description": "Maximum number of cards to return",
-                        "default": 50,
-                    },
-                },
-                "required": ["format_id", "start_date", "end_date"],
-                "additionalProperties": False,
-            },
-            annotations={
-                "destructiveHint": False,
-                "openWorldHint": False,
-                "readOnlyHint": True,
-            },
-        ),
-        types.Tool(
-            name="search-card",
-            title="Search Card",
-            description="Search for a Magic card by name (supports partial/fuzzy matching)",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "Card name or partial name to search for",
-                    },
-                },
-                "required": ["query"],
-                "additionalProperties": False,
-            },
-            annotations={
-                "destructiveHint": False,
-                "openWorldHint": False,
-                "readOnlyHint": True,
-            },
-        ),
-        types.Tool(
-            name="query-database",
-            title="Query Database",
-            description="Run SELECT-only SQL queries against the MTG tournament database",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "sql": {
-                        "type": "string",
-                        "description": "SQL SELECT query to execute",
-                    },
-                    "limit": {
-                        "type": "integer",
-                        "description": "Maximum number of rows to return",
-                        "default": 100,
-                    },
-                },
-                "required": ["sql"],
                 "additionalProperties": False,
             },
             annotations={
@@ -214,60 +101,121 @@ async def _list_tools() -> List[types.Tool]:
 
 
 async def _call_tool_request(req: types.CallToolRequest) -> types.ServerResult:
-    """Handle tool calls by delegating to the underlying MCP server."""
-    try:
-        # Map ChatGPT-style tool names (kebab-case) to MCP tool names (snake_case)
-        tool_name_map = {
-            "get-meta-report": "get_meta_report",
-            "get-archetype-overview": "get_archetype_overview",
-            "get-matchup-winrate": "get_matchup_winrate",
-            "get-card-presence": "get_card_presence",
-            "search-card": "search_card",
-            "query-database": "query_database",
-        }
+    """Handle tool calls."""
+    if req.params.name == "say-hello":
+        return types.ServerResult(
+            types.CallToolResult(
+                content=[
+                    types.TextContent(
+                        type="text",
+                        text="Hello, World!",
+                    )
+                ],
+            )
+        )
 
-        mcp_tool_name = tool_name_map.get(req.params.name)
+    if req.params.name == "multiply":
+        a = req.params.arguments.get("a")
+        b = req.params.arguments.get("b")
 
-        if not mcp_tool_name:
+        if a is None or b is None:
             return types.ServerResult(
                 types.CallToolResult(
                     content=[
                         types.TextContent(
                             type="text",
-                            text=f"Unknown tool: {req.params.name}",
+                            text="Error: Both 'a' and 'b' parameters are required",
                         )
                     ],
                     isError=True,
                 )
             )
 
-        # Create a new request with the mapped tool name
-        mapped_req = types.CallToolRequest(
-            params=types.CallToolRequestParams(
-                name=mcp_tool_name,
-                arguments=req.params.arguments,
-            )
-        )
-
-        # Call the underlying MCP server's tool handler
-        result = await mtg_mcp._mcp_server.request_handlers[types.CallToolRequest](
-            mapped_req
-        )
-
-        return result
-
-    except Exception as e:
+        result = a * b
         return types.ServerResult(
             types.CallToolResult(
                 content=[
                     types.TextContent(
                         type="text",
-                        text=f"Error executing tool: {str(e)}",
+                        text=str(result),
                     )
                 ],
-                isError=True,
             )
         )
+
+    if req.params.name == "get-meta-report":
+        if (
+            compute_meta_report is None
+            or db_engine is None
+            or validate_date_range is None
+        ):
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text="Server misconfigured: metagame tool unavailable",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        args = req.params.arguments or {}
+        fmt = args.get("format_id")
+        start_str = args.get("start_date")
+        end_str = args.get("end_date")
+        lim = args.get("limit")
+        if not (fmt and start_str and end_str):
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text="Missing required parameters: format_id, start_date, end_date",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        try:
+            start_dt, end_dt = validate_date_range(start_str, end_str)
+            limit_val = lim if isinstance(lim, int) and lim > 0 else 15
+            result = compute_meta_report(db_engine, fmt, start_dt, end_dt, limit_val)
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text=json.dumps(result, default=str),
+                        )
+                    ],
+                )
+            )
+        except Exception as e:
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text=f"Error: {e}",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+
+    # Unknown tool
+    return types.ServerResult(
+        types.CallToolResult(
+            content=[
+                types.TextContent(
+                    type="text",
+                    text=f"Unknown tool: {req.params.name}",
+                )
+            ],
+            isError=True,
+        )
+    )
 
 
 # Register the tool handler
@@ -294,15 +242,8 @@ except Exception:
 if __name__ == "__main__":
     import uvicorn
 
-    print("Starting MTG Tournament ChatGPT MCP server on http://0.0.0.0:8000")
+    print("Starting MCP server on http://0.0.0.0:8000")
     print("Endpoints:")
     print("  - GET  /mcp (SSE stream)")
     print("  - POST /mcp/messages?sessionId=<id>")
-    print("\nFormat IDs:")
-    print("  - Modern:   402d2a82-3ba6-4369-badf-a51f3eff4375")
-    print("  - Legacy:   0f68f9f5-460d-4111-94df-965cf7e4d28c")
-    print("  - Pauper:   cbf69202-6dc7-4861-849e-859d116e7182")
-    print("  - Standard: ceff9123-427e-4099-810a-39f57884ec4e")
-    print("  - Pioneer:  123dda9e-b157-4bbf-a990-310565cbef7c")
-    print("  - Vintage:  dcf29968-f908-4d2e-90a6-4f158bc767be")
-    uvicorn.run("src.chatgpt_app.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("src.chatgpt_app.main:app", host="0.0.0.0", port=8000)
