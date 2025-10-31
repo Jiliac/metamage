@@ -1,11 +1,70 @@
 from typing import Dict, Any
 from sqlalchemy import text
-from fastmcp import Context
 
 from .utils import engine
 from .mcp import mcp
+from fastmcp import Context
 from .log_decorator import log_tool_calls
-from ..analysis.archetype import find_archetype_fuzzy
+
+
+def _find_archetype_fuzzy(archetype_name: str):
+    """Find archetype using fuzzy matching with fallback strategies."""
+
+    # Strategy 1: Exact match (case-insensitive)
+    exact_sql = """
+        SELECT a.id, a.name, f.name as format_name
+        FROM archetypes a
+        JOIN formats f ON a.format_id = f.id
+        WHERE LOWER(a.name) = LOWER(:archetype_name)
+    """
+
+    with engine.connect() as conn:
+        result = conn.execute(
+            text(exact_sql), {"archetype_name": archetype_name}
+        ).first()
+        if result:
+            return result._mapping
+
+    # Strategy 2: Partial match (contains)
+    partial_sql = """
+        SELECT a.id, a.name, f.name as format_name
+        FROM archetypes a
+        JOIN formats f ON a.format_id = f.id
+        WHERE LOWER(a.name) LIKE LOWER(:pattern)
+        ORDER BY LENGTH(a.name)
+        LIMIT 1
+    """
+
+    with engine.connect() as conn:
+        pattern = f"%{archetype_name}%"
+        result = conn.execute(text(partial_sql), {"pattern": pattern}).first()
+        if result:
+            return result._mapping
+
+    # Strategy 3: Word-based matching (split and match individual words)
+    words = archetype_name.lower().split()
+    if len(words) > 1:
+        word_conditions = []
+        params = {}
+        for i, word in enumerate(words):
+            word_conditions.append(f"LOWER(a.name) LIKE :word_{i}")
+            params[f"word_{i}"] = f"%{word}%"
+
+        word_sql = f"""
+            SELECT a.id, a.name, f.name as format_name
+            FROM archetypes a
+            JOIN formats f ON a.format_id = f.id
+            WHERE {" AND ".join(word_conditions)}
+            ORDER BY LENGTH(a.name)
+            LIMIT 1
+        """
+
+        with engine.connect() as conn:
+            result = conn.execute(text(word_sql), params).first()
+            if result:
+                return result._mapping
+
+    return None
 
 
 @log_tool_calls
@@ -36,8 +95,8 @@ def get_archetype_overview(archetype_name: str, ctx: Context = None) -> Dict[str
     4) trend = get_archetype_trends(format_id, "Yawgmoth", days_back=60)
     5) For nuanced splits, use query_database() with IDs from steps 1–2.
     """
-    # Find archetype using fuzzy matching (shared analysis function)
-    arch_match = find_archetype_fuzzy(engine, archetype_name)
+    # Find archetype using fuzzy matching
+    arch_match = _find_archetype_fuzzy(archetype_name)
 
     if not arch_match:
         return {
@@ -49,7 +108,7 @@ def get_archetype_overview(archetype_name: str, ctx: Context = None) -> Dict[str
 
     # Get archetype info with recent performance
     sql = """
-        SELECT
+        SELECT 
             a.id as archetype_id,
             a.name as archetype_name,
             f.name as format_name,
@@ -57,7 +116,7 @@ def get_archetype_overview(archetype_name: str, ctx: Context = None) -> Dict[str
             COUNT(DISTINCT te.id) as recent_entries,
             COUNT(DISTINCT t.id) as tournaments_played,
             ROUND(
-                CAST(COUNT(CASE WHEN m.result = 'WIN' THEN 1 END) AS REAL) /
+                CAST(COUNT(CASE WHEN m.result = 'WIN' THEN 1 END) AS REAL) / 
                 CAST((COUNT(CASE WHEN m.result = 'WIN' THEN 1 END) + COUNT(CASE WHEN m.result = 'LOSS' THEN 1 END)) AS REAL) * 100, 1
             ) as winrate_no_draws
         FROM archetypes a
@@ -76,7 +135,7 @@ def get_archetype_overview(archetype_name: str, ctx: Context = None) -> Dict[str
 
     # Get top cards
     cards_sql = """
-        SELECT
+        SELECT 
             c.name as card_name,
             COUNT(DISTINCT te.id) as decks_playing,
             ROUND(AVG(CAST(dc.count AS REAL)), 1) as avg_copies
