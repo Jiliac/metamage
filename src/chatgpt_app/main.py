@@ -10,9 +10,11 @@ import json
 
 try:
     from src.analysis.meta import compute_meta_report
+    from src.analysis.archetype import compute_archetype_overview
     from .utils import engine as db_engine, validate_date_range
 except Exception:
     compute_meta_report = None
+    compute_archetype_overview = None
     db_engine = None
     validate_date_range = None
 
@@ -89,6 +91,27 @@ async def _list_tools() -> List[types.Tool]:
                     },
                 },
                 "required": ["format_id", "start_date", "end_date"],
+                "additionalProperties": False,
+            },
+            annotations={
+                "destructiveHint": False,
+                "openWorldHint": False,
+                "readOnlyHint": True,
+            },
+        ),
+        types.Tool(
+            name="get-archetype-overview",
+            title="Archetype Overview",
+            description="Resolve an archetype by name (fuzzy) and return recent performance and key cards.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "archetype_name": {
+                        "type": "string",
+                        "description": "Archetype name (case-insensitive, partial/fuzzy supported)",
+                    }
+                },
+                "required": ["archetype_name"],
                 "additionalProperties": False,
             },
             annotations={
@@ -181,6 +204,58 @@ async def _call_tool_request(req: types.CallToolRequest) -> types.ServerResult:
             start_dt, end_dt = validate_date_range(start_str, end_str)
             limit_val = lim if isinstance(lim, int) and lim > 0 else 15
             result = compute_meta_report(db_engine, fmt, start_dt, end_dt, limit_val)
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text=json.dumps(result, default=str),
+                        )
+                    ],
+                )
+            )
+        except Exception as e:
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text=f"Error: {e}",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+
+    if req.params.name == "get-archetype-overview":
+        if compute_archetype_overview is None or db_engine is None:
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text="Server misconfigured: archetype overview tool unavailable",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        args = req.params.arguments or {}
+        arch = args.get("archetype_name")
+        if not isinstance(arch, str) or not arch.strip():
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text="Missing required parameter: archetype_name",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        try:
+            result = compute_archetype_overview(db_engine, arch.strip())
             return types.ServerResult(
                 types.CallToolResult(
                     content=[
