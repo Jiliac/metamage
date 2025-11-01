@@ -1,11 +1,10 @@
-from datetime import datetime
 from typing import Dict, Any
-from sqlalchemy import text
 
-from .utils import engine
+from .utils import engine, validate_date_range
 from .mcp import mcp
 from fastmcp import Context
 from .log_decorator import log_tool_calls
+from ..analysis.card import compute_card_presence
 
 
 @log_tool_calls
@@ -47,79 +46,10 @@ def get_card_presence(
       2) cross-check in specific archetypes via get_archetype_cards()
       3) verify performance with query_database() joins on deck_cards.
     """
-    try:
-        start = datetime.fromisoformat(start_date)
-        end = datetime.fromisoformat(end_date)
-    except Exception:
-        raise ValueError(
-            "Dates must be ISO format (e.g., 2025-01-01 or 2025-01-01T00:00:00)"
-        )
-    if end < start:
-        raise ValueError("end_date must be >= start_date")
-
+    # Validate dates then delegate to shared analysis
+    start, end = validate_date_range(start_date, end_date)
     if board is not None and board not in ["MAIN", "SIDE"]:
         raise ValueError("board must be 'MAIN', 'SIDE', or None")
-
-    sql = """
-        WITH total_decks AS (
-            SELECT COUNT(DISTINCT te.id) as total_format_decks
-            FROM tournament_entries te
-            JOIN tournaments t ON te.tournament_id = t.id
-            WHERE t.format_id = :format_id
-            AND t.date >= :start
-            AND t.date <= :end
-        ),
-        card_stats AS (
-            SELECT 
-                c.name as card_name,
-                SUM(dc.count) as total_copies,
-                COUNT(DISTINCT te.id) as decks_playing,
-                ROUND(AVG(CAST(dc.count AS REAL)), 2) as avg_copies_per_deck
-            FROM deck_cards dc
-            JOIN cards c ON dc.card_id = c.id
-            JOIN tournament_entries te ON dc.entry_id = te.id
-            JOIN tournaments t ON te.tournament_id = t.id
-            WHERE t.format_id = :format_id
-            AND t.date >= :start
-            AND t.date <= :end
-            AND (:board IS NULL OR dc.board = :board)
-            AND (NOT :exclude_lands OR NOT c.is_land)
-            GROUP BY c.id, c.name
-        )
-        SELECT 
-            card_name,
-            total_copies,
-            decks_playing,
-            avg_copies_per_deck,
-            ROUND(
-                CAST(decks_playing AS REAL) / 
-                CAST((SELECT total_format_decks FROM total_decks) AS REAL) * 100, 2
-            ) as presence_percent
-        FROM card_stats
-        WHERE decks_playing > 0
-        ORDER BY decks_playing DESC, total_copies DESC
-        LIMIT :limit
-    """
-
-    with engine.connect() as conn:
-        rows = conn.execute(
-            text(sql),
-            {
-                "format_id": format_id,
-                "start": start,
-                "end": end,
-                "board": board,
-                "exclude_lands": exclude_lands,
-                "limit": limit,
-            },
-        ).fetchall()
-
-    data = [dict(r._mapping) for r in rows]
-
-    return {
-        "format_id": format_id,
-        "start_date": start.isoformat(),
-        "end_date": end.isoformat(),
-        "board": board,
-        "cards": data,
-    }
+    return compute_card_presence(
+        engine, format_id, start, end, board, bool(exclude_lands), limit
+    )

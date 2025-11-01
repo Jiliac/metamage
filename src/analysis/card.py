@@ -126,3 +126,95 @@ def search_card(engine: Engine, query: str) -> Dict[str, Any]:
         }
 
     raise ValueError("Card not found in local DB and Scryfall lookup failed")
+
+
+def compute_card_presence(
+    engine: Engine,
+    format_id: str,
+    start,
+    end,
+    board: Optional[str] = None,
+    exclude_lands: bool = True,
+    limit: int = 20,
+) -> Dict[str, Any]:
+    """
+    Compute top cards by presence within a format and date range.
+
+    Args:
+        engine: SQLAlchemy Engine
+        format_id: Format UUID
+        start: Start datetime (inclusive)
+        end: End datetime (inclusive)
+        board: 'MAIN', 'SIDE', or None for both
+        exclude_lands: Whether to exclude lands (default True)
+        limit: Max cards to return (default 20)
+
+    Returns:
+        Dict with keys: format_id, start_date, end_date, board, cards (list of dicts)
+    """
+    if board is not None and board not in ["MAIN", "SIDE"]:
+        raise ValueError("board must be 'MAIN', 'SIDE', or None")
+
+    sql = """
+        WITH total_decks AS (
+            SELECT COUNT(DISTINCT te.id) as total_format_decks
+            FROM tournament_entries te
+            JOIN tournaments t ON te.tournament_id = t.id
+            WHERE t.format_id = :format_id
+              AND t.date >= :start
+              AND t.date <= :end
+        ),
+        card_stats AS (
+            SELECT 
+                c.name as card_name,
+                SUM(dc.count) as total_copies,
+                COUNT(DISTINCT te.id) as decks_playing,
+                ROUND(AVG(CAST(dc.count AS REAL)), 2) as avg_copies_per_deck
+            FROM deck_cards dc
+            JOIN cards c ON dc.card_id = c.id
+            JOIN tournament_entries te ON dc.entry_id = te.id
+            JOIN tournaments t ON te.tournament_id = t.id
+            WHERE t.format_id = :format_id
+              AND t.date >= :start
+              AND t.date <= :end
+              AND (:board IS NULL OR dc.board = :board)
+              AND (NOT :exclude_lands OR NOT c.is_land)
+            GROUP BY c.id, c.name
+        )
+        SELECT 
+            card_name,
+            total_copies,
+            decks_playing,
+            avg_copies_per_deck,
+            ROUND(
+                CAST(decks_playing AS REAL) / 
+                CAST((SELECT total_format_decks FROM total_decks) AS REAL) * 100, 2
+            ) as presence_percent
+        FROM card_stats
+        WHERE decks_playing > 0
+        ORDER BY decks_playing DESC, total_copies DESC
+        LIMIT :limit
+    """
+
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(sql),
+            {
+                "format_id": format_id,
+                "start": start,
+                "end": end,
+                "board": board,
+                "exclude_lands": exclude_lands,
+                "limit": limit,
+            },
+        ).fetchall()
+
+    data = [dict(r._mapping) for r in rows]
+
+    return {
+        "format_id": format_id,
+        "start_date": start.isoformat(),
+        "end_date": end.isoformat(),
+        "board": board,
+        "cards": data,
+    }

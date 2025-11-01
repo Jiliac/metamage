@@ -16,8 +16,12 @@ try:
         compute_archetype_winrate,
     )
     from src.analysis.matchup import compute_matchup_winrate
-    from src.analysis.card import search_card as analysis_search_card
+    from src.analysis.card import (
+        search_card as analysis_search_card,
+        compute_card_presence,
+    )
     from src.analysis.sources import compute_sources as analysis_compute_sources
+    from src.analysis.player import compute_player_profile
     from src.models import Format
     from .utils import engine as db_engine, validate_date_range, get_session
     from .query import execute_select_query
@@ -28,7 +32,9 @@ except Exception:
     compute_archetype_winrate = None
     compute_matchup_winrate = None
     analysis_search_card = None
+    compute_card_presence = None
     analysis_compute_sources = None
+    compute_player_profile = None
     Format = None
     db_engine = None
     validate_date_range = None
@@ -352,6 +358,65 @@ Do NOT include LIMIT in SQL; it's added automatically.""",
                     },
                 },
                 "required": ["format_id", "start_date", "end_date"],
+                "additionalProperties": False,
+            },
+            annotations={
+                "destructiveHint": False,
+                "openWorldHint": False,
+                "readOnlyHint": True,
+            },
+        ),
+        types.Tool(
+            name="get-card-presence",
+            title="Card Presence (Format)",
+            description="Top cards by presence within a format and date range. Optionally filter by board (MAIN/SIDE) and exclude lands.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "format_id": {"type": "string", "description": "Format UUID"},
+                    "start_date": {
+                        "type": "string",
+                        "description": "ISO date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)",
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "description": "ISO date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)",
+                    },
+                    "board": {
+                        "type": "string",
+                        "description": "Card board: 'MAIN' or 'SIDE' (default both)",
+                    },
+                    "exclude_lands": {
+                        "type": "boolean",
+                        "description": "Exclude land cards (default true)",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max cards (default 20)",
+                    },
+                },
+                "required": ["format_id", "start_date", "end_date"],
+                "additionalProperties": False,
+            },
+            annotations={
+                "destructiveHint": False,
+                "openWorldHint": False,
+                "readOnlyHint": True,
+            },
+        ),
+        types.Tool(
+            name="get-player",
+            title="Get Player Profile",
+            description="Get a player's recent (90-day) tournament activity and results by UUID or handle (fuzzy).",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "player_id_or_handle": {
+                        "type": "string",
+                        "description": "Player UUID or handle (fuzzy supported)",
+                    },
+                },
+                "required": ["player_id_or_handle"],
                 "additionalProperties": False,
             },
             annotations={
@@ -878,6 +943,132 @@ async def _call_tool_request(req: types.CallToolRequest) -> types.ServerResult:
             return types.ServerResult(
                 types.CallToolResult(
                     content=[types.TextContent(type="text", text=f"Error: {e}")],
+                    isError=True,
+                )
+            )
+
+    if req.params.name == "get-card-presence":
+        if (
+            compute_card_presence is None
+            or db_engine is None
+            or validate_date_range is None
+        ):
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text="Server misconfigured: card presence tool unavailable",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        args = req.params.arguments or {}
+        fmt = args.get("format_id")
+        s = args.get("start_date")
+        e = args.get("end_date")
+        board = args.get("board")
+        exclude_lands = args.get("exclude_lands", True)
+        lim = args.get("limit", 20)
+        if not (fmt and s and e):
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text="Missing required parameters: format_id, start_date, end_date",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        try:
+            start_dt, end_dt = validate_date_range(s, e)
+            board_norm = None
+            if isinstance(board, str) and board.strip():
+                board_norm = board.strip().upper()
+                if board_norm not in ["MAIN", "SIDE"]:
+                    return types.ServerResult(
+                        types.CallToolResult(
+                            content=[
+                                types.TextContent(
+                                    type="text",
+                                    text="board must be 'MAIN' or 'SIDE' if provided",
+                                )
+                            ],
+                            isError=True,
+                        )
+                    )
+            limit_val = lim if isinstance(lim, int) and lim > 0 else 20
+            result = compute_card_presence(
+                db_engine,
+                fmt,
+                start_dt,
+                end_dt,
+                board_norm,
+                bool(exclude_lands),
+                limit_val,
+            )
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text", text=json.dumps(result, default=str)
+                        )
+                    ]
+                )
+            )
+        except Exception as ex:
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[types.TextContent(type="text", text=f"Error: {ex}")],
+                    isError=True,
+                )
+            )
+
+    if req.params.name == "get-player":
+        if compute_player_profile is None or db_engine is None:
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text="Server misconfigured: get-player unavailable",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        args = req.params.arguments or {}
+        ph = args.get("player_id_or_handle")
+        if not isinstance(ph, str) or not ph.strip():
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text="Missing required parameter: player_id_or_handle",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        try:
+            result = compute_player_profile(db_engine, ph.strip())
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text", text=json.dumps(result, default=str)
+                        )
+                    ]
+                )
+            )
+        except Exception as ex:
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[types.TextContent(type="text", text=f"Error: {ex}")],
                     isError=True,
                 )
             )
