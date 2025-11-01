@@ -1,4 +1,4 @@
-"""Simple ChatGPT MCP app with a hello world tool."""
+"""ChatGPT MCP app for MetaMage MTG tournament analysis."""
 
 from __future__ import annotations
 
@@ -57,7 +57,16 @@ async def _list_tools() -> List[types.Tool]:
         types.Tool(
             name="get-meta-report",
             title="Metagame Report",
-            description="Get top archetypes by match presence and winrate (excluding draws) over a date window. Use list-formats to get format_id. For 'recent meta', use last 30-60 days. Returns JSON with archetype stats including presence %, winrate %, matches, and entries.",
+            description="""Get top archetypes by match presence and winrate (excluding draws) over a date window. Use list-formats to get format_id. For 'recent meta', use last 30-60 days. Returns JSON with archetype stats including presence %, winrate %, matches, and entries.
+
+Workflow Integration:
+- **Start here** for meta overview before drilling into specific archetypes
+- Then use: get-archetype-overview() for details on specific decks, get-archetype-trends() to see how standings changed over time, get-matchup-winrate() for head-to-head analysis
+- Combine with get-sources() to provide tournament citations
+
+Related Tools: list-formats(), get-archetype-overview(), get-archetype-trends(), get-matchup-winrate(), get-sources()
+
+Example: Analyze current meta: 1) list-formats() → get Modern format_id, 2) get-meta-report(format_id, last 30 days) → see top decks, 3) get-matchup-winrate() between top 2 → understand matchup dynamics, 4) get-sources() → cite tournament evidence.""",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -90,7 +99,16 @@ async def _list_tools() -> List[types.Tool]:
         types.Tool(
             name="get-archetype-overview",
             title="Archetype Overview",
-            description="Find an archetype by name using fuzzy matching and get its archetype_id (UUID) for use in query-database. Returns archetype_id, format_id, format_name, recent 30-day stats, and top 8 key cards. Essential for getting archetype_id before writing custom queries.",
+            description="""Find an archetype by name using fuzzy matching and get its archetype_id (UUID) for use in query-database. Returns archetype_id, format_id, format_name, recent 30-day stats, and top 8 key cards.
+
+Workflow Integration:
+- **Start here** to resolve archetype names and get archetype_id for custom queries
+- Then use: get-archetype-cards() for detailed card lists, get-archetype-winrate() for performance, get-archetype-trends() for historical trends, get-matchup-winrate() for head-to-head vs other decks
+- Combine with query-database() for custom splits (e.g., with/without specific cards, by event size)
+
+Related Tools: search-card() to get card_id, get-sources() for tournament links, get-meta-report() for broader context
+
+Example: To analyze a deck's card choices: 1) get-archetype-overview('Yawgmoth') → get archetype_id, 2) get-archetype-cards() → see what's played, 3) query-database() → compare performance with/without key cards""",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -111,7 +129,16 @@ async def _list_tools() -> List[types.Tool]:
         types.Tool(
             name="get-archetype-trends",
             title="Archetype Trends",
-            description="Weekly presence and winrate (excluding draws) trends for an archetype over a trailing window.",
+            description="""Weekly presence and winrate (excluding draws) trends for an archetype over a trailing window. Shows how an archetype's meta share and performance evolved over time.
+
+Workflow Integration:
+- Use with get-meta-report() to correlate archetype trends with overall meta shifts
+- Combine with get-format-meta-changes() to annotate trend inflection points (bans/set releases)
+- Drill down into specific time windows with get-archetype-winrate() or query-database()
+
+Related Tools: get-meta-report(), get-archetype-winrate(), get-format-meta-changes(), query-database(), get-sources()
+
+Example: Find a performance dip, then use get-sources() for that week to collect tournament links, and query-database() for card-level or matchup-level explanations.""",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -191,7 +218,16 @@ Do NOT include LIMIT in SQL; it's added automatically.""",
         types.Tool(
             name="get-matchup-winrate",
             title="Matchup Winrate",
-            description="Compute head-to-head results and winrate (excluding draws) between two archetypes over a date window.",
+            description="""Compute head-to-head results and winrate (excluding draws) between two archetypes over a date window. Returns wins/losses/draws for archetype1 vs archetype2.
+
+Workflow Integration:
+- Use get-archetype-overview() first if you need help matching archetype names
+- Cross-check matchup-specific hypotheses from get-meta-report() or get-archetype-trends()
+- For detailed evidence, use query-database() to extract per-tournament or per-patch matchup data
+
+Related Tools: get-archetype-overview(), get-meta-report(), get-archetype-trends(), query-database(), get-sources()
+
+Example: After seeing an archetype dominate the meta, check its matchups against top 5 archetypes to find weaknesses.""",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -231,7 +267,16 @@ Do NOT include LIMIT in SQL; it's added automatically.""",
         types.Tool(
             name="get-archetype-cards",
             title="Archetype Cards",
-            description="Get top cards in a specific archetype within a date window. Returns decks_playing, total_copies, avg_copies_per_deck, and presence % within the archetype.",
+            description="""Get top cards in a specific archetype within a date window. Returns decks_playing, total_copies, avg_copies_per_deck, and presence % within the archetype.
+
+Workflow Integration:
+- Start with get-archetype-overview() to confirm the archetype and format
+- Use search-card() first when you need to focus on a particular card, then compare its presence here vs format-wide via get-card-presence()
+- For performance splits (with/without a card), combine with query-database()
+
+Related Tools: search-card(), get-card-presence(), get-archetype-overview(), query-database()
+
+Example: Check if a tech card is standard in an archetype: 1) cid = search-card('Psychic Frog').card_id, 2) get-archetype-cards(fmt, 'Domain Zoo', dates, 'MAIN'), 3) If card appears, use query-database() to compare W/L for entries with vs without that card_id.""",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -269,7 +314,17 @@ Do NOT include LIMIT in SQL; it's added automatically.""",
         types.Tool(
             name="get-archetype-winrate",
             title="Archetype Winrate",
-            description="Compute wins/losses/draws and winrate (excluding draws) for a given archetype_id within a date window.",
+            description="""Compute wins/losses/draws and winrate (excluding draws) for a given archetype_id within a date window. Can optionally exclude mirror matches.
+
+Workflow Integration:
+- First use get-archetype-overview() to get the archetype_id
+- Combine with get-archetype-trends() to see how winrate changed over time
+- Use with get-matchup-winrate() to break down performance vs specific opponents
+- Use query-database() for more granular splits (e.g., with/without specific cards, by tournament type)
+
+Related Tools: get-archetype-overview(), get-archetype-trends(), get-matchup-winrate(), query-database()
+
+Example: Analyze archetype performance: 1) get-archetype-overview('Yawgmoth') → get archetype_id, 2) get-archetype-winrate(archetype_id, dates, exclude_mirror=true) → see non-mirror winrate, 3) get-matchup-winrate() vs top 5 decks → identify good/bad matchups.""",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -302,7 +357,18 @@ Do NOT include LIMIT in SQL; it's added automatically.""",
         types.Tool(
             name="search-card",
             title="Search Card",
-            description="Search a card by partial name and get its card_id (UUID) for use in query-database. Essential first step before querying card usage. Returns card_id, name, colors, oracle_id, and whether it's in the local tournament database.",
+            description="""Search a card by partial name and get its card_id (UUID) for use in query-database. Essential first step before querying card usage. Returns card_id, name, colors, oracle_id, and whether it's in the local tournament database.
+
+Uses fuzzy matching via Scryfall if not found locally. Handles Universes Within variants (e.g., Marvel/OM1 versions).
+
+Workflow Integration:
+- **Start here** before any card-specific analysis to get the correct card_id
+- Then use: get-card-presence() for format-wide adoption, get-archetype-cards() for archetype-specific adoption
+- Use card_id in query-database() for custom analysis (performance splits, adoption over time, etc.)
+
+Related Tools: get-card-presence(), get-archetype-cards(), query-database()
+
+Example: To analyze a card's impact: 1) search-card('Psychic Frog') → get card_id, 2) get-card-presence() → see overall adoption, 3) get-archetype-cards() → see which decks play it, 4) query-database() → compare performance of decks with/without it.""",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -323,7 +389,20 @@ Do NOT include LIMIT in SQL; it's added automatically.""",
         types.Tool(
             name="get-sources",
             title="Recent Tournaments (for citations)",
-            description="Return up to N recent tournaments (with links) for a format and optional archetype within a date window. For citation only; not ranked by performance.",
+            description="""**FOR CITATION ONLY** - Return up to N recent tournaments (with links) for a format and optional archetype within a date window.
+
+IMPORTANT: Returns tournaments ordered by DATE (most recent first), NOT by performance. Do NOT use this for finding "top performing" entries or performance analysis.
+
+Use this tool ONLY when you need tournament links to cite as sources for claims made by other tools.
+
+Workflow Integration:
+- Use to attach concrete evidence (links) to analyses from other tools (get-meta-report, get-matchup-winrate, etc.)
+- Filter by archetype_name to support archetype-specific claims
+- Pair with query-database() for deeper per-event breakdowns after you have the links
+
+Related Tools: get-meta-report(), get-matchup-winrate(), get-archetype-trends(), get-tournament-results(), query-database()
+
+Example: After computing a winrate spike, call get-sources() over the same date window to list tournaments to cite.""",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -357,7 +436,16 @@ Do NOT include LIMIT in SQL; it's added automatically.""",
         types.Tool(
             name="get-card-presence",
             title="Card Presence (Format)",
-            description="Top cards by presence within a format and date range. Optionally filter by board (MAIN/SIDE) and exclude lands.",
+            description="""Top cards by presence within a format and date range. Shows format-wide card adoption. Optionally filter by board (MAIN/SIDE) and exclude lands.
+
+Workflow Integration:
+- Start with search-card() to confirm exact card naming when needed
+- Compare format-wide adoption here to archetype-specific adoption via get-archetype-cards()
+- Use query-database() for performance splits (e.g., winrate of decks that play the card)
+
+Related Tools: search-card(), get-archetype-cards(), get-meta-report(), query-database()
+
+Example: To test a hypothesis about a rising staple: 1) get-card-presence(fmt, dates) → see presence_percent, 2) cross-check in specific archetypes via get-archetype-cards(), 3) verify performance with query-database() joins on deck_cards.""",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -395,7 +483,18 @@ Do NOT include LIMIT in SQL; it's added automatically.""",
         types.Tool(
             name="get-player",
             title="Get Player Profile",
-            description="Get a player's recent (90-day) tournament activity and results by UUID or handle (fuzzy).",
+            description="""Get a player's recent (90-day) tournament activity and results by UUID or handle (fuzzy matching supported).
+
+Returns player_id, handle, recent tournaments, archetypes played, and performance stats.
+
+Workflow Integration:
+- Use to track specific players' performance and archetype choices
+- Combine with get-archetype-overview() to see if their deck choices align with meta trends
+- Use query-database() for deeper analysis of their specific matches or deck variations
+
+Related Tools: get-archetype-overview(), get-tournament-results(), query-database()
+
+Example: Track a known player's recent success: 1) get-player('handle') → see their tournament results, 2) get-archetype-overview() on their main deck → understand archetype, 3) query-database() → analyze their specific deck tech choices.""",
             inputSchema={
                 "type": "object",
                 "properties": {
