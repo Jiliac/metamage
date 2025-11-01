@@ -372,6 +372,190 @@ async def _call_tool_request(req: types.CallToolRequest) -> types.ServerResult:
                 )
             )
 
+    if req.params.name == "query-database":
+        if db_engine is None or validate_select_only is None:
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text="Server misconfigured: query tool unavailable",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        args = req.params.arguments or {}
+        sql = args.get("sql")
+        lim = args.get("limit", 1000)
+        if not isinstance(sql, str) or not sql.strip():
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text", text="Missing required parameter: sql"
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        try:
+            s = validate_select_only(sql)
+            try:
+                limit_val = int(lim)
+            except Exception:
+                limit_val = 1000
+            if limit_val <= 0:
+                limit_val = 1000
+            if limit_val > 10000:
+                limit_val = 10000
+            has_limit = " limit " in s.lower()
+            stmt = text(s if has_limit else f"{s} LIMIT :_limit")
+            params = {} if has_limit else {"_limit": limit_val}
+            with db_engine.connect() as conn:
+                rows = conn.execute(stmt, params).fetchall()
+            data = [dict(r._mapping) for r in rows]
+            result = {
+                "rowcount": len(data),
+                "rows": data,
+                "docs": [
+                    "SQLite has no roles; enforce read-only by opening in mode=ro and PRAGMA query_only=ON.",
+                    "Block non-SELECT in application layer.",
+                    "Protect file with OS perms (e.g., chmod 444) and run as non-writer user.",
+                    "Optionally use a read-only replica refreshed offline.",
+                ],
+            }
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text", text=json.dumps(result, default=str)
+                        )
+                    ]
+                )
+            )
+        except Exception as e:
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[types.TextContent(type="text", text=f"Error: {e}")],
+                    isError=True,
+                )
+            )
+
+    if req.params.name == "get-matchup-winrate":
+        if db_engine is None or validate_date_range is None:
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text="Server misconfigured: matchup tool unavailable",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        args = req.params.arguments or {}
+        fmt = args.get("format_id")
+        a1 = args.get("archetype1_name")
+        a2 = args.get("archetype2_name")
+        s = args.get("start_date")
+        e = args.get("end_date")
+        if not (fmt and a1 and a2 and s and e):
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text="Missing required parameters: format_id, archetype1_name, archetype2_name, start_date, end_date",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        try:
+            start, end = validate_date_range(s, e)
+            sql = """
+                SELECT 
+                    COUNT(CASE WHEN m.result = 'WIN' THEN 1 END) as arch1_wins,
+                    COUNT(CASE WHEN m.result = 'LOSS' THEN 1 END) as arch1_losses,
+                    COUNT(CASE WHEN m.result = 'DRAW' THEN 1 END) as draws,
+                    COUNT(*) as total_matches
+                FROM matches m
+                JOIN tournament_entries te ON m.entry_id = te.id
+                JOIN tournament_entries opponent_te ON m.opponent_entry_id = opponent_te.id
+                JOIN tournaments t ON te.tournament_id = t.id
+                JOIN archetypes a ON te.archetype_id = a.id
+                JOIN archetypes opponent_a ON opponent_te.archetype_id = opponent_a.id
+                WHERE t.format_id = :format_id
+                AND t.date >= :start
+                AND t.date <= :end
+                AND LOWER(a.name) = LOWER(:arch1_name)
+                AND LOWER(opponent_a.name) = LOWER(:arch2_name)
+            """
+            with db_engine.connect() as conn:
+                res = (
+                    conn.execute(
+                        text(sql),
+                        {
+                            "format_id": fmt,
+                            "arch1_name": a1,
+                            "arch2_name": a2,
+                            "start": start,
+                            "end": end,
+                        },
+                    )
+                    .mappings()
+                    .first()
+                )
+            arch1_wins = (
+                int(res["arch1_wins"]) if res and res["arch1_wins"] is not None else 0
+            )
+            arch1_losses = (
+                int(res["arch1_losses"])
+                if res and res["arch1_losses"] is not None
+                else 0
+            )
+            draws = int(res["draws"]) if res and res["draws"] is not None else 0
+            total_matches = (
+                int(res["total_matches"])
+                if res and res["total_matches"] is not None
+                else 0
+            )
+            decisive = arch1_wins + arch1_losses
+            winrate_no_draws = (
+                round((arch1_wins / decisive) * 100, 2) if decisive > 0 else None
+            )
+            result = {
+                "format_id": fmt,
+                "archetype1_name": a1,
+                "archetype2_name": a2,
+                "start_date": start.isoformat(),
+                "end_date": end.isoformat(),
+                "arch1_wins": arch1_wins,
+                "arch1_losses": arch1_losses,
+                "draws": draws,
+                "total_matches": total_matches,
+                "decisive_matches": decisive,
+                "winrate_no_draws": winrate_no_draws,
+            }
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text", text=json.dumps(result, default=str)
+                        )
+                    ]
+                )
+            )
+        except Exception as e:
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[types.TextContent(type="text", text=f"Error: {e}")],
+                    isError=True,
+                )
+            )
+
     if req.params.name == "list-formats":
         if Format is None or get_session is None:
             return types.ServerResult(
