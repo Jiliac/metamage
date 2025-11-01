@@ -7,17 +7,18 @@ from typing import List
 import mcp.types as types
 from mcp.server.fastmcp import FastMCP
 import json
-from sqlalchemy import text
 
 try:
     from src.analysis.meta import compute_meta_report
     from src.analysis.archetype import compute_archetype_overview
+    from src.analysis.matchup import compute_matchup_winrate
     from src.models import Format
     from .utils import engine as db_engine, validate_date_range, get_session
     from .query import execute_select_query
 except Exception:
     compute_meta_report = None
     compute_archetype_overview = None
+    compute_matchup_winrate = None
     Format = None
     db_engine = None
     validate_date_range = None
@@ -415,7 +416,11 @@ async def _call_tool_request(req: types.CallToolRequest) -> types.ServerResult:
             )
 
     if req.params.name == "get-matchup-winrate":
-        if db_engine is None or validate_date_range is None:
+        if (
+            db_engine is None
+            or validate_date_range is None
+            or compute_matchup_winrate is None
+        ):
             return types.ServerResult(
                 types.CallToolResult(
                     content=[
@@ -447,70 +452,7 @@ async def _call_tool_request(req: types.CallToolRequest) -> types.ServerResult:
             )
         try:
             start, end = validate_date_range(s, e)
-            sql = """
-                SELECT 
-                    COUNT(CASE WHEN m.result = 'WIN' THEN 1 END) as arch1_wins,
-                    COUNT(CASE WHEN m.result = 'LOSS' THEN 1 END) as arch1_losses,
-                    COUNT(CASE WHEN m.result = 'DRAW' THEN 1 END) as draws,
-                    COUNT(*) as total_matches
-                FROM matches m
-                JOIN tournament_entries te ON m.entry_id = te.id
-                JOIN tournament_entries opponent_te ON m.opponent_entry_id = opponent_te.id
-                JOIN tournaments t ON te.tournament_id = t.id
-                JOIN archetypes a ON te.archetype_id = a.id
-                JOIN archetypes opponent_a ON opponent_te.archetype_id = opponent_a.id
-                WHERE t.format_id = :format_id
-                AND t.date >= :start
-                AND t.date <= :end
-                AND LOWER(a.name) = LOWER(:arch1_name)
-                AND LOWER(opponent_a.name) = LOWER(:arch2_name)
-            """
-            with db_engine.connect() as conn:
-                res = (
-                    conn.execute(
-                        text(sql),
-                        {
-                            "format_id": fmt,
-                            "arch1_name": a1,
-                            "arch2_name": a2,
-                            "start": start,
-                            "end": end,
-                        },
-                    )
-                    .mappings()
-                    .first()
-                )
-            arch1_wins = (
-                int(res["arch1_wins"]) if res and res["arch1_wins"] is not None else 0
-            )
-            arch1_losses = (
-                int(res["arch1_losses"])
-                if res and res["arch1_losses"] is not None
-                else 0
-            )
-            draws = int(res["draws"]) if res and res["draws"] is not None else 0
-            total_matches = (
-                int(res["total_matches"])
-                if res and res["total_matches"] is not None
-                else 0
-            )
-            decisive = arch1_wins + arch1_losses
-            winrate_no_draws = (
-                round((arch1_wins / decisive) * 100, 2) if decisive > 0 else None
-            )
-            result = {
-                "format_id": fmt,
-                "archetype1_name": a1,
-                "archetype2_name": a2,
-                "start_date": start.isoformat(),
-                "end_date": end.isoformat(),
-                "arch1_wins": arch1_wins,
-                "arch1_losses": arch1_losses,
-                "draws": draws,
-                "total_matches": total_matches,
-                "decisive_matches": decisive,
-                "winrate_no_draws": winrate_no_draws,
-            }
+            result = compute_matchup_winrate(db_engine, fmt, a1, a2, start, end)
             return types.ServerResult(
                 types.CallToolResult(
                     content=[

@@ -1,11 +1,10 @@
-from datetime import datetime
 from typing import Dict, Any
-from sqlalchemy import text
 
-from .utils import engine
+from .utils import engine, validate_date_range
 from .mcp import mcp
 from fastmcp import Context
 from .log_decorator import log_tool_calls
+from ..analysis.matchup import compute_matchup_winrate
 
 
 @log_tool_calls
@@ -38,83 +37,9 @@ def get_matchup_winrate(
 
     Related Tools:
     - get_archetype_overview(), get_meta_report(), get_archetype_trends(), query_database(), get_sources()
-
-    Example:
-    - Compare "Domain Zoo" vs "Jeskai Control" in Modern over the last quarter, then list tournaments via get_sources()
-      to provide links backing the results.
     """
-    try:
-        start = datetime.fromisoformat(start_date)
-        end = datetime.fromisoformat(end_date)
-    except Exception:
-        raise ValueError(
-            "Dates must be ISO format (e.g., 2025-01-01 or 2025-01-01T00:00:00)"
-        )
-    if end < start:
-        raise ValueError("end_date must be >= start_date")
-
-    sql = """
-        SELECT 
-            COUNT(CASE WHEN m.result = 'WIN' THEN 1 END) as arch1_wins,
-            COUNT(CASE WHEN m.result = 'LOSS' THEN 1 END) as arch1_losses,
-            COUNT(CASE WHEN m.result = 'DRAW' THEN 1 END) as draws,
-            COUNT(*) as total_matches
-        FROM matches m
-        JOIN tournament_entries te ON m.entry_id = te.id
-        JOIN tournament_entries opponent_te ON m.opponent_entry_id = opponent_te.id
-        JOIN tournaments t ON te.tournament_id = t.id
-        JOIN archetypes a ON te.archetype_id = a.id
-        JOIN archetypes opponent_a ON opponent_te.archetype_id = opponent_a.id
-        WHERE t.format_id = :format_id
-        AND t.date >= :start
-        AND t.date <= :end
-        AND LOWER(a.name) = LOWER(:arch1_name)
-        AND LOWER(opponent_a.name) = LOWER(:arch2_name)
-    """
-
-    with engine.connect() as conn:
-        res = (
-            conn.execute(
-                text(sql),
-                {
-                    "format_id": format_id,
-                    "arch1_name": archetype1_name,
-                    "arch2_name": archetype2_name,
-                    "start": start,
-                    "end": end,
-                },
-            )
-            .mappings()
-            .first()
-        )
-
-    arch1_wins = int(res["arch1_wins"]) if res and res["arch1_wins"] is not None else 0
-    arch1_losses = (
-        int(res["arch1_losses"]) if res and res["arch1_losses"] is not None else 0
+    # Validate dates and compute via shared analysis function
+    start, end = validate_date_range(start_date, end_date)
+    return compute_matchup_winrate(
+        engine, format_id, archetype1_name, archetype2_name, start, end
     )
-    draws = int(res["draws"]) if res and res["draws"] is not None else 0
-    total_matches = (
-        int(res["total_matches"]) if res and res["total_matches"] is not None else 0
-    )
-
-    # Calculate winrate excluding draws
-    decisive_matches = arch1_wins + arch1_losses
-    winrate_no_draws = (
-        (arch1_wins / decisive_matches * 100) if decisive_matches > 0 else None
-    )
-
-    return {
-        "format_id": format_id,
-        "archetype1_name": archetype1_name,
-        "archetype2_name": archetype2_name,
-        "start_date": start.isoformat(),
-        "end_date": end.isoformat(),
-        "arch1_wins": arch1_wins,
-        "arch1_losses": arch1_losses,
-        "draws": draws,
-        "total_matches": total_matches,
-        "decisive_matches": decisive_matches,
-        "winrate_no_draws": round(winrate_no_draws, 2)
-        if winrate_no_draws is not None
-        else None,
-    }
