@@ -133,13 +133,13 @@ async def _list_tools() -> List[types.Tool]:
         types.Tool(
             name="query-database",
             title="Run SELECT Query",
-            description="Run a read-only SELECT/CTE SQL query against the tournament DB. Do NOT include LIMIT; it is injected automatically.",
+            description="""Execute SELECT/CTE SQL queries against the MTG tournament database. Schema: tournaments(id, name, date, format_id, source, link), tournament_entries(id, tournament_id, player_id, archetype_id, wins, losses, draws, rank), matches(id, entry_id, opponent_entry_id, result, mirror, pair_id), deck_cards(id, entry_id, card_id, count, board), archetypes(id, format_id, name, color), cards(id, name, scryfall_oracle_id, is_land, colors, first_printed_set_id, first_printed_date), card_colors(id, card_id, color), sets(id, code, name, set_type, released_at), players(id, handle, normalized_handle). All IDs are UUID strings. DateTime fields need range queries (>= and <), not equality. Do NOT include LIMIT in SQL; it's added automatically.""",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "sql": {
                         "type": "string",
-                        "description": "SELECT or WITH ... SELECT statement (single statement; no PRAGMA/DDL/DML). Do NOT include LIMIT.",
+                        "description": "SELECT or WITH...SELECT statement (no PRAGMA/DDL/DML/LIMIT). Use date ranges (t.date >= '2025-08-18' AND t.date < '2025-08-19'), not equality.",
                     },
                     "limit": {
                         "type": "integer",
