@@ -53,46 +53,6 @@ async def _list_tools() -> List[types.Tool]:
     """List available tools."""
     return [
         types.Tool(
-            name="say-hello",
-            title="Say Hello",
-            description="A simple tool that returns 'Hello, World!'",
-            inputSchema={
-                "type": "object",
-                "properties": {},
-                "additionalProperties": False,
-            },
-            annotations={
-                "destructiveHint": False,
-                "openWorldHint": False,
-                "readOnlyHint": True,
-            },
-        ),
-        types.Tool(
-            name="multiply",
-            title="Multiply Numbers",
-            description="Multiplies two numbers together and returns the result",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "a": {
-                        "type": "number",
-                        "description": "First number",
-                    },
-                    "b": {
-                        "type": "number",
-                        "description": "Second number",
-                    },
-                },
-                "required": ["a", "b"],
-                "additionalProperties": False,
-            },
-            annotations={
-                "destructiveHint": False,
-                "openWorldHint": False,
-                "readOnlyHint": True,
-            },
-        ),
-        types.Tool(
             name="get-meta-report",
             title="Metagame Report",
             description="Get top archetypes by match presence and winrate (excluding draws) over a date window. Use list-formats to get format_id. For 'recent meta', use last 30-60 days. Returns JSON with archetype stats including presence %, winrate %, matches, and entries.",
@@ -445,47 +405,6 @@ Do NOT include LIMIT in SQL; it's added automatically.""",
 
 async def _call_tool_request(req: types.CallToolRequest) -> types.ServerResult:
     """Handle tool calls."""
-    if req.params.name == "say-hello":
-        return types.ServerResult(
-            types.CallToolResult(
-                content=[
-                    types.TextContent(
-                        type="text",
-                        text="Hello, World!",
-                    )
-                ],
-            )
-        )
-
-    if req.params.name == "multiply":
-        a = req.params.arguments.get("a")
-        b = req.params.arguments.get("b")
-
-        if a is None or b is None:
-            return types.ServerResult(
-                types.CallToolResult(
-                    content=[
-                        types.TextContent(
-                            type="text",
-                            text="Error: Both 'a' and 'b' parameters are required",
-                        )
-                    ],
-                    isError=True,
-                )
-            )
-
-        result = a * b
-        return types.ServerResult(
-            types.CallToolResult(
-                content=[
-                    types.TextContent(
-                        type="text",
-                        text=str(result),
-                    )
-                ],
-            )
-        )
-
     if req.params.name == "get-meta-report":
         if (
             compute_meta_report is None
