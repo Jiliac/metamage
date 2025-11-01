@@ -12,6 +12,8 @@ try:
     from src.analysis.meta import compute_meta_report
     from src.analysis.archetype import compute_archetype_overview
     from src.analysis.matchup import compute_matchup_winrate
+    from src.analysis.card import search_card as analysis_search_card
+    from src.analysis.sources import compute_sources as analysis_compute_sources
     from src.models import Format
     from .utils import engine as db_engine, validate_date_range, get_session
     from .query import execute_select_query
@@ -19,6 +21,8 @@ except Exception:
     compute_meta_report = None
     compute_archetype_overview = None
     compute_matchup_winrate = None
+    analysis_search_card = None
+    analysis_compute_sources = None
     Format = None
     db_engine = None
     validate_date_range = None
@@ -187,6 +191,61 @@ async def _list_tools() -> List[types.Tool]:
                     "start_date",
                     "end_date",
                 ],
+                "additionalProperties": False,
+            },
+            annotations={
+                "destructiveHint": False,
+                "openWorldHint": False,
+                "readOnlyHint": True,
+            },
+        ),
+        types.Tool(
+            name="search-card",
+            title="Search Card",
+            description="Search a card by partial name using local DB, with Scryfall fuzzy fallback for details. Returns card_id when found in the local DB.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Partial or full card name",
+                    }
+                },
+                "required": ["query"],
+                "additionalProperties": False,
+            },
+            annotations={
+                "destructiveHint": False,
+                "openWorldHint": False,
+                "readOnlyHint": True,
+            },
+        ),
+        types.Tool(
+            name="get-sources",
+            title="Recent Tournaments (for citations)",
+            description="Return up to N recent tournaments (with links) for a format and optional archetype within a date window. For citation only; not ranked by performance.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "format_id": {"type": "string", "description": "Format UUID"},
+                    "start_date": {
+                        "type": "string",
+                        "description": "ISO date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)",
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "description": "ISO date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)",
+                    },
+                    "archetype_name": {
+                        "type": "string",
+                        "description": "Optional archetype name filter",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max tournaments (default 3, max 10)",
+                    },
+                },
+                "required": ["format_id", "start_date", "end_date"],
                 "additionalProperties": False,
             },
             annotations={
@@ -453,6 +512,121 @@ async def _call_tool_request(req: types.CallToolRequest) -> types.ServerResult:
         try:
             start, end = validate_date_range(s, e)
             result = compute_matchup_winrate(db_engine, fmt, a1, a2, start, end)
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text", text=json.dumps(result, default=str)
+                        )
+                    ]
+                )
+            )
+        except Exception as e:
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[types.TextContent(type="text", text=f"Error: {e}")],
+                    isError=True,
+                )
+            )
+
+    if req.params.name == "search-card":
+        if analysis_search_card is None or db_engine is None:
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text="Server misconfigured: search card tool unavailable",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        args = req.params.arguments or {}
+        q = args.get("query")
+        if not isinstance(q, str) or not q.strip():
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text", text="Missing required parameter: query"
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        try:
+            result = analysis_search_card(db_engine, q.strip())
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text", text=json.dumps(result, default=str)
+                        )
+                    ]
+                )
+            )
+        except Exception as e:
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[types.TextContent(type="text", text=f"Error: {e}")],
+                    isError=True,
+                )
+            )
+
+    if req.params.name == "get-sources":
+        if (
+            analysis_compute_sources is None
+            or db_engine is None
+            or validate_date_range is None
+        ):
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text="Server misconfigured: sources tool unavailable",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        args = req.params.arguments or {}
+        fmt = args.get("format_id")
+        start_str = args.get("start_date")
+        end_str = args.get("end_date")
+        arch_name = args.get("archetype_name")
+        lim = args.get("limit", 3)
+        if not (fmt and start_str and end_str):
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text="Missing required parameters: format_id, start_date, end_date",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        try:
+            start_dt, end_dt = validate_date_range(start_str, end_str)
+            try:
+                limit_val = int(lim)
+            except Exception:
+                limit_val = 3
+            if limit_val <= 0:
+                limit_val = 3
+            if limit_val > 10:
+                limit_val = 10
+            result = analysis_compute_sources(
+                db_engine,
+                fmt,
+                start_dt,
+                end_dt,
+                arch_name if isinstance(arch_name, str) and arch_name.strip() else None,
+                limit_val,
+            )
             return types.ServerResult(
                 types.CallToolResult(
                     content=[
