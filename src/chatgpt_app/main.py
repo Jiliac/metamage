@@ -10,7 +10,11 @@ import json
 
 try:
     from src.analysis.meta import compute_meta_report
-    from src.analysis.archetype import compute_archetype_overview
+    from src.analysis.archetype import (
+        compute_archetype_overview,
+        compute_archetype_cards,
+        compute_archetype_winrate,
+    )
     from src.analysis.matchup import compute_matchup_winrate
     from src.analysis.card import search_card as analysis_search_card
     from src.analysis.sources import compute_sources as analysis_compute_sources
@@ -20,6 +24,8 @@ try:
 except Exception:
     compute_meta_report = None
     compute_archetype_overview = None
+    compute_archetype_cards = None
+    compute_archetype_winrate = None
     compute_matchup_winrate = None
     analysis_search_card = None
     analysis_compute_sources = None
@@ -220,6 +226,77 @@ Do NOT include LIMIT in SQL; it's added automatically.""",
                     "start_date",
                     "end_date",
                 ],
+                "additionalProperties": False,
+            },
+            annotations={
+                "destructiveHint": False,
+                "openWorldHint": False,
+                "readOnlyHint": True,
+            },
+        ),
+        types.Tool(
+            name="get-archetype-cards",
+            title="Archetype Cards",
+            description="Get top cards in a specific archetype within a date window. Returns decks_playing, total_copies, avg_copies_per_deck, and presence % within the archetype.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "format_id": {"type": "string", "description": "Format UUID"},
+                    "archetype_name": {
+                        "type": "string",
+                        "description": "Archetype name (case-insensitive)",
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "description": "ISO date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)",
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "description": "ISO date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)",
+                    },
+                    "board": {
+                        "type": "string",
+                        "description": "Card board: 'MAIN' or 'SIDE' (default MAIN)",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max cards (default 20)",
+                    },
+                },
+                "required": ["format_id", "archetype_name", "start_date", "end_date"],
+                "additionalProperties": False,
+            },
+            annotations={
+                "destructiveHint": False,
+                "openWorldHint": False,
+                "readOnlyHint": True,
+            },
+        ),
+        types.Tool(
+            name="get-archetype-winrate",
+            title="Archetype Winrate",
+            description="Compute wins/losses/draws and winrate (excluding draws) for a given archetype_id within a date window.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "archetype_id": {
+                        "type": "string",
+                        "description": "Archetype UUID (fetch via get-archetype-overview)",
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "description": "ISO date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)",
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "description": "ISO date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)",
+                    },
+                    "exclude_mirror": {
+                        "type": "boolean",
+                        "description": "Exclude mirror matches (default true)",
+                    },
+                },
+                "required": ["archetype_id", "start_date", "end_date"],
                 "additionalProperties": False,
             },
             annotations={
@@ -541,6 +618,138 @@ async def _call_tool_request(req: types.CallToolRequest) -> types.ServerResult:
         try:
             start, end = validate_date_range(s, e)
             result = compute_matchup_winrate(db_engine, fmt, a1, a2, start, end)
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text", text=json.dumps(result, default=str)
+                        )
+                    ]
+                )
+            )
+        except Exception as e:
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[types.TextContent(type="text", text=f"Error: {e}")],
+                    isError=True,
+                )
+            )
+
+    if req.params.name == "get-archetype-cards":
+        if (
+            compute_archetype_cards is None
+            or db_engine is None
+            or validate_date_range is None
+        ):
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text="Server misconfigured: archetype cards tool unavailable",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        args = req.params.arguments or {}
+        fmt = args.get("format_id")
+        arch_name = args.get("archetype_name")
+        start_str = args.get("start_date")
+        end_str = args.get("end_date")
+        board = (args.get("board") or "MAIN").upper()
+        lim = args.get("limit", 20)
+        if not (
+            fmt
+            and isinstance(arch_name, str)
+            and arch_name.strip()
+            and start_str
+            and end_str
+        ):
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text="Missing required parameters: format_id, archetype_name, start_date, end_date",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        try:
+            start_dt, end_dt = validate_date_range(start_str, end_str)
+            if board not in ["MAIN", "SIDE"]:
+                return types.ServerResult(
+                    types.CallToolResult(
+                        content=[
+                            types.TextContent(
+                                type="text", text="board must be 'MAIN' or 'SIDE'"
+                            )
+                        ],
+                        isError=True,
+                    )
+                )
+            limit_val = lim if isinstance(lim, int) and lim > 0 else 20
+            result = compute_archetype_cards(
+                db_engine, fmt, arch_name.strip(), start_dt, end_dt, board, limit_val
+            )
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text", text=json.dumps(result, default=str)
+                        )
+                    ]
+                )
+            )
+        except Exception as e:
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[types.TextContent(type="text", text=f"Error: {e}")],
+                    isError=True,
+                )
+            )
+
+    if req.params.name == "get-archetype-winrate":
+        if (
+            compute_archetype_winrate is None
+            or db_engine is None
+            or validate_date_range is None
+        ):
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text="Server misconfigured: archetype winrate tool unavailable",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        args = req.params.arguments or {}
+        arch_id = args.get("archetype_id")
+        start_str = args.get("start_date")
+        end_str = args.get("end_date")
+        exclude_mirror = args.get("exclude_mirror", True)
+        if not (arch_id and start_str and end_str):
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text="Missing required parameters: archetype_id, start_date, end_date",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        try:
+            start_dt, end_dt = validate_date_range(start_str, end_str)
+            result = compute_archetype_winrate(
+                db_engine, arch_id, start_dt, end_dt, bool(exclude_mirror)
+            )
             return types.ServerResult(
                 types.CallToolResult(
                     content=[

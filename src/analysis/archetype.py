@@ -142,3 +142,151 @@ def compute_archetype_overview(engine: Engine, archetype_name: str) -> Dict[str,
             for c in cards
         ],
     }
+
+
+def compute_archetype_cards(
+    engine: Engine,
+    format_id: str,
+    archetype_name: str,
+    start,
+    end,
+    board: str = "MAIN",
+    limit: int = 20,
+) -> Dict[str, Any]:
+    """
+    Compute top cards in a specific archetype within a date range.
+
+    Returns dict:
+      - format_id, archetype_name, start_date, end_date, board
+      - cards: list of {card_name, total_copies, decks_playing, avg_copies_per_deck, presence_percent}
+    """
+    if board not in ["MAIN", "SIDE"]:
+        raise ValueError("board must be 'MAIN' or 'SIDE'")
+
+    sql = """
+        WITH archetype_decks AS (
+            SELECT COUNT(DISTINCT te.id) as total_archetype_decks
+            FROM tournament_entries te
+            JOIN tournaments t ON te.tournament_id = t.id
+            JOIN archetypes a ON te.archetype_id = a.id
+            WHERE t.format_id = :format_id
+              AND t.date >= :start
+              AND t.date <= :end
+              AND LOWER(a.name) = LOWER(:archetype_name)
+        ),
+        card_stats AS (
+            SELECT 
+                c.name as card_name,
+                SUM(dc.count) as total_copies,
+                COUNT(DISTINCT te.id) as decks_playing,
+                ROUND(AVG(CAST(dc.count AS REAL)), 2) as avg_copies_per_deck
+            FROM deck_cards dc
+            JOIN cards c ON dc.card_id = c.id
+            JOIN tournament_entries te ON dc.entry_id = te.id
+            JOIN tournaments t ON te.tournament_id = t.id
+            JOIN archetypes a ON te.archetype_id = a.id
+            WHERE t.format_id = :format_id
+              AND t.date >= :start
+              AND t.date <= :end
+              AND LOWER(a.name) = LOWER(:archetype_name)
+              AND dc.board = :board
+            GROUP BY c.id, c.name
+        )
+        SELECT 
+            card_name,
+            total_copies,
+            decks_playing,
+            avg_copies_per_deck,
+            ROUND(
+                CAST(decks_playing AS REAL) / 
+                CAST((SELECT total_archetype_decks FROM archetype_decks) AS REAL) * 100, 2
+            ) as presence_percent
+        FROM card_stats
+        WHERE decks_playing > 0
+        ORDER BY decks_playing DESC, total_copies DESC
+        LIMIT :limit
+    """
+
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(sql),
+            {
+                "format_id": format_id,
+                "archetype_name": archetype_name,
+                "start": start,
+                "end": end,
+                "board": board,
+                "limit": limit,
+            },
+        ).fetchall()
+
+    data = [dict(r._mapping) for r in rows]
+
+    return {
+        "format_id": format_id,
+        "archetype_name": archetype_name,
+        "start_date": start.isoformat(),
+        "end_date": end.isoformat(),
+        "board": board,
+        "cards": data,
+    }
+
+
+def compute_archetype_winrate(
+    engine: Engine,
+    archetype_id: str,
+    start,
+    end,
+    exclude_mirror: bool = True,
+) -> Dict[str, Any]:
+    """
+    Compute wins/losses/draws and winrate (excluding draws) for a given archetype_id within [start, end].
+    """
+    base_sql = """
+        SELECT
+          COALESCE(SUM(CASE WHEN m.result = 'WIN'  THEN 1 ELSE 0 END), 0) AS wins,
+          COALESCE(SUM(CASE WHEN m.result = 'LOSS' THEN 1 ELSE 0 END), 0) AS losses,
+          COALESCE(SUM(CASE WHEN m.result = 'DRAW' THEN 1 ELSE 0 END), 0) AS draws,
+          MAX(a.name) AS archetype_name
+        FROM matches m
+        JOIN tournament_entries e ON e.id = m.entry_id
+        JOIN tournaments t ON t.id = e.tournament_id
+        JOIN archetypes a ON e.archetype_id = a.id
+        WHERE e.archetype_id = :arch_id
+          AND t.date >= :start
+          AND t.date <= :end
+    """
+    sql = base_sql + (" AND m.mirror = 0" if exclude_mirror else "")
+
+    with engine.connect() as conn:
+        res = (
+            conn.execute(
+                text(sql),
+                {"arch_id": archetype_id, "start": start, "end": end},
+            )
+            .mappings()
+            .first()
+        )
+
+    wins = int(res["wins"]) if res and res["wins"] is not None else 0
+    losses = int(res["losses"]) if res and res["losses"] is not None else 0
+    draws = int(res["draws"]) if res and res["draws"] is not None else 0
+    archetype_name = (
+        res["archetype_name"] if res and res["archetype_name"] is not None else None
+    )
+    total = wins + losses + draws
+    decisive_games = wins + losses
+    winrate = (wins / decisive_games) if decisive_games > 0 else None
+
+    return {
+        "archetype_id": archetype_id,
+        "archetype_name": archetype_name,
+        "start_date": start.isoformat(),
+        "end_date": end.isoformat(),
+        "exclude_mirror": exclude_mirror,
+        "wins": wins,
+        "losses": losses,
+        "draws": draws,
+        "matches": total,
+        "winrate": winrate,
+    }
