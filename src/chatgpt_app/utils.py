@@ -23,45 +23,6 @@ def get_session():
         session.close()
 
 
-def validate_select_only(sql: str) -> str:
-    """
-    Allow only a single SELECT/CTE statement; block PRAGMA/DDL/DML/transactions/etc.
-    Returns the SQL trimmed of a trailing semicolon.
-    """
-    if not isinstance(sql, str):
-        raise ValueError("SQL must be a string")
-    s = sql.strip()
-    if s.endswith(";"):
-        s = s[:-1].strip()
-    lowered = s.lower()
-    if not (lowered.startswith("select") or lowered.startswith("with")):
-        raise ValueError("Only SELECT queries are allowed (including WITH ... SELECT).")
-    forbidden = [
-        "insert",
-        "update",
-        "delete",
-        "alter",
-        "drop",
-        "create",
-        "attach",
-        "detach",
-        "pragma",
-        "begin",
-        "commit",
-        "rollback",
-        "vacuum",
-        "reindex",
-        "replace",
-    ]
-    if any(f in lowered for f in forbidden):
-        raise ValueError(
-            "Query contains forbidden keywords; only read-only SELECT is allowed."
-        )
-    if ";" in s:
-        raise ValueError("Multiple statements are not allowed.")
-    return s
-
-
 def validate_date_range(start_date: str, end_date: str) -> tuple[datetime, datetime]:
     """
     Validate and parse ISO date strings, ensuring end_date >= start_date.

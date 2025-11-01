@@ -13,12 +13,8 @@ try:
     from src.analysis.meta import compute_meta_report
     from src.analysis.archetype import compute_archetype_overview
     from src.models import Format
-    from .utils import (
-        engine as db_engine,
-        validate_date_range,
-        get_session,
-        validate_select_only,
-    )
+    from .utils import engine as db_engine, validate_date_range, get_session
+    from .query import execute_select_query
 except Exception:
     compute_meta_report = None
     compute_archetype_overview = None
@@ -26,7 +22,7 @@ except Exception:
     db_engine = None
     validate_date_range = None
     get_session = None
-    validate_select_only = None
+    execute_select_query = None
 
 # Create the MCP server
 mcp = FastMCP(
@@ -373,7 +369,7 @@ async def _call_tool_request(req: types.CallToolRequest) -> types.ServerResult:
             )
 
     if req.params.name == "query-database":
-        if db_engine is None or validate_select_only is None:
+        if db_engine is None or execute_select_query is None:
             return types.ServerResult(
                 types.CallToolResult(
                     content=[
@@ -400,31 +396,7 @@ async def _call_tool_request(req: types.CallToolRequest) -> types.ServerResult:
                 )
             )
         try:
-            s = validate_select_only(sql)
-            try:
-                limit_val = int(lim)
-            except Exception:
-                limit_val = 1000
-            if limit_val <= 0:
-                limit_val = 1000
-            if limit_val > 10000:
-                limit_val = 10000
-            has_limit = " limit " in s.lower()
-            stmt = text(s if has_limit else f"{s} LIMIT :_limit")
-            params = {} if has_limit else {"_limit": limit_val}
-            with db_engine.connect() as conn:
-                rows = conn.execute(stmt, params).fetchall()
-            data = [dict(r._mapping) for r in rows]
-            result = {
-                "rowcount": len(data),
-                "rows": data,
-                "docs": [
-                    "SQLite has no roles; enforce read-only by opening in mode=ro and PRAGMA query_only=ON.",
-                    "Block non-SELECT in application layer.",
-                    "Protect file with OS perms (e.g., chmod 444) and run as non-writer user.",
-                    "Optionally use a read-only replica refreshed offline.",
-                ],
-            }
+            result = execute_select_query(db_engine, sql, lim)
             return types.ServerResult(
                 types.CallToolResult(
                     content=[
