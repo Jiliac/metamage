@@ -116,7 +116,7 @@ async def _list_tools() -> List[types.Tool]:
         types.Tool(
             name="get-archetype-overview",
             title="Archetype Overview",
-            description="Find an archetype by name using fuzzy matching (case-insensitive, partial names work) and get recent 30-day performance stats plus top 8 key cards. Returns archetype_id, format_id, format_name, recent entries/tournaments/winrate, and key cards with avg copies and adoption rate.",
+            description="Find an archetype by name using fuzzy matching and get its archetype_id (UUID) for use in query-database. Returns archetype_id, format_id, format_name, recent 30-day stats, and top 8 key cards. Essential for getting archetype_id before writing custom queries.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -137,13 +137,42 @@ async def _list_tools() -> List[types.Tool]:
         types.Tool(
             name="query-database",
             title="Run SELECT Query",
-            description="""Execute SELECT/CTE SQL queries against the MTG tournament database. Schema: tournaments(id, name, date, format_id, source, link), tournament_entries(id, tournament_id, player_id, archetype_id, wins, losses, draws, rank), matches(id, entry_id, opponent_entry_id, result, mirror, pair_id), deck_cards(id, entry_id, card_id, count, board), archetypes(id, format_id, name, color), cards(id, name, scryfall_oracle_id, is_land, colors, first_printed_set_id, first_printed_date), card_colors(id, card_id, color), sets(id, code, name, set_type, released_at), players(id, handle, normalized_handle). All IDs are UUID strings. DateTime fields need range queries (>= and <), not equality. Do NOT include LIMIT in SQL; it's added automatically.""",
+            description="""Execute SELECT/CTE SQL queries against the MTG tournament database.
+
+SCHEMA & RELATIONSHIPS:
+• tournaments → tournament_entries (via tournament_id)
+• tournament_entries → matches (via entry_id/opponent_entry_id)
+• tournament_entries → deck_cards (via entry_id)
+• tournament_entries → archetypes (via archetype_id)
+• tournament_entries → players (via player_id)
+• deck_cards → cards (via card_id)
+• cards → card_colors (via card_id)
+• archetypes → formats (via format_id)
+
+KEY PATTERNS:
+1. To find card usage: deck_cards JOIN tournament_entries JOIN tournaments
+2. To analyze matchups: matches JOIN tournament_entries (twice for both players)
+3. To filter by date/format: Always join through tournaments table
+4. result values: 'WIN', 'LOSS', 'DRAW' (uppercase strings)
+5. board values: 'MAIN', 'SIDE' (uppercase strings)
+
+LOOKUP STRATEGY:
+• Use search-card('card name') to get card_id first
+• Use get-archetype-overview('deck name') to get archetype_id
+• Use list-formats() to get format_id
+• All IDs are 36-char UUID strings
+
+DATE QUERIES:
+• Use ranges: t.date >= '2025-01-01' AND t.date < '2025-02-01'
+• Never use equality: t.date = '2025-01-01' (won't match)
+
+Do NOT include LIMIT in SQL; it's added automatically.""",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "sql": {
                         "type": "string",
-                        "description": "SELECT or WITH...SELECT statement (no PRAGMA/DDL/DML/LIMIT). Use date ranges (t.date >= '2025-08-18' AND t.date < '2025-08-19'), not equality.",
+                        "description": "SELECT or WITH...SELECT query. Example for card in archetype: SELECT COUNT(*) FROM deck_cards dc JOIN tournament_entries te ON dc.entry_id = te.id JOIN tournaments t ON te.tournament_id = t.id WHERE dc.card_id = 'uuid-here' AND te.archetype_id = 'uuid-here' AND t.format_id = 'uuid-here' AND t.date >= '2025-01-01'",
                     },
                     "limit": {
                         "type": "integer",
@@ -202,7 +231,7 @@ async def _list_tools() -> List[types.Tool]:
         types.Tool(
             name="search-card",
             title="Search Card",
-            description="Search a card by partial name using local DB, with Scryfall fuzzy fallback for details. Returns card_id when found in the local DB.",
+            description="Search a card by partial name and get its card_id (UUID) for use in query-database. Essential first step before querying card usage. Returns card_id, name, colors, oracle_id, and whether it's in the local tournament database.",
             inputSchema={
                 "type": "object",
                 "properties": {
