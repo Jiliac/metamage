@@ -14,6 +14,7 @@ try:
         compute_archetype_overview,
         compute_archetype_cards,
         compute_archetype_winrate,
+        compute_archetype_trends,
     )
     from src.analysis.matchup import compute_matchup_winrate
     from src.analysis.card import (
@@ -30,6 +31,7 @@ except Exception:
     compute_archetype_overview = None
     compute_archetype_cards = None
     compute_archetype_winrate = None
+    compute_archetype_trends = None
     compute_matchup_winrate = None
     analysis_search_card = None
     compute_card_presence = None
@@ -98,6 +100,32 @@ async def _list_tools() -> List[types.Tool]:
                     }
                 },
                 "required": ["archetype_name"],
+                "additionalProperties": False,
+            },
+            annotations={
+                "destructiveHint": False,
+                "openWorldHint": False,
+                "readOnlyHint": True,
+            },
+        ),
+        types.Tool(
+            name="get-archetype-trends",
+            title="Archetype Trends",
+            description="Weekly presence and winrate (excluding draws) trends for an archetype over a trailing window.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "format_id": {"type": "string", "description": "Format UUID"},
+                    "archetype_name": {
+                        "type": "string",
+                        "description": "Archetype name (case-insensitive)",
+                    },
+                    "days_back": {
+                        "type": "integer",
+                        "description": "Number of days to look back (default 30, 1-365)",
+                    },
+                },
+                "required": ["format_id", "archetype_name"],
                 "additionalProperties": False,
             },
             annotations={
@@ -514,6 +542,69 @@ async def _call_tool_request(req: types.CallToolRequest) -> types.ServerResult:
                             text=f"Error: {e}",
                         )
                     ],
+                    isError=True,
+                )
+            )
+
+    if req.params.name == "get-archetype-trends":
+        if compute_archetype_trends is None or db_engine is None:
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text="Server misconfigured: archetype trends tool unavailable",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        args = req.params.arguments or {}
+        fmt = args.get("format_id")
+        arch = args.get("archetype_name")
+        days = args.get("days_back", 30)
+        if not (fmt and isinstance(arch, str) and arch.strip()):
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text",
+                            text="Missing required parameters: format_id, archetype_name",
+                        )
+                    ],
+                    isError=True,
+                )
+            )
+        try:
+            try:
+                days_int = int(days)
+            except Exception:
+                days_int = 30
+            if days_int <= 0 or days_int > 365:
+                return types.ServerResult(
+                    types.CallToolResult(
+                        content=[
+                            types.TextContent(
+                                type="text", text="days_back must be between 1 and 365"
+                            )
+                        ],
+                        isError=True,
+                    )
+                )
+            result = compute_archetype_trends(db_engine, fmt, arch.strip(), days_int)
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[
+                        types.TextContent(
+                            type="text", text=json.dumps(result, default=str)
+                        )
+                    ]
+                )
+            )
+        except Exception as e:
+            return types.ServerResult(
+                types.CallToolResult(
+                    content=[types.TextContent(type="text", text=f"Error: {e}")],
                     isError=True,
                 )
             )

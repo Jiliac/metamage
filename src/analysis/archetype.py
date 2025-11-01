@@ -290,3 +290,92 @@ def compute_archetype_winrate(
         "matches": total,
         "winrate": winrate,
     }
+
+
+def compute_archetype_trends(
+    engine: Engine,
+    format_id: str,
+    archetype_name: str,
+    days_back: int = 30,
+) -> Dict[str, Any]:
+    """
+    Get weekly presence and winrate trends for an archetype over time.
+
+    Args:
+        engine: SQLAlchemy Engine
+        format_id: Format UUID
+        archetype_name: Archetype name (case-insensitive)
+        days_back: Number of days to look back (default: 30)
+
+    Returns:
+        Dict with weekly trend data: week_start, week_end, entries, total_matches, wins, losses, draws,
+        presence_percent, winrate_no_draws
+    """
+    # Build SQL with days_back substituted into SQLite date function
+    sql = """
+        WITH weeks AS (
+            SELECT 
+                date(t.date, 'weekday 0', '-6 days') as week_start,
+                date(t.date, 'weekday 0') as week_end,
+                COUNT(DISTINCT te.id) as entries,
+                COUNT(CASE WHEN m.result = 'WIN' THEN 1 END) as wins,
+                COUNT(CASE WHEN m.result = 'LOSS' THEN 1 END) as losses,
+                COUNT(CASE WHEN m.result = 'DRAW' THEN 1 END) as draws,
+                COUNT(*) as total_matches
+            FROM tournaments t
+            JOIN tournament_entries te ON t.id = te.tournament_id
+            JOIN archetypes a ON te.archetype_id = a.id
+            LEFT JOIN matches m ON te.id = m.entry_id AND m.entry_id < m.opponent_entry_id
+            WHERE t.format_id = :format_id
+            AND LOWER(a.name) = LOWER(:archetype_name)
+            AND t.date >= date('now', '-{} days')
+            GROUP BY week_start, week_end
+        ),
+        total_per_week AS (
+            SELECT 
+                date(t.date, 'weekday 0', '-6 days') as week_start,
+                COUNT(DISTINCT te.id) as total_format_entries
+            FROM tournaments t
+            JOIN tournament_entries te ON t.id = te.tournament_id
+            WHERE t.format_id = :format_id
+            AND t.date >= date('now', '-{} days')
+            GROUP BY week_start
+        )
+        SELECT 
+            w.week_start,
+            w.week_end,
+            w.entries,
+            w.total_matches,
+            w.wins,
+            w.losses,
+            w.draws,
+            ROUND(
+                CAST(w.entries AS REAL) / 
+                CAST(tpw.total_format_entries AS REAL) * 100, 2
+            ) as presence_percent,
+            ROUND(
+                CAST(w.wins AS REAL) / 
+                CAST((w.wins + w.losses) AS REAL) * 100, 2
+            ) as winrate_no_draws
+        FROM weeks w
+        LEFT JOIN total_per_week tpw ON w.week_start = tpw.week_start
+        ORDER BY w.week_start
+    """.format(days_back, days_back)
+
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text(sql),
+            {
+                "format_id": format_id,
+                "archetype_name": archetype_name,
+            },
+        ).fetchall()
+
+    data = [dict(r._mapping) for r in rows]
+
+    return {
+        "format_id": format_id,
+        "archetype_name": archetype_name,
+        "days_back": days_back,
+        "weekly_trends": data,
+    }
