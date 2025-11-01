@@ -7,12 +7,18 @@ from typing import List
 import mcp.types as types
 from mcp.server.fastmcp import FastMCP
 import json
+from sqlalchemy import text
 
 try:
     from src.analysis.meta import compute_meta_report
     from src.analysis.archetype import compute_archetype_overview
     from src.models import Format
-    from .utils import engine as db_engine, validate_date_range, get_session
+    from .utils import (
+        engine as db_engine,
+        validate_date_range,
+        get_session,
+        validate_select_only,
+    )
 except Exception:
     compute_meta_report = None
     compute_archetype_overview = None
@@ -20,62 +26,13 @@ except Exception:
     db_engine = None
     validate_date_range = None
     get_session = None
+    validate_select_only = None
 
 # Create the MCP server
 mcp = FastMCP(
     name="metamage",
     stateless_http=True,
 )
-
-
-# Add system prompt/documentation as a resource
-@mcp.prompt()
-def metamage_documentation() -> str:
-    """MetaMage database documentation and query guidelines."""
-    from datetime import datetime
-
-    current_date = datetime.now().strftime("%Y-%m-%d")
-
-    return f"""You are MetaMage, a Magic: The Gathering tournament analysis assistant.
-
-Current date: {current_date}
-
-## Available Tools
-
-You have access to a comprehensive MTG tournament database with these tools:
-
-### Core Tools:
-- **list-formats**: List all available formats with their IDs and names
-- **get-meta-report**: Top archetypes by presence and winrate in a date range
-- **get-archetype-overview**: Resolve archetype by name (fuzzy matching) with recent performance
-
-## Database Schema
-
-Core tables:
-- tournaments (id, name, date, format_id, source, link)
-- tournament_entries (id, tournament_id, player_id, archetype_id, wins, losses, draws, rank)
-- matches (id, entry_id, opponent_entry_id, result, mirror, pair_id)
-- deck_cards (id, entry_id, card_id, count, board) -- board: MAIN|SIDE
-- archetypes (id, format_id, name, color)
-- cards (id, name, scryfall_oracle_id, is_land, colors, first_printed_set_id, first_printed_date)
-- players (id, handle, normalized_handle)
-
-## Query Guidelines
-
-- For "recent" or "current meta" queries, use last 30-60 days from {current_date}
-- Use list-formats to discover available format IDs
-- Always include date ranges to avoid full table scans
-- Format dates as 'YYYY-MM-DD' or 'YYYY-MM-DDTHH:MM:SS'
-
-## Response Format
-
-- Be concise and data-driven
-- Include specific numbers and percentages
-- Focus on actionable insights
-- All insights MUST be backed by tool queries
-- If no data available, say "I don't have sufficient tournament data to answer this question"
-
-You can query the database to answer questions about tournament performance, meta trends, and deck analysis."""
 
 
 @mcp._mcp_server.list_tools()
@@ -125,22 +82,25 @@ async def _list_tools() -> List[types.Tool]:
         types.Tool(
             name="get-meta-report",
             title="Metagame Report",
-            description="Returns archetype presence and winrate (excluding draws) over a date window.",
+            description="Get top archetypes by match presence and winrate (excluding draws) over a date window. Use list-formats to get format_id. For 'recent meta', use last 30-60 days. Returns JSON with archetype stats including presence %, winrate %, matches, and entries.",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "format_id": {"type": "string", "description": "Format UUID"},
+                    "format_id": {
+                        "type": "string",
+                        "description": "Format UUID (get from list-formats)",
+                    },
                     "start_date": {
                         "type": "string",
-                        "description": "ISO date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)",
+                        "description": "Start date in ISO format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)",
                     },
                     "end_date": {
                         "type": "string",
-                        "description": "ISO date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)",
+                        "description": "End date in ISO format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)",
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "Max archetypes (default 15, max 20)",
+                        "description": "Max archetypes to return (default 15, max 20)",
                     },
                 },
                 "required": ["format_id", "start_date", "end_date"],
@@ -155,13 +115,13 @@ async def _list_tools() -> List[types.Tool]:
         types.Tool(
             name="get-archetype-overview",
             title="Archetype Overview",
-            description="Resolve an archetype by name (fuzzy) and return recent performance and key cards.",
+            description="Find an archetype by name using fuzzy matching (case-insensitive, partial names work) and get recent 30-day performance stats plus top 8 key cards. Returns archetype_id, format_id, format_name, recent entries/tournaments/winrate, and key cards with avg copies and adoption rate.",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "archetype_name": {
                         "type": "string",
-                        "description": "Archetype name (case-insensitive, partial/fuzzy supported)",
+                        "description": "Full or partial archetype name (fuzzy matching supported, e.g. 'Yawg' matches 'Yawgmoth')",
                     }
                 },
                 "required": ["archetype_name"],
@@ -174,9 +134,74 @@ async def _list_tools() -> List[types.Tool]:
             },
         ),
         types.Tool(
+            name="query-database",
+            title="Run SELECT Query",
+            description="Run a read-only SELECT/CTE SQL query against the tournament DB. Do NOT include LIMIT; it is injected automatically.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "sql": {
+                        "type": "string",
+                        "description": "SELECT or WITH ... SELECT statement (single statement; no PRAGMA/DDL/DML). Do NOT include LIMIT.",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max rows to return (default 1000, max 10000)",
+                    },
+                },
+                "required": ["sql"],
+                "additionalProperties": False,
+            },
+            annotations={
+                "destructiveHint": False,
+                "openWorldHint": False,
+                "readOnlyHint": True,
+            },
+        ),
+        types.Tool(
+            name="get-matchup-winrate",
+            title="Matchup Winrate",
+            description="Compute head-to-head results and winrate (excluding draws) between two archetypes over a date window.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "format_id": {"type": "string", "description": "Format UUID"},
+                    "archetype1_name": {
+                        "type": "string",
+                        "description": "First archetype name (case-insensitive)",
+                    },
+                    "archetype2_name": {
+                        "type": "string",
+                        "description": "Second archetype name (case-insensitive)",
+                    },
+                    "start_date": {
+                        "type": "string",
+                        "description": "ISO date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)",
+                    },
+                    "end_date": {
+                        "type": "string",
+                        "description": "ISO date (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS)",
+                    },
+                },
+                "required": [
+                    "format_id",
+                    "archetype1_name",
+                    "archetype2_name",
+                    "start_date",
+                    "end_date",
+                ],
+                "additionalProperties": False,
+            },
+            annotations={
+                "destructiveHint": False,
+                "openWorldHint": False,
+                "readOnlyHint": True,
+            },
+        ),
+        types.Tool(
             name="list-formats",
             title="List Formats",
-            description="List all available MTG formats with their IDs and names.",
+            description="List all available Magic: The Gathering formats with their UUIDs and names. Use this to discover format_id values needed for other tools (get-meta-report, etc.). Returns JSON array of formats with 'id' and 'name' fields.",
             inputSchema={
                 "type": "object",
                 "properties": {},
