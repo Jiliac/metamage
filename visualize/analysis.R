@@ -162,6 +162,28 @@ filter_archetypes_by_matches <- function(matchup_df, top_n, min_matches = 100) {
   archetype_matches$row_archetype
 }
 
+#' Filter out archetypes with overly wide confidence intervals
+#'
+#' Removes archetypes where the CI is unreasonably wide, indicating insufficient data.
+#'
+#' @param wr_df data frame with win rate data including wr_lo and wr_hi columns
+#' @param max_ci_width maximum allowed CI width (default 0.3 for 30%)
+#' @return filtered data frame
+filter_wide_ci <- function(wr_df, max_ci_width = 0.3) {
+  if (
+    nrow(wr_df) == 0 ||
+      !"wr_lo" %in% colnames(wr_df) ||
+      !"wr_hi" %in% colnames(wr_df)
+  ) {
+    return(wr_df)
+  }
+
+  wr_df %>%
+    dplyr::mutate(ci_width = wr_hi - wr_lo) %>%
+    dplyr::filter(is.na(ci_width) | ci_width <= max_ci_width) %>%
+    dplyr::select(-ci_width)
+}
+
 #' Add tier rankings based on statistical analysis of confidence intervals
 #'
 #' Uses the lower bound of confidence intervals to assign tier rankings.

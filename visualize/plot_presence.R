@@ -93,7 +93,7 @@ plot_presence <- function(
       size = 2.5
     ) +
     scale_x_continuous(
-      trans = piecewise_compress_trans(threshold = 0.10, compress_power = 2),
+      trans = piecewise_compress_trans(threshold = 0.10, compress_power = 1.5),
       labels = percent_format(accuracy = 1),
       limits = c(0, xmax * 1.12),
       expand = expansion(mult = c(0, 0.08))

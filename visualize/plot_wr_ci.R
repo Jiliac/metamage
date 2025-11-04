@@ -13,9 +13,14 @@ plot_wr_ci <- function(
   order_levels,
   title = "Win Rates",
   subtitle = NULL,
-  caption = NULL
+  caption = NULL,
+  max_ci_width = 0.5
 ) {
+  # Filter out archetypes with unreasonably wide CIs (> 50% width by default)
   df <- wr_df %>%
+    mutate(ci_width = wr_hi - wr_lo) %>%
+    filter(is.na(ci_width) | ci_width <= max_ci_width) %>%
+    select(-ci_width) %>%
     mutate(name = factor(archetype_name, levels = order_levels)) %>%
     arrange(name) %>%
     mutate(
