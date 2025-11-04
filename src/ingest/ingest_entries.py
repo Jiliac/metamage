@@ -382,6 +382,24 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
 
         # Tournament
         source = detect_source(anchor)
+
+        # Extract tournament ID from TournamentFile for disambiguation (needed for rounds file lookup)
+        tournament_file = e.get("TournamentFile", "")
+        tournament_id = None
+        if tournament_file:
+            # Extract ID from end of filename (e.g., "modern-challenge-32-2025-08-0912807470" -> "12807470")
+            import re
+
+            # Extract just the tournament ID (after the final date pattern)
+            # Pattern: format-name-YYYY-MM-DDID -> extract just ID part
+            match = re.search(
+                r"-(\d{4})-(\d{2})-(\d{2})(\d+)$", tournament_file
+            )
+            if match:
+                tournament_id = match.group(
+                    4
+                )  # Get just the tournament ID part
+
         # 1) Check cache/DB for existing tournament
         cache_key = f"{t_name}|{t_date.isoformat()}|{format_id}"
         tournament = t_cache.get(cache_key)
@@ -400,22 +418,6 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
                 t_cache[cache_key] = tournament
             else:
                 # 2) Only create if rounds file can be located
-                # Extract tournament ID from TournamentFile for disambiguation
-                tournament_file = e.get("TournamentFile", "")
-                tournament_id = None
-                if tournament_file:
-                    # Extract ID from end of filename (e.g., "modern-challenge-32-2025-08-0912807470" -> "12807470")
-                    import re
-
-                    # Extract just the tournament ID (after the final date pattern)
-                    # Pattern: format-name-YYYY-MM-DDID -> extract just ID part
-                    match = re.search(
-                        r"-(\d{4})-(\d{2})-(\d{2})(\d+)$", tournament_file
-                    )
-                    if match:
-                        tournament_id = match.group(
-                            4
-                        )  # Get just the tournament ID part
 
                 criteria = TournamentSearchCriteria(
                     date=t_date,
