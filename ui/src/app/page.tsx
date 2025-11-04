@@ -8,6 +8,7 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card'
+import { Twitter, Cloud, MessageSquare, ArrowRight } from 'lucide-react'
 
 export function generateMetadata(): Metadata {
   return {
@@ -59,9 +60,68 @@ export default function Home() {
             run ad‑hoc queries, and share results — all in one place.
           </p>
 
-          <div className="flex items-center justify-center">
-            <Button asChild size="lg" className="bg-cyan-600 hover:bg-cyan-700">
-              <Link href="/sessions">View Chat Sessions →</Link>
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4">
+            {/* Primary CTA */}
+            <Button
+              asChild
+              size="lg"
+              className="bg-cyan-600 hover:bg-cyan-700 w-full md:w-auto"
+            >
+              <Link
+                href="https://x.com/_MetaMage_"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Twitter className="w-5 h-5" />
+                Try on Twitter
+              </Link>
+            </Button>
+
+            {/* Secondary CTAs */}
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+              <Button
+                asChild
+                variant="outline"
+                size="default"
+                className="bg-slate-800/80 border-slate-600 hover:bg-slate-700 text-white w-full sm:w-auto"
+              >
+                <Link
+                  href="https://bsky.app/profile/metamagebot.bsky.social"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Cloud className="w-4 h-4" />
+                  Try on Bluesky
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                size="default"
+                className="bg-slate-800/80 border-slate-600 hover:bg-slate-700 text-white w-full sm:w-auto"
+              >
+                <Link
+                  href="https://discord.com/oauth2/authorize?client_id=1404193383827636256"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  Install Discord Bot
+                </Link>
+              </Button>
+            </div>
+
+            {/* Tertiary CTA */}
+            <Button
+              asChild
+              variant="ghost"
+              size="default"
+              className="text-slate-300 hover:text-cyan-400 w-full md:w-auto"
+            >
+              <Link href="/sessions">
+                View Chat Sessions
+                <ArrowRight className="w-4 h-4" />
+              </Link>
             </Button>
           </div>
         </section>
