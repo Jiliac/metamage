@@ -193,6 +193,45 @@ def process_matchups_from_entries(
     return stats
 
 
+def process_embedded_rounds_data(
+    session: Session,
+    tournament: Tournament,
+    rounds_data: Dict[str, Any],
+) -> Dict[str, int]:
+    """
+    Process rounds data that's embedded in the tournament file (e.g., Melee.gg).
+    Returns stats dict.
+    """
+    stats = {
+        "pairings_seen": 0,
+        "pairings_created": 0,
+        "pairings_skipped_missing_entry": 0,
+        "pairings_skipped_existing": 0,
+        "matches_rows_inserted": 0,
+        "ranks_updated": 0,
+        "file_missing": 0,
+        "file_ambiguous": 0,
+    }
+
+    # Process rounds data directly without file loading
+    rounds = rounds_data.get("Rounds") if isinstance(rounds_data, dict) else rounds_data
+
+    # Common processing logic for rounds
+    stats = _process_rounds_common(
+        session,
+        tournament,
+        {
+            "Rounds": rounds,
+            "Standings": rounds_data.get("Standings", [])
+            if isinstance(rounds_data, dict)
+            else [],
+        },
+        stats,
+    )
+
+    return stats
+
+
 def process_rounds_for_tournament(
     session: Session,
     tournament: Tournament,
@@ -235,6 +274,21 @@ def process_rounds_for_tournament(
         stats["file_missing"] += 1
         return stats
 
+    # Common processing logic for rounds
+    stats = _process_rounds_common(session, tournament, data, stats)
+
+    return stats
+
+
+def _process_rounds_common(
+    session: Session,
+    tournament: Tournament,
+    data: Dict[str, Any],
+    stats: Dict[str, int],
+) -> Dict[str, int]:
+    """
+    Common logic for processing rounds data, whether from file or embedded.
+    """
     rounds = data.get("Rounds") or []
 
     for rnd in rounds:

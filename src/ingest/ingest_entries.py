@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from ingest.ingest_matches import (
     process_rounds_for_tournament,
     process_matchups_from_entries,
+    process_embedded_rounds_data,
 )
 from models import (
     Tournament,
@@ -356,6 +357,10 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
     # Key: tournament_id, Value: list of (entry_id, matchups_data, player_handle)
     entries_with_matchups: Dict[str, List[Tuple[str, List[Dict[str, Any]], str]]] = {}
 
+    # Track tournaments with embedded rounds data (e.g., Melee.gg)
+    # Key: tournament_id, Value: rounds_data
+    tournaments_with_embedded_rounds: Dict[str, Any] = {}
+
     for i, e in enumerate(filtered_entries, start=1):
         stats["entries_seen"] += 1
 
@@ -363,6 +368,9 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
         # tournament_file = e.get("TournamentFile", "")
         # if tournament_file != "modern-challenge-32-2025-08-0412806330":
         #     continue
+
+        # Check for embedded rounds data (e.g., from Melee.gg)
+        embedded_rounds = e.get("_rounds_data")
 
         t_name = e.get("Tournament")
         date_str = e.get("Date")
@@ -413,42 +421,48 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
             if tournament:
                 t_cache[cache_key] = tournament
             else:
-                # 2) Only create if rounds file can be located
+                # 2) Only create if rounds data is available (embedded, file, or Matchups)
 
-                criteria = TournamentSearchCriteria(
-                    date=t_date,
-                    format_name=format_name,
-                    source=source,
-                    tournament_name=t_name,
-                    tournament_id=tournament_id,
-                    warned_multiple=warned_multiple_rounds,
-                )
-                rounds_path = find_rounds_file(criteria)
+                # Check if we have embedded rounds data (already extracted at the beginning)
+                if embedded_rounds is not None:
+                    # We have embedded rounds, proceed with tournament creation
+                    pass
+                else:
+                    # Try to find external rounds file
+                    criteria = TournamentSearchCriteria(
+                        date=t_date,
+                        format_name=format_name,
+                        source=source,
+                        tournament_name=t_name,
+                        tournament_id=tournament_id,
+                        warned_multiple=warned_multiple_rounds,
+                    )
+                    rounds_path = find_rounds_file(criteria)
 
-                if not rounds_path:
-                    # Check if this entry has Matchups data as fallback
-                    entry_matchups = e.get("Matchups", [])
-                    has_matchups = entry_matchups and len(entry_matchups) > 0
+                    if not rounds_path:
+                        # Check if this entry has Matchups data as fallback
+                        entry_matchups = e.get("Matchups", [])
+                        has_matchups = entry_matchups and len(entry_matchups) > 0
 
-                    if not has_matchups:
-                        # Only warn once per tournament and only for dates after Nov 1, 2024
-                        warn_key = f"{t_name}|{t_date.date()}"
-                        nov_1_2024 = datetime(2024, 11, 1).date()
-                        if (
-                            warn_key not in warned_missing_rounds
-                            and t_date.date() > nov_1_2024
-                        ):
-                            # Add tournament entry details for debugging
-                            tournament_file = e.get("TournamentFile", "unknown")
-                            entry_player = e.get("Player", "unknown")
+                        if not has_matchups:
+                            # Only warn once per tournament and only for dates after Nov 1, 2024
+                            warn_key = f"{t_name}|{t_date.date()}"
+                            nov_1_2024 = datetime(2024, 11, 1).date()
+                            if (
+                                warn_key not in warned_missing_rounds
+                                and t_date.date() > nov_1_2024
+                            ):
+                                # Add tournament entry details for debugging
+                                tournament_file = e.get("TournamentFile", "unknown")
+                                entry_player = e.get("Player", "unknown")
 
-                            print(
-                                f"  ⚠️ Rounds file NOT found and no Matchups data for tournament '{t_name}' on {t_date.date()} [{source.name}] (format '{format_name}') | Entry: player='{entry_player}' file='{tournament_file}'; skipping entry"
-                            )
-                            warned_missing_rounds.add(warn_key)
-                        stats["tournaments_missing_rounds"] += 1
-                        continue
-                    # If we have Matchups, allow tournament creation to proceed
+                                print(
+                                    f"  ⚠️ Rounds file NOT found and no Matchups data for tournament '{t_name}' on {t_date.date()} [{source.name}] (format '{format_name}') | Entry: player='{entry_player}' file='{tournament_file}'; skipping entry"
+                                )
+                                warned_missing_rounds.add(warn_key)
+                            stats["tournaments_missing_rounds"] += 1
+                            continue
+                        # If we have Matchups, allow tournament creation to proceed
                 tournament, is_new_tournament = get_or_create_tournament(
                     session=session,
                     cache=t_cache,
@@ -462,6 +476,10 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
             stats["tournaments_created"] += 1
         else:
             stats["tournaments_existing"] += 1
+
+        # Track embedded rounds data for this tournament if present
+        if embedded_rounds and tournament.id not in tournaments_with_embedded_rounds:
+            tournaments_with_embedded_rounds[tournament.id] = embedded_rounds
 
         # Player
         player = get_player(session, p_cache, player_handle)
@@ -537,8 +555,14 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
 
     # After processing all entries, finalize matches + standings per tournament
     for tournament, tournament_id in touched_tournaments.values():
-        # Check if this tournament has entries with Matchups data
-        if tournament.id in entries_with_matchups:
+        # First check if this tournament has embedded rounds data (e.g., Melee.gg)
+        if tournament.id in tournaments_with_embedded_rounds:
+            # Process embedded rounds data
+            mstats = process_embedded_rounds_data(
+                session, tournament, tournaments_with_embedded_rounds[tournament.id]
+            )
+        # Then check if this tournament has entries with Matchups data
+        elif tournament.id in entries_with_matchups:
             # Process matches from Matchups field in entry JSON
             mstats = process_matchups_from_entries(
                 session, tournament.id, entries_with_matchups[tournament.id]

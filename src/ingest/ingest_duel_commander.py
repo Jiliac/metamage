@@ -190,6 +190,10 @@ def transform_tournament_to_entries(
     # Get tournament date (for Melee.gg files which have Date at tournament level)
     tournament_date = tournament_info.get("Date", "")
 
+    # Get Rounds and Standings data if present (for Melee.gg files)
+    rounds_data = tournament_data.get("Rounds", None)
+    standings_data = tournament_data.get("Standings", None)
+
     for deck in decks:
         # Extract commander and compute archetype
         archetype_name, color = get_commander_archetype(deck)
@@ -198,8 +202,9 @@ def transform_tournament_to_entries(
             # Skip decks without valid commanders
             continue
 
-        # Use deck date if available (MTGO), otherwise use tournament date (Melee.gg)
-        entry_date = deck.get("Date", tournament_date)
+        # Use deck date if available and not None (MTGO), otherwise use tournament date (Melee.gg)
+        deck_date = deck.get("Date")
+        entry_date = deck_date if deck_date is not None else tournament_date
 
         # Transform to standard entry format
         entry = {
@@ -215,6 +220,14 @@ def transform_tournament_to_entries(
             "Sideboard": deck.get("Sideboard", []),
             "TournamentFile": tournament_file_stem,  # For rounds_finder to match
         }
+
+        # For Melee.gg files, include the Rounds and Standings data directly in the entry
+        # This allows ingest_entries to use it without searching for external files
+        if rounds_data or standings_data:
+            entry["_rounds_data"] = {
+                "Rounds": rounds_data or [],
+                "Standings": standings_data or [],
+            }
 
         entries.append(entry)
 
