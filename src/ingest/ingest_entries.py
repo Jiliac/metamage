@@ -392,13 +392,9 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
 
             # Extract just the tournament ID (after the final date pattern)
             # Pattern: format-name-YYYY-MM-DDID -> extract just ID part
-            match = re.search(
-                r"-(\d{4})-(\d{2})-(\d{2})(\d+)$", tournament_file
-            )
+            match = re.search(r"-(\d{4})-(\d{2})-(\d{2})(\d+)$", tournament_file)
             if match:
-                tournament_id = match.group(
-                    4
-                )  # Get just the tournament ID part
+                tournament_id = match.group(4)  # Get just the tournament ID part
 
         # 1) Check cache/DB for existing tournament
         cache_key = f"{t_name}|{t_date.isoformat()}|{format_id}"

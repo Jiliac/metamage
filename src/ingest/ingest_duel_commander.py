@@ -32,41 +32,62 @@ from ingest.commander_archetypes import get_commander_archetype
 CONFIG_PATH = Path("data/config_tournament.json")
 
 
-def load_duel_commander_directory_from_config() -> Optional[Path]:
-    """Load Duel Commander tournament directory from config file."""
+def load_duel_commander_directories_from_config() -> List[tuple[str, Path]]:
+    """Load Duel Commander tournament directories from config file.
+
+    Returns:
+        List of (source_name, directory_path) tuples for DC and MELEE sources
+    """
+    directories = []
+
     if not CONFIG_PATH.exists():
-        return None
+        return directories
 
     try:
         with open(CONFIG_PATH, "r", encoding="utf-8") as f:
             config = json.load(f)
 
         for source_config in config:
-            # Look for DC (Duel Commander) source which points to decklistcache
-            if source_config.get("source") == "DC":
-                data_folder = source_config.get("data_folder")
-                if data_folder:
-                    return Path(data_folder)
+            source = source_config.get("source")
+            data_folder = source_config.get("data_folder")
+
+            # Look for both DC (MTGO) and MELEE sources
+            if source in ["DC", "MELEE"] and data_folder:
+                directories.append((source, Path(data_folder)))
+
     except Exception as e:
         print(f"⚠️  Error loading config: {e}")
 
-    return None
+    return directories
 
 
 def scan_duel_commander_files(
-    base_dir: Path, date_filter: Optional[datetime] = None
+    base_dir: Path, source: str, date_filter: Optional[datetime] = None
 ) -> List[Path]:
     """
-    Scan directory tree for duel-commander-trial*.json files.
+    Scan directory tree for Duel Commander tournament files.
 
     Args:
-        base_dir: Base MTGO tournaments directory
+        base_dir: Base tournaments directory
+        source: Source type ("DC" for MTGO, "MELEE" for Melee.gg)
         date_filter: Only include tournaments on or after this date
 
     Returns:
         List of Path objects to tournament files, sorted by date
     """
     tournament_files = []
+
+    # Define file patterns based on source
+    if source == "DC":
+        # MTGO pattern: duel-commander-trial*.json
+        file_pattern = "*duel-commander-trial*.json"
+    elif source == "MELEE":
+        # Melee.gg pattern: files containing "duel" in the name
+        # This will catch: relic-fest-2025-duel-com-main-event*, legacy-duel-for-the-duals*, etc.
+        file_pattern = "*duel*.json"
+    else:
+        print(f"⚠️  Unknown source: {source}")
+        return tournament_files
 
     # If date filter provided, only scan relevant year/month/day directories
     if date_filter:
@@ -100,12 +121,12 @@ def scan_duel_commander_files(
                     if not day_dir.exists():
                         continue
 
-                    # Find duel-commander-trial files in this day
-                    for json_file in day_dir.glob("*duel-commander-trial*.json"):
+                    # Find Duel Commander files in this day
+                    for json_file in day_dir.glob(file_pattern):
                         tournament_files.append(json_file)
     else:
         # No filter - scan everything
-        for json_file in base_dir.rglob("*duel-commander-trial*.json"):
+        for json_file in base_dir.rglob(file_pattern):
             tournament_files.append(json_file)
 
     return sorted(tournament_files)
@@ -166,6 +187,9 @@ def transform_tournament_to_entries(
     tournament_url = tournament_info.get("Uri", "")
     tournament_file_stem = file_path.stem  # For rounds_finder
 
+    # Get tournament date (for Melee.gg files which have Date at tournament level)
+    tournament_date = tournament_info.get("Date", "")
+
     for deck in decks:
         # Extract commander and compute archetype
         archetype_name, color = get_commander_archetype(deck)
@@ -174,10 +198,13 @@ def transform_tournament_to_entries(
             # Skip decks without valid commanders
             continue
 
+        # Use deck date if available (MTGO), otherwise use tournament date (Melee.gg)
+        entry_date = deck.get("Date", tournament_date)
+
         # Transform to standard entry format
         entry = {
             "Tournament": tournament_name,
-            "Date": deck.get("Date", ""),
+            "Date": entry_date,
             "AnchorUri": deck.get("AnchorUri", tournament_url),
             "Player": deck.get("Player", ""),
             "Archetype": {
@@ -215,7 +242,15 @@ def main():
         "-d",
         "--directory",
         type=str,
-        help="MTGO tournaments directory (default: load from config)",
+        help="Tournament directory (default: load from config)",
+    )
+    parser.add_argument(
+        "-s",
+        "--source",
+        type=str,
+        choices=["all", "mtgo", "melee"],
+        default="all",
+        help="Data source to ingest (default: all)",
     )
     parser.add_argument(
         "--archetypes", action="store_true", help="Ingest only archetypes"
@@ -239,23 +274,49 @@ def main():
     print("🎯 Duel Commander Tournament Database - Data Ingestion")
     print("=" * 50)
 
-    # Determine tournament directory
+    # Determine tournament directories based on source
+    source_directories = []
+
     if args.directory:
+        # Manual directory specified - need to infer source or use provided source
         tournament_dir = Path(args.directory)
+        if not tournament_dir.exists():
+            print(f"❌ Tournament directory not found: {tournament_dir}")
+            sys.exit(1)
+
+        # Infer source from directory path if possible
+        if "mtgo" in str(tournament_dir).lower() or args.source == "mtgo":
+            source_directories.append(("DC", tournament_dir))
+        elif "melee" in str(tournament_dir).lower() or args.source == "melee":
+            source_directories.append(("MELEE", tournament_dir))
+        else:
+            # Default to MTGO for backward compatibility
+            source_directories.append(("DC", tournament_dir))
     else:
-        tournament_dir = load_duel_commander_directory_from_config()
-        if not tournament_dir:
-            print("❌ No tournament directory specified and config not found")
+        # Load from config based on source filter
+        all_directories = load_duel_commander_directories_from_config()
+        if not all_directories:
+            print("❌ No tournament directories found in config")
             print(
                 "   Please specify --directory or configure data/config_tournament.json"
             )
             sys.exit(1)
 
-    if not tournament_dir.exists():
-        print(f"❌ Tournament directory not found: {tournament_dir}")
+        # Filter based on source argument
+        if args.source == "all":
+            source_directories = all_directories
+        elif args.source == "mtgo":
+            source_directories = [(s, p) for s, p in all_directories if s == "DC"]
+        elif args.source == "melee":
+            source_directories = [(s, p) for s, p in all_directories if s == "MELEE"]
+
+    if not source_directories:
+        print(f"❌ No directories found for source: {args.source}")
         sys.exit(1)
 
-    print(f"📂 Tournament Directory: {tournament_dir}")
+    print(f"📂 Processing {len(source_directories)} source(s):")
+    for source, path in source_directories:
+        print(f"   - {source}: {path}")
 
     # Parse date filter
     try:
@@ -265,15 +326,25 @@ def main():
         print(f"❌ Invalid date format: {args.date}. Use YYYY-MM-DD format.")
         sys.exit(1)
 
-    # Scan for tournament files
-    print("\n🔍 Scanning for Duel Commander trial files...")
-    tournament_files = scan_duel_commander_files(tournament_dir, date_filter)
+    # Scan for tournament files across all sources
+    print("\n🔍 Scanning for Duel Commander tournament files...")
+    all_tournament_files = []
+    source_file_counts = {}
 
-    if not tournament_files:
-        print("❌ No Duel Commander trial files found")
+    for source, directory in source_directories:
+        print(f"  Scanning {source} in {directory}...")
+        tournament_files = scan_duel_commander_files(directory, source, date_filter)
+        source_file_counts[source] = len(tournament_files)
+        all_tournament_files.extend([(source, f) for f in tournament_files])
+        print(f"    Found {len(tournament_files)} files")
+
+    if not all_tournament_files:
+        print("❌ No Duel Commander tournament files found")
         sys.exit(0)
 
-    print(f"📊 Found {len(tournament_files)} tournament files")
+    print(f"\n📊 Total files found: {len(all_tournament_files)}")
+    for source, count in source_file_counts.items():
+        print(f"   - {source}: {count} files")
 
     # Load and transform all tournaments
     print("\n📦 Loading and transforming tournament data...")
@@ -281,7 +352,7 @@ def main():
     tournaments_processed = 0
     tournaments_skipped = 0
 
-    for tournament_file in tournament_files:
+    for source, tournament_file in all_tournament_files:
         tournament_data = load_tournament_file(tournament_file)
 
         if not tournament_data:
@@ -296,7 +367,7 @@ def main():
 
             if tournaments_processed % 10 == 0:
                 print(
-                    f"  📊 Processed {tournaments_processed}/{len(tournament_files)} tournaments..."
+                    f"  📊 Processed {tournaments_processed}/{len(all_tournament_files)} tournaments..."
                 )
 
     print("\n📊 Transformation Summary:")
