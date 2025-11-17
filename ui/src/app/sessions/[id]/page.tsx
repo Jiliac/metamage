@@ -58,10 +58,12 @@ export async function generateMetadata({
   }
 }
 
-// Generate static paths for all existing sessions at build time
+// Generate static paths for the 100 most recent sessions at build time
 export async function generateStaticParams() {
   const sessions = await prisma.chatSession.findMany({
     select: { id: true },
+    orderBy: { createdAt: 'desc' },
+    take: 100,
   })
 
   return sessions.map(session => ({
