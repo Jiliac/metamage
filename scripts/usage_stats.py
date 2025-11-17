@@ -88,9 +88,7 @@ def main():
         print("\n\n✅ 3. TOOL SUCCESS RATE")
         print("-" * 70)
         total_results = session.query(ToolResult).count()
-        successful = (
-            session.query(ToolResult).filter(ToolResult.success).count()
-        )
+        successful = session.query(ToolResult).filter(ToolResult.success).count()
         success_rate = (successful / total_results * 100) if total_results > 0 else 0
 
         print(f"Total Tool Executions: {total_results:,}")
