@@ -8,6 +8,7 @@ import os
 from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
 from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.prebuilt import create_react_agent
 
 from .mcp_client import create_mcp_client
@@ -49,6 +50,12 @@ class MTGChatAgent:
                 print("Please set your OpenAI API key:")
                 print("export OPENAI_API_KEY=your_api_key_here")
                 return False
+        elif self.provider == "gemini":
+            if not os.getenv("GOOGLE_API_KEY"):
+                print("❌ Error: GOOGLE_API_KEY environment variable not set")
+                print("Please set your Google API key:")
+                print("export GOOGLE_API_KEY=your_api_key_here")
+                return False
 
         try:
             # Create MCP client and get tools
@@ -72,6 +79,12 @@ class MTGChatAgent:
                 print("🧠 Initializing OpenAI GPT-5...")
                 llm = ChatOpenAI(
                     model="gpt-5",
+                    max_tokens=4096,
+                )
+            elif self.provider == "gemini":
+                print("🧠 Initializing Google Gemini...")
+                llm = ChatGoogleGenerativeAI(
+                    model="gemini-2.5-flash-lite",
                     max_tokens=4096,
                 )
             else:
@@ -303,7 +316,7 @@ async def main():
     parser = argparse.ArgumentParser(description="MTG Tournament Analysis Chat Agent")
     parser.add_argument(
         "--provider",
-        choices=["claude", "opus", "gpt5"],
+        choices=["claude", "opus", "gpt5", "gemini"],
         default="claude",
         help="LLM provider to use (default: claude)",
     )
