@@ -428,41 +428,82 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
                     # We have embedded rounds, proceed with tournament creation
                     pass
                 else:
-                    # Try to find external rounds file
-                    criteria = TournamentSearchCriteria(
-                        date=t_date,
-                        format_name=format_name,
-                        source=source,
-                        tournament_name=t_name,
-                        tournament_id=tournament_id,
-                        warned_multiple=warned_multiple_rounds,
-                    )
-                    rounds_path = find_rounds_file(criteria)
+                    # Decision logic based on source type:
+                    # - MELEE: Check Matchups first (primary), rounds file second (fallback)
+                    # - MTGO/OTHER: Check rounds file first (primary), Matchups second (fallback)
 
-                    if not rounds_path:
-                        # Check if this entry has Matchups data as fallback
+                    should_skip = False
+
+                    if source == TournamentSource.MELEE:
+                        # For MELEE tournaments: Matchups is the primary source
                         entry_matchups = e.get("Matchups", [])
                         has_matchups = entry_matchups and len(entry_matchups) > 0
 
                         if not has_matchups:
-                            # Only warn once per tournament and only for dates after Nov 1, 2024
-                            warn_key = f"{t_name}|{t_date.date()}"
-                            nov_1_2024 = datetime(2024, 11, 1).date()
-                            if (
-                                warn_key not in warned_missing_rounds
-                                and t_date.date() > nov_1_2024
-                            ):
-                                # Add tournament entry details for debugging
-                                tournament_file = e.get("TournamentFile", "unknown")
-                                entry_player = e.get("Player", "unknown")
+                            # Fallback: try external rounds file (rare for MELEE)
+                            criteria = TournamentSearchCriteria(
+                                date=t_date,
+                                format_name=format_name,
+                                source=source,
+                                tournament_name=t_name,
+                                tournament_id=tournament_id,
+                                warned_multiple=warned_multiple_rounds,
+                            )
+                            rounds_path = find_rounds_file(criteria)
 
-                                print(
-                                    f"  ⚠️ Rounds file NOT found and no Matchups data for tournament '{t_name}' on {t_date.date()} [{source.name}] (format '{format_name}') | Entry: player='{entry_player}' file='{tournament_file}'; skipping entry"
-                                )
-                                warned_missing_rounds.add(warn_key)
-                            stats["tournaments_missing_rounds"] += 1
-                            continue
-                        # If we have Matchups, allow tournament creation to proceed
+                            if not rounds_path:
+                                # No Matchups AND no rounds file
+                                warn_key = f"{t_name}|{t_date.date()}"
+                                nov_1_2024 = datetime(2024, 11, 1).date()
+                                if (
+                                    warn_key not in warned_missing_rounds
+                                    and t_date.date() > nov_1_2024
+                                ):
+                                    tournament_file = e.get("TournamentFile", "unknown")
+                                    entry_player = e.get("Player", "unknown")
+                                    print(
+                                        f"  ⚠️ No Matchups data and no rounds file for MELEE tournament '{t_name}' on {t_date.date()} (format '{format_name}') | Entry: player='{entry_player}' file='{tournament_file}'; skipping entry"
+                                    )
+                                    warned_missing_rounds.add(warn_key)
+                                stats["tournaments_missing_rounds"] += 1
+                                should_skip = True
+                    else:
+                        # For MTGO/OTHER tournaments: External rounds file is the primary source
+                        criteria = TournamentSearchCriteria(
+                            date=t_date,
+                            format_name=format_name,
+                            source=source,
+                            tournament_name=t_name,
+                            tournament_id=tournament_id,
+                            warned_multiple=warned_multiple_rounds,
+                        )
+                        rounds_path = find_rounds_file(criteria)
+
+                        if not rounds_path:
+                            # Fallback: check if this entry has Matchups data
+                            entry_matchups = e.get("Matchups", [])
+                            has_matchups = entry_matchups and len(entry_matchups) > 0
+
+                            if not has_matchups:
+                                # No rounds file AND no Matchups
+                                warn_key = f"{t_name}|{t_date.date()}"
+                                nov_1_2024 = datetime(2024, 11, 1).date()
+                                if (
+                                    warn_key not in warned_missing_rounds
+                                    and t_date.date() > nov_1_2024
+                                ):
+                                    tournament_file = e.get("TournamentFile", "unknown")
+                                    entry_player = e.get("Player", "unknown")
+                                    print(
+                                        f"  ⚠️ Rounds file NOT found and no Matchups data for tournament '{t_name}' on {t_date.date()} [{source.name}] (format '{format_name}') | Entry: player='{entry_player}' file='{tournament_file}'; skipping entry"
+                                    )
+                                    warned_missing_rounds.add(warn_key)
+                                stats["tournaments_missing_rounds"] += 1
+                                should_skip = True
+
+                    if should_skip:
+                        continue
+                    # If we reach here, we have either Matchups or rounds file available
                 tournament, is_new_tournament = get_or_create_tournament(
                     session=session,
                     cache=t_cache,
