@@ -98,7 +98,7 @@ Uses `TOURNAMENT_DB_PATH` if the DB is not at `data/tournament.db`.
 
 - **CLI Chat Agent + Discord Bot** — `src/cli_chat`
   - LangGraph ReAct agent using MCP tools; logs sessions and tool results to an Ops DB
-  - Providers: Claude (default), Opus, GPT-5 (if configured), Gemini-2.5-flash (if configured)
+  - Providers: Claude (default), Opus, GPT-5 (if configured), Gemini-2.5 (if configured)
   - [Details](src/cli_chat/README.md)
 
 - **SocialBot** — `src/socialbot`
