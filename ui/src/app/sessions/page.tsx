@@ -50,6 +50,7 @@ async function getSessionsWithCounts() {
     orderBy: {
       createdAt: 'desc',
     },
+    take: 100,
   })
 
   return sessions.map(session => ({

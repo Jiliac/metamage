@@ -78,7 +78,7 @@ def compute_archetype_overview(engine: Engine, archetype_name: str) -> Dict[str,
 
     # Get archetype info with recent performance
     sql = """
-        SELECT 
+        SELECT
             a.id as archetype_id,
             a.name as archetype_name,
             f.name as format_name,
@@ -86,14 +86,14 @@ def compute_archetype_overview(engine: Engine, archetype_name: str) -> Dict[str,
             COUNT(DISTINCT te.id) as recent_entries,
             COUNT(DISTINCT t.id) as tournaments_played,
             ROUND(
-                CAST(COUNT(CASE WHEN m.result = 'WIN' THEN 1 END) AS REAL) / 
+                CAST(COUNT(CASE WHEN m.result = 'WIN' THEN 1 END) AS REAL) /
                 CAST((COUNT(CASE WHEN m.result = 'WIN' THEN 1 END) + COUNT(CASE WHEN m.result = 'LOSS' THEN 1 END)) AS REAL) * 100, 1
             ) as winrate_no_draws
         FROM archetypes a
         JOIN formats f ON a.format_id = f.id
         LEFT JOIN tournament_entries te ON a.id = te.archetype_id
         LEFT JOIN tournaments t ON te.tournament_id = t.id AND t.date >= date('now', '-30 days')
-        LEFT JOIN matches m ON te.id = m.entry_id AND m.entry_id < m.opponent_entry_id
+        LEFT JOIN matches m ON te.id = m.entry_id
         WHERE LOWER(a.name) = LOWER(:archetype_name)
         GROUP BY a.id, a.name, f.name, f.id
     """

@@ -57,8 +57,8 @@ partner_groupings:
 name_mappings:
   "Lier, Disciple of the Drowned": "Lier"
   "Slimefoot and Squee": "Slimefoot & Squee"
-  "Surris, Spidersilk Innovator": "Surris"
-  "Uharis, the Stormspinner": "Uharis"
+  "Surris, Spidersilk Innovator": "Peter Parker"
+  "Uharis, the Stormspinner": "Spider-Man 2099"
   "Aragorn, King of Gondor": "Aragorn"
   "Satya, Aetherflux Genius": "Satya"
   "Baral, Chief of Compliance": "Baral"
@@ -85,6 +85,9 @@ name_mappings:
   "Flamewar, Brash Veteran": "Flamewar"
   "Glarb, Calamity's Augur": "Glarb"
   "Aminatou, the Fateshifter": "Aminatou"
+  "Terra, Magical Adept": "Terra"
+  "Deadpool, Trading Card": "Deadpool"
+  "Tivit, Seller of Secrets": "Tivit"
 
   # Add more mappings as needed
   # "Full Commander Name": "Short Name"

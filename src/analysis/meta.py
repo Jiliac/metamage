@@ -46,10 +46,9 @@ def compute_meta_report(
             WHERE t.format_id = :format_id
               AND t.date >= :start
               AND t.date <= :end
-              AND m.entry_id < m.opponent_entry_id
         ),
         archetype_stats AS (
-            SELECT 
+            SELECT
                 a.name as archetype_name,
                 COUNT(DISTINCT te.id) as total_entries,
                 COUNT(DISTINCT t.id) as tournaments_played,
@@ -64,7 +63,6 @@ def compute_meta_report(
             WHERE t.format_id = :format_id
               AND t.date >= :start
               AND t.date <= :end
-              AND m.entry_id < m.opponent_entry_id
             GROUP BY a.id, a.name
         )
         SELECT 

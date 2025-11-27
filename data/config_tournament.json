@@ -1,11 +1,11 @@
 [
   {
     "source": "MELEE",
-    "data_folder": "/Users/valentin/Development/dev-win/MTG_decklistcache/Tournaments/MTGmelee"
+    "data_folder": "/Users/valentin/Development/dev-win/DecklistCacheJiliac/Tournaments/melee.gg"
   },
   {
     "source": "DC",
-    "data_folder": "/Users/valentin/Development/dev-win/MTG_decklistcache/Tournaments/MTGO"
+    "data_folder": "/Users/valentin/Development/dev-win/DecklistCacheJiliac/Tournaments/mtgo.com_limited_data"
   },
   {
     "source": "MTGO",
