@@ -84,7 +84,7 @@ class MTGChatAgent:
             elif self.provider == "gemini":
                 print("🧠 Initializing Google Gemini...")
                 llm = ChatGoogleGenerativeAI(
-                    model="gemini-2.5-flash-lite",
+                    model="gemini-2.5-pro",
                     max_tokens=4096,
                 )
             else:
