@@ -109,7 +109,8 @@ def compute_archetype_overview(engine: Engine, archetype_name: str) -> Dict[str,
     print(f"DEBUG: Fuzzy match result for '{archetype_name}': {arch_match}", flush=True)
     if not arch_match:
         return {
-            "error": f"Archetype '{archetype_name}' not found. Try a different name or check spelling."
+            # "error": f"Archetype '{archetype_name}' not found. Try a different name or check spelling."
+            "error": f"Archetype '{archetype_name}' not found in database or aliases. First check if this might be a misspelling of an existing archetype name. If the spelling appears correct, perform additional analysis to identify the intended archetype. If you find a match with reasonable confidence, use add_archetype_alias() to save the mapping for future queries."
         }
 
     # Use the found archetype name for the main query

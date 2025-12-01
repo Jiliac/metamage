@@ -21,6 +21,7 @@ mcp = FastMCP(
           - search_card(query): search card by name (partial/fuzzy) and return details (id, name, type, oracle_text, mana_cost)
           - get_player(player_id_or_handle): player profile (UUID or handle; fuzzy matching supported)
           - query_database(sql, limit): run SELECT-only SQLite queries against the MTG tournament DB
+          - add_archetype_alias(archetype_id, alias, confidence_score?): add new alias for archetype (WRITE operation - use as last resort)
 
         ## Resources
           - mtg://formats/{format_id}: format overview with recent tournaments and meta snapshot
@@ -95,4 +96,6 @@ from . import (  # noqa: E402
     query_db_any,  # noqa: F401
     tournament_result,  # noqa: F401
     sources,  # noqa: F401
+    archetype_alias,  # noqa: F401
+
 )
