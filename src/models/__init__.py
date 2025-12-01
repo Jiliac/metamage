@@ -8,7 +8,7 @@ from .base import (
     uuid_pk,
     generate_uuid,
 )
-from .reference import Format, Player, Card, Archetype, MetaChange, ChangeType
+from .reference import Format, Player, Card, Archetype, MetaChange, ChangeType, ArchetypeAlias 
 from .tournament import Tournament, TournamentEntry, DeckCard, Match
 from .tournament import TournamentSource, MatchResult, BoardType
 
