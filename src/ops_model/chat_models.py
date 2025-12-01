@@ -9,7 +9,7 @@ class ChatSession(Base, TimestampMixin):
     __tablename__ = "chat_sessions"
 
     id = uuid_pk()
-    provider = Column(String(20), nullable=False)  # claude, xai, opus, gpt5
+    provider = Column(String(20), nullable=False)  # claude, xai, opus, gpt5, gemini
     title = Column(String(200), nullable=True)
     source = Column(String(20), nullable=True, index=True)  # cli|discord|social
     source_meta = Column(JSON, nullable=True)  # platform/server/channel/post context

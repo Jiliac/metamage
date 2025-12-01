@@ -12,6 +12,7 @@ dependencies = [
     "langchain-anthropic>=0.3.0",
     "langchain-openai>=0.3.0",
     "langchain-mcp-adapters",
+	"langchain-google-genai>=2.0.0",
     "langgraph",
     "discord>=2.3.2",
     "langchain>=0.3.27",
