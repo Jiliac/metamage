@@ -36,6 +36,7 @@ def _find_archetype_fuzzy(
         if result:
             return dict(result._mapping)
 
+    print(f"DEBUG: Trying word-based matching for '{archetype_name}' (Strategy 3)", flush=True)
     # Strategy 3: Word-based matching (split and match individual words)
     words = archetype_name.lower().split()
     if len(words) > 1:
@@ -58,6 +59,43 @@ def _find_archetype_fuzzy(
             if result:
                 return dict(result._mapping)
 
+    # Strategy 4a: Exact alias match
+    print(f"DEBUG: Trying exact alias matching for '{archetype_name}' (Strategy 4a)", flush=True)
+    exact_alias_sql = """
+        SELECT a.id, a.name, f.name as format_name
+        FROM archetype_aliases aa
+        JOIN archetypes a ON aa.archetype_id = a.id
+        JOIN formats f ON a.format_id = f.id
+        WHERE LOWER(aa.alias) = LOWER(:archetype_name)
+        ORDER BY aa.confidence_score DESC
+        LIMIT 1
+    """
+    with engine.connect() as conn:
+        result = conn.execute(
+            text(exact_alias_sql), {"archetype_name": archetype_name}
+        ).first()
+        if result:
+            print(f"DEBUG: Found exact alias match: {dict(result._mapping)}", flush=True)
+            return dict(result._mapping)
+
+    # Strategy 4b: Partial alias match (contains)
+    print(f"DEBUG: Trying partial alias matching for '{archetype_name}' (Strategy 4b)", flush=True)
+    partial_alias_sql = """
+        SELECT a.id, a.name, f.name as format_name
+        FROM archetype_aliases aa
+        JOIN archetypes a ON aa.archetype_id = a.id
+        JOIN formats f ON a.format_id = f.id
+        WHERE LOWER(aa.alias) LIKE LOWER(:pattern)
+        ORDER BY aa.confidence_score DESC, LENGTH(aa.alias)
+        LIMIT 1
+    """
+    with engine.connect() as conn:
+        pattern = f"%{archetype_name}%"
+        result = conn.execute(text(partial_alias_sql), {"pattern": pattern}).first()
+        if result:
+            print(f"DEBUG: Found partial alias match: {dict(result._mapping)}", flush=True)
+            return dict(result._mapping)
+
     return None
 
 
@@ -68,6 +106,7 @@ def compute_archetype_overview(engine: Engine, archetype_name: str) -> Dict[str,
     """
     # Find archetype using fuzzy matching
     arch_match = _find_archetype_fuzzy(engine, archetype_name)
+    print(f"DEBUG: Fuzzy match result for '{archetype_name}': {arch_match}", flush=True)
     if not arch_match:
         return {
             "error": f"Archetype '{archetype_name}' not found. Try a different name or check spelling."
@@ -75,6 +114,7 @@ def compute_archetype_overview(engine: Engine, archetype_name: str) -> Dict[str,
 
     # Use the found archetype name for the main query
     found_name = arch_match["name"]
+    print(f"DEBUG: Using archetype name '{found_name}' for main queries", flush=True)
 
     # Get archetype info with recent performance
     sql = """
