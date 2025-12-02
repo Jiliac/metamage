@@ -17,7 +17,7 @@ from .logging_config import mcp_logger
 
 @mcp.tool
 def add_archetype_alias(
-    archetype_id: str, alias: str, confidence_score: float = 1.0
+    archetype_id: str, alias: str, confidence_score: float = 0.75
 ) -> Dict[str, Any]:
     """
     Add a new alias for an existing archetype when standard matching fails.
@@ -42,7 +42,6 @@ def add_archetype_alias(
     - First attempts at archetype matching (use get_archetype_overview() first)
     - Without first obtaining the target archetype_id via get_archetype_overview()
     - Creating aliases when you haven't identified the target archetype
-    - Low-confidence guesses (confidence_score < 0.6)
     - Adding obvious duplicates or variations of existing names
 
     Parameters:
@@ -54,11 +53,9 @@ def add_archetype_alias(
     - alias: The new alias string to create (the informal/slang/alternative name)
       * This is the name that users will search for in the future
       * Must be alphanumeric characters, spaces, and hyphens only
-    - confidence_score: Your confidence level (0.6-1.0). Use:
-      * 0.6-0.7: Reasonable guess based on partial evidence
-      * 0.7-0.8: Good evidence from card analysis or context
-      * 0.8-0.9: Strong evidence from multiple sources
-      * 0.9-1.0: Very confident match with clear evidence
+    - confidence_score: Optional confidence level (0.0-1.0), defaults to 0.75
+      * Higher scores indicate stronger evidence for the match
+      * Use your judgment based on the quality of your analysis
 
     Security: This tool has exclusive write access to archetype_aliases table.
     All insertions are logged and attributed to 'auto' source.
@@ -88,10 +85,10 @@ def add_archetype_alias(
     5) target = get_archetype_overview("Rakdos Scam")  # Lookup target archetype
        # Returns: {"archetype_id": "728f92e8-a84d-4c68-95f5-c4ecdf37f74f",
        #           "archetype_name": "Rakdos Scam", "format_name": "Modern", ...}
-    6) result = add_archetype_alias(
+       6) result = add_archetype_alias(
            archetype_id="728f92e8-a84d-4c68-95f5-c4ecdf37f74f",  # Target ID
            alias="Scam deck",                                      # New alias
-           confidence_score=0.8                                    # High confidence
+           confidence_score=0.8                                    # Optional, based on analysis
        )
     7) SUCCESS: Future calls to get_archetype_overview("Scam deck") will now
        return the Rakdos Scam archetype data automatically

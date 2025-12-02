@@ -36,7 +36,10 @@ def _find_archetype_fuzzy(
         if result:
             return dict(result._mapping)
 
-    print(f"DEBUG: Trying word-based matching for '{archetype_name}' (Strategy 3)", flush=True)
+    print(
+        f"DEBUG: Trying word-based matching for '{archetype_name}' (Strategy 3)",
+        flush=True,
+    )
     # Strategy 3: Word-based matching (split and match individual words)
     words = archetype_name.lower().split()
     if len(words) > 1:
@@ -60,7 +63,10 @@ def _find_archetype_fuzzy(
                 return dict(result._mapping)
 
     # Strategy 4a: Exact alias match
-    print(f"DEBUG: Trying exact alias matching for '{archetype_name}' (Strategy 4a)", flush=True)
+    print(
+        f"DEBUG: Trying exact alias matching for '{archetype_name}' (Strategy 4a)",
+        flush=True,
+    )
     exact_alias_sql = """
         SELECT a.id, a.name, f.name as format_name
         FROM archetype_aliases aa
@@ -75,11 +81,16 @@ def _find_archetype_fuzzy(
             text(exact_alias_sql), {"archetype_name": archetype_name}
         ).first()
         if result:
-            print(f"DEBUG: Found exact alias match: {dict(result._mapping)}", flush=True)
+            print(
+                f"DEBUG: Found exact alias match: {dict(result._mapping)}", flush=True
+            )
             return dict(result._mapping)
 
     # Strategy 4b: Partial alias match (contains)
-    print(f"DEBUG: Trying partial alias matching for '{archetype_name}' (Strategy 4b)", flush=True)
+    print(
+        f"DEBUG: Trying partial alias matching for '{archetype_name}' (Strategy 4b)",
+        flush=True,
+    )
     partial_alias_sql = """
         SELECT a.id, a.name, f.name as format_name
         FROM archetype_aliases aa
@@ -93,7 +104,9 @@ def _find_archetype_fuzzy(
         pattern = f"%{archetype_name}%"
         result = conn.execute(text(partial_alias_sql), {"pattern": pattern}).first()
         if result:
-            print(f"DEBUG: Found partial alias match: {dict(result._mapping)}", flush=True)
+            print(
+                f"DEBUG: Found partial alias match: {dict(result._mapping)}", flush=True
+            )
             return dict(result._mapping)
 
     return None
@@ -110,7 +123,7 @@ def compute_archetype_overview(engine: Engine, archetype_name: str) -> Dict[str,
     if not arch_match:
         return {
             # "error": f"Archetype '{archetype_name}' not found. Try a different name or check spelling."
-            "error": f"Archetype '{archetype_name}' not found in database or aliases. First check if this might be a misspelling of an existing archetype name. If the spelling appears correct, perform additional analysis to identify the intended archetype. If you find a match with reasonable confidence, use add_archetype_alias() to save the mapping for future queries."
+            "error": f"Archetype '{archetype_name}' not found. ACTION REQUIRED: 1) Analyze deck cards/composition to identify intended archetype, 2) Call get_archetype_overview() on target archetype to get ID, 3) Call add_archetype_alias() to create mapping, 4) Retry original query. If no clear match found, inform user data unavailable."
         }
 
     # Use the found archetype name for the main query
