@@ -1,0 +1,15 @@
+__pycache__
+.env
+
+Pauper_data.json
+*foo*
+*.pdf
+
+.Rproj.user
+.Rhistory
+metamage.Rproj
+AGENTS.md
+**/*.backup
+*_PLAN.md
+TODO.md
+prompts/
