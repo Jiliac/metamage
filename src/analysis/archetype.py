@@ -36,10 +36,6 @@ def _find_archetype_fuzzy(
         if result:
             return dict(result._mapping)
 
-    print(
-        f"DEBUG: Trying word-based matching for '{archetype_name}' (Strategy 3)",
-        flush=True,
-    )
     # Strategy 3: Word-based matching (split and match individual words)
     words = archetype_name.lower().split()
     if len(words) > 1:
@@ -119,7 +115,6 @@ def compute_archetype_overview(engine: Engine, archetype_name: str) -> Dict[str,
     """
     # Find archetype using fuzzy matching
     arch_match = _find_archetype_fuzzy(engine, archetype_name)
-    print(f"DEBUG: Fuzzy match result for '{archetype_name}': {arch_match}", flush=True)
     if not arch_match:
         return {
             # "error": f"Archetype '{archetype_name}' not found. Try a different name or check spelling."
@@ -128,7 +123,6 @@ def compute_archetype_overview(engine: Engine, archetype_name: str) -> Dict[str,
 
     # Use the found archetype name for the main query
     found_name = arch_match["name"]
-    print(f"DEBUG: Using archetype name '{found_name}' for main queries", flush=True)
 
     # Get archetype info with recent performance
     sql = """

@@ -35,7 +35,6 @@ def add_archetype_alias(
     Returns:
         Dict with 'success' boolean and 'message' string, plus 'alias_id' if successful
     """
-    print(f"DEBUG: add_archetype_alias called with archetype_id={archetype_id}, alias={alias}, confidence_score={confidence_score}, source={source}, session_id={session_id}")
     # Security validation chain
     try:
         # 1. Rate limiting check (per session)
@@ -56,7 +55,6 @@ def add_archetype_alias(
 
         # 2. Alias string validation
         alias_valid, alias_error = validate_alias_string(alias)
-        print(f"DEBUG: parent Alias validation result: {alias_valid}, {alias_error}")
         if not alias_valid:
             mcp_logger.warning(
                 "Alias validation failed",
