@@ -71,6 +71,34 @@ def get_database_path():
     return os.path.join(project_root, "data", "tournament.db")
 
 
+def get_alias_write_engine():
+    """Create write-enabled engine ONLY for archetype_aliases table operations."""
+    engine = create_engine(
+        _build_database_url(),
+        echo=False,
+        connect_args={
+            "check_same_thread": False,  # Allow multi-threading
+            "timeout": 20,  # Connection timeout
+        },
+        pool_pre_ping=True,
+        pool_recycle=300,
+    )
+
+    # Enable WAL mode and foreign keys for SQLite (same as read-only engine)
+    # NOTE: We do NOT set PRAGMA query_only=ON to allow write operations
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma_write(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.execute("PRAGMA cache_size=10000")
+        cursor.execute("PRAGMA temp_store=memory")
+        cursor.close()
+
+    return engine
+
+
 def _build_database_url():
     """
     Build an absolute SQLite URL. Honors TOURNAMENT_DB_PATH if set,

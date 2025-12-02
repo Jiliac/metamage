@@ -4,11 +4,20 @@ from .base import (
     Base,
     get_engine,
     get_session_factory,
+    get_alias_write_engine,
     get_database_path,
     uuid_pk,
     generate_uuid,
 )
-from .reference import Format, Player, Card, Archetype, MetaChange, ChangeType, ArchetypeAlias 
+from .reference import (
+    Format,
+    Player,
+    Card,
+    Archetype,
+    MetaChange,
+    ChangeType,
+    ArchetypeAlias,
+)
 from .tournament import Tournament, TournamentEntry, DeckCard, Match
 from .tournament import TournamentSource, MatchResult, BoardType
 
@@ -17,6 +26,7 @@ __all__ = [
     "Base",
     "get_engine",
     "get_session_factory",
+    "get_alias_write_engine",
     "get_database_path",
     "uuid_pk",
     "generate_uuid",
