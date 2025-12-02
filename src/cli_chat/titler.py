@@ -7,6 +7,7 @@ from typing import Optional
 from sqlalchemy import inspect, text
 from langchain_anthropic import ChatAnthropic
 from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 from ..ops_model.base import get_ops_session_factory
 from ..ops_model.chat_models import ChatSession
@@ -187,6 +188,8 @@ class Titler:
                 llm = ChatAnthropic(model="claude-3-5-haiku-20241022", max_tokens=64)
             elif provider == "gpt5":
                 llm = ChatOpenAI(model="gpt-5-nano", max_tokens=64)
+            elif provider == "gemini":
+                llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", max_tokens=64)
             else:
                 llm = ChatAnthropic(model="claude-3-5-haiku-20241022", max_tokens=64)
             resp = llm.invoke(prompt)
@@ -219,6 +222,8 @@ class Titler:
                 llm = ChatAnthropic(model="claude-3-5-haiku-20241022", max_tokens=128)
             elif provider == "gpt5":
                 llm = ChatOpenAI(model="gpt-5-nano", max_tokens=128)
+            elif provider == "gemini":
+                llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", max_tokens=128)
             else:
                 llm = ChatAnthropic(model="claude-3-5-haiku-20241022", max_tokens=128)
             resp = llm.invoke(prompt)
@@ -281,6 +286,8 @@ class Titler:
                 llm = ChatAnthropic(model="claude-3-5-haiku-20241022", max_tokens=64)
             elif provider == "gpt5":
                 llm = ChatOpenAI(model="gpt-5-nano", max_tokens=64)
+            elif provider == "gemini":
+                llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", max_tokens=64)
             else:
                 # Fallback to Anthropic small if unknown
                 llm = ChatAnthropic(model="claude-3-5-haiku-20241022", max_tokens=64)
