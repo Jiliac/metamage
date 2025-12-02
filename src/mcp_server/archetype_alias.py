@@ -1,23 +1,19 @@
-from typing import Dict, Any, Optional
-from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError
-import uuid
+from typing import Dict, Any
 
 from .utils import alias_write_engine
 from .mcp import mcp
-from .utils import (
-    check_session_rate_limit,
-    validate_alias_string,
-    validate_archetype_exists,
-    validate_alias_insert_sql,
-    ALLOWED_ALIAS_SQL,
-)
-from .logging_config import mcp_logger
+from fastmcp import Context
+from .log_decorator import log_tool_calls
+from ..analysis.archetype_action import add_archetype_alias as add_archetype_alias_impl
 
 
+@log_tool_calls
 @mcp.tool
 def add_archetype_alias(
-    archetype_id: str, alias: str, confidence_score: float = 0.75
+    archetype_id: str,
+    alias: str,
+    confidence_score: float = 0.75,
+    ctx: Context = None,
 ) -> Dict[str, Any]:
     """
     Add a new alias for an existing archetype when standard matching fails.
@@ -100,153 +96,11 @@ def add_archetype_alias(
         "alias_id": "new_alias_uuid" (if successful)
     }
     """
-    session_id = None  # For now, we don't have session context
-
-    # Security validation chain
-    try:
-        # 1. Rate limiting check (per session)
-        if not check_session_rate_limit(session_id or ""):
-            mcp_logger.warning(
-                "Alias rate limit exceeded",
-                extra={
-                    "session_id": session_id,
-                    "tool_name": "add_archetype_alias",
-                    "violation_type": "rate_limit",
-                    "success": False,
-                },
-            )
-            return {
-                "success": False,
-                "message": "Request temporarily unavailable, please try again later",
-            }
-
-        # 2. Alias string validation
-        alias_valid, alias_error = validate_alias_string(alias)
-        if not alias_valid:
-            mcp_logger.warning(
-                "Alias validation failed",
-                extra={
-                    "session_id": session_id,
-                    "tool_name": "add_archetype_alias",
-                    "violation_type": "validation_error",
-                    "alias_length": len(alias) if isinstance(alias, str) else 0,
-                    "success": False,
-                },
-            )
-            return {"success": False, "message": alias_error}
-
-        # 3. Confidence score validation
-        if not 0.0 <= confidence_score <= 1.0:
-            mcp_logger.warning(
-                "Invalid confidence score",
-                extra={
-                    "session_id": session_id,
-                    "tool_name": "add_archetype_alias",
-                    "violation_type": "validation_error",
-                    "confidence": confidence_score,
-                    "success": False,
-                },
-            )
-            return {"success": False, "message": "Invalid input format provided"}
-
-        # 4. Archetype existence validation
-        if not validate_archetype_exists(alias_write_engine, archetype_id):
-            mcp_logger.warning(
-                "Invalid archetype ID",
-                extra={
-                    "session_id": session_id,
-                    "tool_name": "add_archetype_alias",
-                    "violation_type": "validation_error",
-                    "success": False,
-                },
-            )
-            return {"success": False, "message": "Invalid input format provided"}
-
-        # 5. SQL pattern validation
-        if not validate_alias_insert_sql(ALLOWED_ALIAS_SQL):
-            mcp_logger.error(
-                "SQL pattern validation failed",
-                extra={
-                    "session_id": session_id,
-                    "tool_name": "add_archetype_alias",
-                    "violation_type": "sql_security",
-                    "success": False,
-                },
-            )
-            return {
-                "success": False,
-                "message": "Unable to process alias request due to security restrictions",
-            }
-
-        # Generate UUID for the new alias
-        alias_id = str(uuid.uuid4())
-
-        # Execute the secure database insertion
-        with alias_write_engine.connect() as conn:
-            with conn.begin():  # Use transaction for safety
-                conn.execute(
-                    text(ALLOWED_ALIAS_SQL),
-                    {
-                        "alias_id": alias_id,
-                        "alias": alias,
-                        "archetype_id": archetype_id,
-                        "confidence_score": confidence_score,
-                        "source": "auto",
-                    },
-                )
-
-        # Log successful operation
-        mcp_logger.info(
-            "Alias operation completed",
-            extra={
-                "session_id": session_id,
-                "tool_name": "add_archetype_alias",
-                "operation": "insert_alias",
-                "alias_length": len(alias),
-                "confidence": confidence_score,
-                "success": True,
-            },
-        )
-
-        return {
-            "success": True,
-            "message": f"Successfully added alias '{alias}' for archetype {archetype_id}",
-            "alias_id": alias_id,
-        }
-
-    except IntegrityError as e:
-        # Handle duplicate alias or constraint violations
-        mcp_logger.warning(
-            "Database integrity violation",
-            extra={
-                "session_id": session_id,
-                "tool_name": "add_archetype_alias",
-                "violation_type": "integrity_error",
-                "error": str(e),
-                "success": False,
-            },
-        )
-
-        # Return generic error message for security
-        return {
-            "success": False,
-            "message": "Unable to process alias request due to security restrictions",
-        }
-
-    except Exception as e:
-        # Handle all other exceptions
-        mcp_logger.error(
-            "Unexpected alias operation error",
-            extra={
-                "session_id": session_id,
-                "tool_name": "add_archetype_alias",
-                "violation_type": "unexpected_error",
-                "error": str(e),
-                "success": False,
-            },
-        )
-
-        return {
-            "success": False,
-            "message": "Unable to process alias request due to security restrictions",
-        }
+    return add_archetype_alias_impl(
+        engine=alias_write_engine,
+        archetype_id=archetype_id,
+        alias=alias,
+        confidence_score=confidence_score,
+        source="auto",
+        session_id=None,
+    )
