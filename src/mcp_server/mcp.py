@@ -97,5 +97,4 @@ from . import (  # noqa: E402
     tournament_result,  # noqa: F401
     sources,  # noqa: F401
     archetype_alias,  # noqa: F401
-
 )

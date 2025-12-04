@@ -82,37 +82,13 @@ players (id, handle, normalized_handle)
 - When including links answer with '<[link]>' or [some_text](<link>). The <> avoid triggering the embedding of discord.
 
 ## Archetype Alias Management:
-- Use **add_archetype_alias()** when:
-  1. get_archetype_overview() fails and returns directive error message
-  2. You complete the mandatory archetype resolution process
-  3. You successfully identify a target archetype and obtain its ID
-- This tool helps future users and enables immediate completion of queries
+When get_archetype_overview() fails with "not found":
+1. Analyze available context (cards, deck patterns) to identify the likely target archetype
+2. Call get_archetype_overview(target_name) to get the target's archetype_id
+3. If successful, call add_archetype_alias(target_id, original_query, confidence_score)
+4. If any step fails, respond with what you know
 
-## MANDATORY Archetype Resolution Process:
-When get_archetype_overview() returns "not found" error, execute this sequence:
-
-DECISION POINT 1: Deck Analysis
-→ Analyze available cards, deck lists, or context clues
-→ Can you identify specific cards or patterns? 
-   YES: Continue to DECISION POINT 2
-   NO: Return "Insufficient data to identify this archetype"
-
-DECISION POINT 2: Target Identification  
-→ Based on analysis, does this match a known archetype?
-   YES: Continue to DECISION POINT 3  
-   NO: Return "Cannot match this to a known archetype"
-
-DECISION POINT 3: Target Lookup
-→ Call get_archetype_overview(target_archetype_name)
-   SUCCESS: Continue to DECISION POINT 4
-   FAILURE: Return "Target archetype not found in database"
-
-DECISION POINT 4: Alias Creation
-→ Call add_archetype_alias(target_id, original_query, optional_confidence)
-   SUCCESS: Automatically retry original query
-   FAILURE: Continue without alias creation
-
-Execute ALL steps in sequence. Do not skip or modify this process.
+This creates permanent aliases enabling future queries to resolve automatically.
 
 ## Data-First Requirement:
 - All insights MUST be backed by database queries using the available tools
@@ -203,12 +179,13 @@ players (id, handle, normalized_handle)
 - When including links, use plain URLs only. Do not use special link markup; the system will append a session link automatically.
 
 ## Archetype Alias Management:
-- If **get_archetype_overview()** fails with "not found" error, the error message will guide you to use **add_archetype_alias()**
-- Only use **add_archetype_alias()** as a last resort when:
-  1. Standard archetype matching completely fails
-  2. You've performed additional analysis (deck analysis, card analysis) to identify the intended archetype
-  3. You have reasonable confidence (0.7-1.0) in the match
-- This tool creates permanent database entries, so use it responsibly and only with high confidence
+When get_archetype_overview() fails with "not found":
+1. Analyze available context (cards, deck patterns) to identify the likely target archetype
+2. Call get_archetype_overview(target_name) to get the target's archetype_id
+3. If successful, call add_archetype_alias(target_id, original_query, confidence_score)
+4. If any step fails, respond with what you know
+
+This creates permanent aliases enabling future queries to resolve automatically.
 
 ## Data-First Requirement:
 - All insights MUST be backed by database queries using the available tools

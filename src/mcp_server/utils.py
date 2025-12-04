@@ -1,6 +1,5 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from contextlib import contextmanager
-from typing import Optional
 from sqlalchemy import event, text
 from ..models import get_engine, get_session_factory, get_alias_write_engine
 import re

@@ -13,18 +13,18 @@ def get_archetype_overview(archetype_name: str, ctx: Context = None) -> Dict[str
     """
     Get archetype overview with recent performance and key cards.
     Uses fuzzy matching to find archetypes by partial name.
-    
+
     Many archetype names incorporate Magic: The Gathering color combinations.
     Use this reference when searching for color-based archetypes:
     Color Reference Guide:
-    
+
     Single Colors:
     W: White
-    U: Blue  
+    U: Blue
     B: Black
     R: Red
     G: Green
-    
+
     Two-Color Combinations:
     WU | UW: Azorius (White-Blue)
     UB | BU: Dimir (Blue-Black)
@@ -36,7 +36,7 @@ def get_archetype_overview(archetype_name: str, ctx: Context = None) -> Dict[str
     BG | GB: Golgari (Black-Green)
     RW | WR: Boros (Red-White)
     GU | UG: Simic (Green-Blue)
-    
+
     Three-Color Combinations:
     WUB: Esper (White-Blue-Black)
     UBR: Grixis (Blue-Black-Red)

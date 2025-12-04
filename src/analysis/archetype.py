@@ -117,7 +117,6 @@ def compute_archetype_overview(engine: Engine, archetype_name: str) -> Dict[str,
     arch_match = _find_archetype_fuzzy(engine, archetype_name)
     if not arch_match:
         return {
-            # "error": f"Archetype '{archetype_name}' not found. Try a different name or check spelling."
             "error": f"Archetype '{archetype_name}' not found. ACTION REQUIRED: 1) Analyze deck cards/composition to identify intended archetype, 2) Call get_archetype_overview() on target archetype to get ID, 3) Call add_archetype_alias() to create mapping, 4) Retry original query. If no clear match found, inform user data unavailable."
         }
 
