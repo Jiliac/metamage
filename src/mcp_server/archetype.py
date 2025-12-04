@@ -14,6 +14,41 @@ def get_archetype_overview(archetype_name: str, ctx: Context = None) -> Dict[str
     Get archetype overview with recent performance and key cards.
     Uses fuzzy matching to find archetypes by partial name.
 
+    Many archetype names incorporate Magic: The Gathering color combinations.
+    Use this reference when searching for color-based archetypes:
+    Color Reference Guide:
+
+    Single Colors:
+    W: White
+    U: Blue
+    B: Black
+    R: Red
+    G: Green
+
+    Two-Color Combinations:
+    WU | UW: Azorius (White-Blue)
+    UB | BU: Dimir (Blue-Black)
+    BR | RB: Rakdos (Black-Red)
+    RG | GR: Gruul (Red-Green)
+    GW | WG: Selesnya (Green-White)
+    WB | BW: Orzhov (White-Black)
+    UR | RU: Izzet (Blue-Red)
+    BG | GB: Golgari (Black-Green)
+    RW | WR: Boros (Red-White)
+    GU | UG: Simic (Green-Blue)
+
+    Three-Color Combinations:
+    WUB: Esper (White-Blue-Black)
+    UBR: Grixis (Blue-Black-Red)
+    BRG: Jund (Black-Red-Green)
+    RGW: Naya (Red-Green-White)
+    GWU: Bant (Green-White-Blue)
+    WBG: Abzan (White-Black-Green)
+    URW: Jeskai (Blue-Red-White)
+    BRW: Mardu (Black-Red-White)
+    RGU: Temur (Red-Green-Blue)
+    BUG: Sultai (Blue-Black-Green)
+
     Workflow Integration:
     - Use this first to resolve an archetype by name (fuzzy matching).
     - Then:
@@ -22,12 +57,10 @@ def get_archetype_overview(archetype_name: str, ctx: Context = None) -> Dict[str
       - get_archetype_trends() to see weekly presence and winrate trends.
       - get_matchup_winrate() for head-to-head vs another archetype.
       - query_database() for custom splits (e.g., with/without a card, by event size).
-
     Related Tools:
     - search_card() → get card_id to combine with archetype_id in custom analyses.
     - get_sources() → fetch recent tournaments and links for supporting evidence.
     - get_meta_report() → see how this archetype sits in the broader metagame.
-
     Example Workflow:
     1) arch = get_archetype_overview("Yawgmoth")
     2) cards = get_archetype_cards(format_id, "Yawgmoth", start, end, board="MAIN")

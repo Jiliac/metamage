@@ -8,6 +8,8 @@ from sqlalchemy import (
     Enum,
     UniqueConstraint,
     Boolean,
+    FLOAT,
+    text,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import TypeDecorator, VARCHAR
@@ -187,6 +189,24 @@ class MetaChange(Base, TimestampMixin):
         return (
             f"<MetaChange(id={self.id}, type='{self.change_type}', date='{self.date}')>"
         )
+
+
+class ArchetypeAlias(Base, TimestampMixin):
+    __tablename__ = "archetype_aliases"
+    id = uuid_pk()
+    alias = Column(String, nullable=False)
+    archetype_id = Column(
+        String(36),
+        ForeignKey("archetypes.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+    confidence_score = Column(FLOAT, server_default=text("1.0"))
+    source = Column(String, server_default="manual")
+    __table_args__ = (
+        UniqueConstraint("alias", "archetype_id", name="uq_alias_archetype_id"),
+    )
 
 
 # Create indexes for performance
