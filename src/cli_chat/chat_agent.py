@@ -56,6 +56,12 @@ class MTGChatAgent:
                 print("Please set your Google API key:")
                 print("export GOOGLE_API_KEY=your_api_key_here")
                 return False
+        elif self.provider == "qwen":
+            if not os.getenv("NEBIUS_API_KEY"):
+                print("❌ Error: NEBIUS_API_KEY environment variable not set")
+                print("Please set your Nebius API key:")
+                print("export NEBIUS_API_KEY=your_api_key_here")
+                return False
 
         try:
             # Create MCP client and get tools
@@ -85,6 +91,15 @@ class MTGChatAgent:
                 print("🧠 Initializing Google Gemini...")
                 llm = ChatGoogleGenerativeAI(
                     model="gemini-2.5-pro",
+                    max_tokens=4096,
+                )
+            elif self.provider == "qwen":
+                print("🧠 Initializing Qwen3 via Nebius...")
+                llm = ChatOpenAI(
+                    # model="Qwen/Qwen3-235B-A22B-Instruct-2507",
+                    model="Qwen/Qwen3-32B",
+                    base_url="https://api.studio.nebius.com/v1",
+                    api_key=os.getenv("NEBIUS_API_KEY"),
                     max_tokens=4096,
                 )
             else:
@@ -316,7 +331,7 @@ async def main():
     parser = argparse.ArgumentParser(description="MTG Tournament Analysis Chat Agent")
     parser.add_argument(
         "--provider",
-        choices=["claude", "opus", "gpt5", "gemini"],
+        choices=["claude", "opus", "gpt5", "gemini", "qwen"],
         default="claude",
         help="LLM provider to use (default: claude)",
     )
