@@ -96,6 +96,7 @@ class MTGChatAgent:
             elif self.provider == "qwen":
                 print("🧠 Initializing Qwen3 via Nebius...")
                 llm = ChatOpenAI(
+                    # model="Qwen/Qwen3-Coder-480B-A35B-Instruct",
                     # model="Qwen/Qwen3-235B-A22B-Instruct-2507",
                     model="Qwen/Qwen3-32B",
                     base_url="https://api.studio.nebius.com/v1",
