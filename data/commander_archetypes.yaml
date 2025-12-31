@@ -88,6 +88,10 @@ name_mappings:
   "Terra, Magical Adept": "Terra"
   "Deadpool, Trading Card": "Deadpool"
   "Tivit, Seller of Secrets": "Tivit"
+  "Aang, Swift Savior": "Aang"
+  "Light-Paws, Emperor's Voice": "Light-Paws"
+  "Hei Bai, Forest Guardian": "Hei Bai"
+  "Lumra, Bellow of the Woods": "Lumra"
 
   # Add more mappings as needed
   # "Full Commander Name": "Short Name"
