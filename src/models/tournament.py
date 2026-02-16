@@ -18,6 +18,7 @@ import enum
 class TournamentSource(enum.Enum):
     MTGO = "MTGO"
     MELEE = "MELEE"
+    CARDSREALM = "CARDSREALM"
     OTHER = "OTHER"
 
 

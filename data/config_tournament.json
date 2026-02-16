@@ -10,5 +10,9 @@
   {
     "source": "MTGO",
     "data_folder": "/Users/valentin/Development/dev-win/MTGORecorder/Data"
+  },
+  {
+    "source": "CARDSREALM",
+    "data_folder": "/Users/valentin/Development/dev-win/DecklistCacheJiliac/Tournaments/CardsRealm"
   }
 ]

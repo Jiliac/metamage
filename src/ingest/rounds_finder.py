@@ -12,7 +12,7 @@ Notes:
 - We currently match only by date folder and format slug prefix.
 - If multiple candidate files match for the same date and format,
   we return None (ambiguous) and let the caller decide next steps.
-- Source OTHER is not supported and returns None.
+- Supported sources: MTGO, MELEE, CARDSREALM. Source OTHER returns None.
 """
 
 from __future__ import annotations
@@ -214,7 +214,11 @@ def find_rounds_file(criteria: TournamentSearchCriteria) -> Optional[Path]:
 
     Returns the Path if exactly one candidate is found; otherwise None.
     """
-    if criteria.source == TournamentSource.OTHER:
+    if criteria.source not in (
+        TournamentSource.MTGO,
+        TournamentSource.MELEE,
+        TournamentSource.CARDSREALM,
+    ):
         return None
 
     base = _get_base_folder_for_source(criteria.source)

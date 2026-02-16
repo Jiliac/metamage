@@ -51,6 +51,8 @@ def detect_source(anchor_uri: Optional[str]) -> TournamentSource:
         return TournamentSource.MTGO
     if "melee" in lowered or "mtgmelee" in lowered:
         return TournamentSource.MELEE
+    if "cardsrealm" in lowered:
+        return TournamentSource.CARDSREALM
     return TournamentSource.OTHER
 
 
@@ -430,7 +432,7 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
                 else:
                     # Decision logic based on source type:
                     # - MELEE: Check Matchups first (primary), rounds file second (fallback)
-                    # - MTGO/OTHER: Check rounds file first (primary), Matchups second (fallback)
+                    # - MTGO/CARDSREALM/OTHER: Check rounds file first (primary), Matchups second (fallback)
 
                     should_skip = False
 
