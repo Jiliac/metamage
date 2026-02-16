@@ -10,6 +10,26 @@ from .triage import should_answer_notification
 
 logger = logging.getLogger("socialbot.processor")
 
+# Bot accounts to ignore (prevents infinite reply loops between bots).
+# Configurable via SOCIALBOT_BLOCKED_HANDLES env var (comma-separated, case-insensitive).
+_DEFAULT_BLOCKED_HANDLES = {"grok"}
+
+
+def _is_blocked_handle(actor_handle: Optional[str]) -> bool:
+    """Check if actor_handle matches a blocked bot account."""
+    if not actor_handle:
+        return False
+    env_val = os.getenv("SOCIALBOT_BLOCKED_HANDLES")
+    if env_val is not None:
+        blocked = {h.strip().lower() for h in env_val.split(",") if h.strip()}
+    else:
+        blocked = _DEFAULT_BLOCKED_HANDLES
+    # Normalize: strip leading @ and compare case-insensitively
+    handle = actor_handle.lstrip("@").lower()
+    # Also check just the username part for Bluesky handles (user.bsky.social)
+    username = handle.split(".")[0] if "." in handle else handle
+    return handle in blocked or username in blocked
+
 
 def _anonymize_user_content(content: str) -> str:
     """
@@ -269,6 +289,16 @@ async def process_one_notification(session, client, notif, provider: str) -> Non
         if notif.reason not in ("mention", "reply", "quote"):
             notif.status = "skipped"
             notif.error_message = f"Notification type '{notif.reason}' is not supported"
+            session.commit()
+            return
+
+        # Skip blocked bot accounts (prevents infinite bot-to-bot reply loops)
+        if _is_blocked_handle(notif.actor_handle):
+            logger.info(
+                f"Skipping notification from blocked handle: {notif.actor_handle}"
+            )
+            notif.status = "skipped"
+            notif.error_message = f"Blocked handle: {notif.actor_handle}"
             session.commit()
             return
 
