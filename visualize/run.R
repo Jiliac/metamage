@@ -196,6 +196,8 @@ format_display_name <- if (tolower(params$format_name) == "duel-commander") {
 
 source_text <- if (tolower(params$format_name) == "duel-commander") {
   "MTGO Trials & Melee"
+} else if (tolower(params$format_name) == "pauper") {
+  "MTGO, CardsRealm & Melee"
 } else {
   "MTGO Top32 & Melee"
 }

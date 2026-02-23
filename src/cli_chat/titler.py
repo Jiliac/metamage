@@ -185,13 +185,13 @@ class Titler:
         )
         try:
             if provider in ("claude", "opus"):
-                llm = ChatAnthropic(model="claude-3-5-haiku-20241022", max_tokens=64)
+                llm = ChatAnthropic(model="claude-haiku-4-5", max_tokens=64)
             elif provider == "gpt5":
                 llm = ChatOpenAI(model="gpt-5-nano", max_tokens=64)
             elif provider == "gemini":
                 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", max_tokens=64)
             else:
-                llm = ChatAnthropic(model="claude-3-5-haiku-20241022", max_tokens=64)
+                llm = ChatAnthropic(model="claude-haiku-4-5", max_tokens=64)
             resp = llm.invoke(prompt)
             text = str(getattr(resp, "content", resp)).strip()
             # Clean to one line and strip quotes
@@ -219,13 +219,13 @@ class Titler:
         )
         try:
             if provider in ("claude", "opus"):
-                llm = ChatAnthropic(model="claude-3-5-haiku-20241022", max_tokens=128)
+                llm = ChatAnthropic(model="claude-haiku-4-5", max_tokens=128)
             elif provider == "gpt5":
                 llm = ChatOpenAI(model="gpt-5-nano", max_tokens=128)
             elif provider == "gemini":
                 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", max_tokens=128)
             else:
-                llm = ChatAnthropic(model="claude-3-5-haiku-20241022", max_tokens=128)
+                llm = ChatAnthropic(model="claude-haiku-4-5", max_tokens=128)
             resp = llm.invoke(prompt)
             text = str(getattr(resp, "content", resp)).strip()
             # Parse JSON object strictly, then fallback
@@ -283,14 +283,14 @@ class Titler:
 
         try:
             if provider in ("claude", "opus"):
-                llm = ChatAnthropic(model="claude-3-5-haiku-20241022", max_tokens=64)
+                llm = ChatAnthropic(model="claude-haiku-4-5", max_tokens=64)
             elif provider == "gpt5":
                 llm = ChatOpenAI(model="gpt-5-nano", max_tokens=64)
             elif provider == "gemini":
                 llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", max_tokens=64)
             else:
                 # Fallback to Anthropic small if unknown
-                llm = ChatAnthropic(model="claude-3-5-haiku-20241022", max_tokens=64)
+                llm = ChatAnthropic(model="claude-haiku-4-5", max_tokens=64)
 
             resp = llm.invoke(prompt)
             if hasattr(resp, "content"):

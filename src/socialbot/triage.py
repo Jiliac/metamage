@@ -83,7 +83,7 @@ async def should_answer_notification(
         return False, "non-text"
 
     # Small LLM (Haiku)
-    llm = ChatAnthropic(model="claude-3-5-haiku-20241022", max_tokens=64)
+    llm = ChatAnthropic(model="claude-haiku-4-5", max_tokens=64)
     base_prompt = TRIAGE_PROMPT.format(conversation=_format_messages(messages))
 
     last_text: Optional[str] = None
