@@ -84,7 +84,7 @@ class MTGChatAgent:
             elif self.provider == "gpt5":
                 print("🧠 Initializing OpenAI GPT-5...")
                 llm = ChatOpenAI(
-                    model="gpt-5",
+                    model="gpt-5.2",
                     max_tokens=4096,
                 )
             elif self.provider == "gemini":
