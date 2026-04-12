@@ -19,6 +19,15 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from models.reference import Card
 from models.reference import Set as SetModel, CardColor
 
+# Scryfall requires User-Agent and Accept headers on every request, otherwise
+# they rate-limit aggressively (see https://scryfall.com/docs/api).
+SCRYFALL_HEADERS = {
+    "User-Agent": "metamage-ingest/1.0",
+    "Accept": "application/json",
+}
+# Scryfall asks for 50–100ms between requests; use 100ms to stay safely under cap.
+SCRYFALL_REQUEST_DELAY = 0.1
+
 
 class CardCache:
     """In-memory cache for cards to avoid duplicate database lookups and API calls."""
@@ -70,6 +79,49 @@ def normalize_card_name(name: str) -> str:
     return " ".join(name.strip().lower().split())
 
 
+def _scryfall_get(
+    url: str, params: Dict[str, Any], context: str
+) -> Optional[requests.Response]:
+    """
+    Perform a GET against Scryfall with required headers and 429 backoff.
+
+    Returns the final Response (which may be 200 or 404), or None if the request
+    ultimately failed after retries.
+    """
+    max_retries = 5
+    for attempt in range(max_retries):
+        # Pace requests before sending so we never burst.
+        time.sleep(SCRYFALL_REQUEST_DELAY)
+        try:
+            response = requests.get(
+                url, params=params, headers=SCRYFALL_HEADERS, timeout=10
+            )
+        except requests.RequestException as e:
+            print(f"  ⚠️ Network error fetching {context}: {e}")
+            return None
+
+        if response.status_code != 429:
+            return response
+
+        # Honor Retry-After when present, otherwise exponential backoff.
+        retry_after = response.headers.get("Retry-After")
+        if retry_after is not None:
+            try:
+                wait = float(retry_after)
+            except ValueError:
+                wait = 2**attempt
+        else:
+            wait = 2**attempt
+        print(
+            f"  ⏳ Scryfall 429 for {context}; backing off {wait:.1f}s "
+            f"(attempt {attempt + 1}/{max_retries})"
+        )
+        time.sleep(wait)
+
+    print(f"  ⚠️ Scryfall gave up after {max_retries} retries for {context}")
+    return None
+
+
 def fetch_scryfall_data(card_name: str, cache: CardCache) -> Optional[Dict[str, Any]]:
     """
     Fetch card data from Scryfall API with caching and rate limiting.
@@ -86,34 +138,24 @@ def fetch_scryfall_data(card_name: str, cache: CardCache) -> Optional[Dict[str, 
     if cached_data:
         return cached_data
 
-    # Prepare API request
-    url = "https://api.scryfall.com/cards/named"
-    params = {"fuzzy": card_name}
-
-    try:
-        # Rate limiting - Scryfall recommends 50-100ms between requests
-        time.sleep(0.05)
-
-        response = requests.get(url, params=params, timeout=10)
-
-        if response.status_code == 200:
-            data = response.json()
-            # Cache the successful response
-            cache.cache_scryfall_data(card_name, data)
-            return data
-        elif response.status_code == 404:
-            # Card not found - cache the negative result
-            cache.cache_scryfall_data(card_name, None)
-            return None
-        else:
-            print(
-                f"  ⚠️ Scryfall API error for '{card_name}': HTTP {response.status_code}"
-            )
-            return None
-
-    except requests.RequestException as e:
-        print(f"  ⚠️ Network error fetching '{card_name}': {e}")
+    response = _scryfall_get(
+        "https://api.scryfall.com/cards/named",
+        {"fuzzy": card_name},
+        f"'{card_name}'",
+    )
+    if response is None:
         return None
+
+    if response.status_code == 200:
+        data = response.json()
+        cache.cache_scryfall_data(card_name, data)
+        return data
+    if response.status_code == 404:
+        cache.cache_scryfall_data(card_name, None)
+        return None
+
+    print(f"  ⚠️ Scryfall API error for '{card_name}': HTTP {response.status_code}")
+    return None
 
 
 def fetch_all_printings_for_oracle_id(
@@ -128,35 +170,33 @@ def fetch_all_printings_for_oracle_id(
     if cached_printings is not None:
         return cached_printings
 
-    url = "https://api.scryfall.com/cards/search"
-    params = {
-        "q": f"oracle_id:{oracle_id}",
-        "unique": "prints",
-        "order": "released",
-        "dir": "asc",
-    }
-
-    try:
-        time.sleep(0.05)  # Rate limiting
-        response = requests.get(url, params=params, timeout=10)
-
-        if response.status_code == 200:
-            data = response.json()
-            printings = data.get("data", [])
-            cache.cache_scryfall_data(cache_key, printings)
-            return printings
-        elif response.status_code == 404:
-            cache.cache_scryfall_data(cache_key, None)
-            return None
-        else:
-            print(
-                f"  ⚠️ Scryfall printings API error for oracle_id {oracle_id}: HTTP {response.status_code}"
-            )
-            return None
-
-    except requests.RequestException as e:
-        print(f"  ⚠️ Network error fetching printings for oracle_id {oracle_id}: {e}")
+    response = _scryfall_get(
+        "https://api.scryfall.com/cards/search",
+        {
+            "q": f"oracle_id:{oracle_id}",
+            "unique": "prints",
+            "order": "released",
+            "dir": "asc",
+        },
+        f"printings for oracle_id {oracle_id}",
+    )
+    if response is None:
         return None
+
+    if response.status_code == 200:
+        data = response.json()
+        printings = data.get("data", [])
+        cache.cache_scryfall_data(cache_key, printings)
+        return printings
+    if response.status_code == 404:
+        cache.cache_scryfall_data(cache_key, None)
+        return None
+
+    print(
+        f"  ⚠️ Scryfall printings API error for oracle_id {oracle_id}: "
+        f"HTTP {response.status_code}"
+    )
+    return None
 
 
 def get_or_create_set(

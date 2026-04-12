@@ -159,7 +159,8 @@ all_matchups <- fetch_matchups(
 matrix_order <- filter_archetypes_by_matches(
   all_matchups,
   params$matrix_top_n,
-  min_matches = 100
+  min_matches = 80
+  # min_matches = 100
 )
 
 # Matchups for just the filtered matrix archetypes
