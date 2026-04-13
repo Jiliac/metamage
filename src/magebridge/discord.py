@@ -34,7 +34,7 @@ def create_social_multiplexer():
         logger.info("Bluesky client enabled for magebridge")
 
     # Add Twitter if credentials available
-    if os.getenv("TWITTER_API_KEY") and os.getenv("TWITTER_ACCESS_TOKEN"):
+    if os.getenv("TWITTER_V3_CONSUMER_KEY") and os.getenv("TWITTER_V3_ACCESS_TOKEN"):
         clients.append(TwitterClient())
         logger.info("Twitter client enabled for magebridge")
 

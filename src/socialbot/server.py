@@ -326,7 +326,7 @@ async def main():
             logger.warning("✗ Bluesky authentication failed")
 
     # Twitter
-    if os.getenv("TWITTER_API_KEY") and os.getenv("TWITTER_ACCESS_TOKEN"):
+    if os.getenv("TWITTER_V3_CONSUMER_KEY") and os.getenv("TWITTER_V3_ACCESS_TOKEN"):
         logger.info("Initializing Twitter client...")
         twitter = TwitterClient()
         if await twitter.authenticate():
@@ -337,7 +337,7 @@ async def main():
 
     if not clients:
         raise SystemExit(
-            "No social media clients configured. Set BLUESKY_USERNAME/PASSWORD or TWITTER_API_KEY/ACCESS_TOKEN."
+            "No social media clients configured. Set BLUESKY_USERNAME/PASSWORD or TWITTER_V3_CONSUMER_KEY/TWITTER_V3_ACCESS_TOKEN."
         )
 
     poll_interval = int(os.getenv("SOCIALBOT_POLL_INTERVAL", "30"))

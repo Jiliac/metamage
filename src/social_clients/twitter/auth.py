@@ -13,10 +13,10 @@ class AuthMixin:
     """Handles Twitter authentication using tweepy."""
 
     def __init__(self):
-        self.api_key = os.getenv("TWITTER_API_KEY")
-        self.api_secret = os.getenv("TWITTER_API_SECRET")
-        self.access_token = os.getenv("TWITTER_ACCESS_TOKEN")
-        self.access_token_secret = os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
+        self.api_key = os.getenv("TWITTER_V3_CONSUMER_KEY")
+        self.api_secret = os.getenv("TWITTER_V3_SECRET_KEY")
+        self.access_token = os.getenv("TWITTER_V3_ACCESS_TOKEN")
+        self.access_token_secret = os.getenv("TWITTER_V3_ACCESS_TOKEN_SECRET")
 
         # Initialize tweepy clients (will be set during authenticate)
         self.api_v1: Optional[tweepy.API] = None
@@ -36,13 +36,13 @@ class AuthMixin:
         """Check if all required credentials are present."""
         missing = []
         if not self.api_key:
-            missing.append("TWITTER_API_KEY")
+            missing.append("TWITTER_V3_CONSUMER_KEY")
         if not self.api_secret:
-            missing.append("TWITTER_API_SECRET")
+            missing.append("TWITTER_V3_SECRET_KEY")
         if not self.access_token:
-            missing.append("TWITTER_ACCESS_TOKEN")
+            missing.append("TWITTER_V3_ACCESS_TOKEN")
         if not self.access_token_secret:
-            missing.append("TWITTER_ACCESS_TOKEN_SECRET")
+            missing.append("TWITTER_V3_ACCESS_TOKEN_SECRET")
         return missing
 
     async def authenticate(self) -> bool:
