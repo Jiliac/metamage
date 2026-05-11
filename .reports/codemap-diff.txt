@@ -1,0 +1,42 @@
+MetaMage Codemap Generation Report
+Generated: 2026-05-11
+
+Status: INITIAL — no prior codemaps detected under docs/CODEMAPS/.
+Output: docs/CODEMAPS/architecture.md, backend.md, frontend.md, data.md, dependencies.md
+
+Scan summary
+============
+Python source files .................. ~110 (.py in src/, scripts/, alembic/)
+TypeScript / TSX files ............... 35 (ui/src)
+R files .............................. 13 (visualize/)
+Alembic migrations ................... 11
+SQLAlchemy models .................... 19 classes across src/models + src/ops_model
+MCP tools ............................ 15 (@mcp.tool decorators)
+Next.js routes ....................... 7 pages + 3 API routes
+Prisma models ........................ 4 (mirror of chat_models.py)
+
+Architecture surface
+====================
+Two-DB pattern: tournament.db (read-only domain) + Ops DB (chat/social telemetry)
+MCP boundary at src/mcp_server (tool wrappers around src/analysis/*)
+Three MCP consumers: cli_chat (terminal), discord_bot, socialbot
+UI is read-only viewer on Ops DB (no writes)
+Single write path in MCP: add_archetype_alias
+
+New dependencies detected (vs README)
+=====================================
+- tweepy (Twitter v2 in social_clients/twitter/)
+- httpx (replaces ad-hoc requests in social_clients/bluesky/http)
+- langchain-xai (xAI provider added)
+
+Staleness / follow-ups
+======================
+- docs/socialbot_specs.md, docs/social_clients_unified_architecture.md predate Twitter integration — consider refreshing.
+- PROJECT.md still says "15+ specialized tools" — accurate count is 15 incl. add_archetype_alias write tool.
+- No prior codemaps existed; threshold check (>30% diff) not applicable on first run.
+
+Notes
+=====
+- Token estimates per codemap kept ≤ ~950 to stay under the 1000-token budget guideline.
+- Codemap files include freshness headers with generation date.
+- Run after major feature additions (new MCP tool, new social platform, new Ops table) to refresh.
