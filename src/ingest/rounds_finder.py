@@ -234,7 +234,18 @@ def find_rounds_file(criteria: TournamentSearchCriteria) -> Optional[Path]:
     # Try 1: Use filename-based matching (current approach)
     candidates = _list_candidate_files(day_dir, fmt_slug)
     if len(candidates) == 1:
-        # print(f"TOURNAMENT FILE: {candidates[0]}")
+        # If a tournament_id is provided, validate the single candidate's content.
+        # Format-prefix matching is loose ("legacy-" matches both Challenge 32 and
+        # Showcase Challenge), so a lone candidate can still be the wrong file
+        # when the recorder missed one of the day's tournaments.
+        if criteria.tournament_id and not _check_tournament_match(
+            candidates[0],
+            criteria.format_name,
+            criteria.tournament_name,
+            criteria.tournament_id,
+            criteria.expected_winner,
+        ):
+            return None
         return candidates[0]
     elif len(candidates) > 1:
         # If we have a specific tournament name, proceed to content-based matching

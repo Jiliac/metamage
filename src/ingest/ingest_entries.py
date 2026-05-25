@@ -604,6 +604,18 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
             mstats = process_embedded_rounds_data(
                 session, tournament, tournaments_with_embedded_rounds[tournament.id]
             )
+        elif tournament.source == TournamentSource.MTGO:
+            # MTGORecorder is authoritative for MTGO Swiss data. Per-entry Matchups,
+            # when present, only cover the published Top 8 bracket since the upstream
+            # source regressed (~2026-04-22). Always prefer the rounds file; fall
+            # back to Matchups only if the rounds file is unavailable.
+            mstats = process_rounds_for_tournament(
+                session, tournament, format_name, tournament_id
+            )
+            if mstats.get("file_missing") and tournament.id in entries_with_matchups:
+                mstats = process_matchups_from_entries(
+                    session, tournament.id, entries_with_matchups[tournament.id]
+                )
         # Then check if this tournament has entries with Matchups data
         elif tournament.id in entries_with_matchups:
             # Process matches from Matchups field in entry JSON

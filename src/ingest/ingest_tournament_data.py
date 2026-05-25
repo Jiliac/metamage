@@ -114,7 +114,10 @@ def main():
     parser.add_argument(
         "--date",
         type=str,
-        help="Filter out tournament entries before this date (YYYY-MM-DD format)",
+        default="2026-04-22",
+        help="Filter out tournament entries before this date (YYYY-MM-DD format). "
+        "Default 2026-04-22 covers the window where upstream MTGO Matchups regressed "
+        "to Top-8-only, so re-ingesting from this date repairs match coverage.",
     )
 
     args = parser.parse_args()
