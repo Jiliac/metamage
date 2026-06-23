@@ -287,6 +287,40 @@ def upsert_deck_cards_for_entry(
     return inserted, skipped, total_expected
 
 
+# 60-card constructed formats. Any entry whose maindeck is far larger than 60
+# (e.g. a 100-card Highlander/Canadian-Highlander list, or a 99/100-card
+# Commander pile) that gets pulled into one of these formats by an upstream
+# Melee query is a wrong-format event, not a real entry. duel-commander is a
+# singleton format and is intentionally excluded from this guard.
+SIXTY_CARD_FORMATS = {
+    "standard",
+    "pioneer",
+    "modern",
+    "legacy",
+    "vintage",
+    "pauper",
+}
+# A legal 60-card maindeck is occasionally 61-75 (big-mana piles); 100-card
+# singleton decks sit far above. 80 cleanly separates the two with no real
+# false positives.
+WRONG_FORMAT_MAIN_THRESHOLD = 80
+
+
+def _maindeck_card_count(mainboard: List[Dict[str, Any]]) -> int:
+    """Total number of maindeck cards (sum of Count) for a parsed entry."""
+    if not isinstance(mainboard, list):
+        return 0
+    total = 0
+    for itm in mainboard:
+        if not isinstance(itm, dict):
+            continue
+        try:
+            total += int(itm.get("Count") or 0)
+        except (TypeError, ValueError):
+            continue
+    return total
+
+
 def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: str):
     """
     Ingest tournaments, tournament entries, and deck cards based on JSON data.
@@ -383,6 +417,21 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
         if not t_name or not date_str or not player_handle or not arch_obj:
             print(f"  ⚠️ Missing required fields in entry #{i}; skipping")
             continue
+
+        # Wrong-format guard: drop Highlander/Commander-shaped lists (~100 cards)
+        # that an upstream Melee query pulled into a 60-card constructed format.
+        # These otherwise land in the "unknown" bucket and pollute the metagame
+        # (e.g. "European Highlander Cup", "Joe King Open" tagged as Vintage).
+        if format_name in SIXTY_CARD_FORMATS:
+            main_count = _maindeck_card_count(e.get("Mainboard", []))
+            if main_count >= WRONG_FORMAT_MAIN_THRESHOLD:
+                print(
+                    f"  🚫 Skipping wrong-format entry: '{t_name}' "
+                    f"({main_count}-card maindeck in {format_name}); "
+                    f"player='{player_handle}'"
+                )
+                stats["entries_filtered"] += 1
+                continue
 
         try:
             t_date = parse_iso_datetime(date_str)
