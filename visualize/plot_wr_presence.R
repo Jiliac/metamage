@@ -3,6 +3,7 @@ suppressPackageStartupMessages({
   library(scales)
   library(dplyr)
   library(ggrepel)
+  library(patchwork)
 })
 
 source("visualize/constants.R")
@@ -41,63 +42,43 @@ plot_wr_vs_presence <- function(
     color_ramp(100)[round(prop * 99) + 1]
   })
 
+  # Rank decks by presence (#1 = most played). This index is shown inside each
+  # dot and repeated in the side legend so the chart stays readable without
+  # crowding every point with its full name.
+  df <- df %>%
+    arrange(desc(share)) %>%
+    mutate(idx = row_number())
+
   # Compute y-range to minimize white space
   ymin <- min(df$wr, na.rm = TRUE)
   ymax <- max(df$wr, na.rm = TRUE)
   ypad <- (ymax - ymin) * 0.08
 
-  # Label top 7 by lower bound win rate AND top 5 by presence
-  top_7_wr <- df %>%
-    arrange(desc(wr_lo)) %>%
-    slice_head(n = 7) %>%
-    pull(archetype_name)
-
-  top_5_presence <- df %>%
-    arrange(desc(share)) %>%
-    slice_head(n = 5) %>%
-    pull(archetype_name)
-
-  # Union of both sets
-  labeled_archetypes <- union(top_7_wr, top_5_presence)
-
-  df_labeled <- df %>%
-    mutate(
-      label_text = ifelse(
-        archetype_name %in% labeled_archetypes,
-        archetype_name,
-        ""
-      )
-    )
-
-  ggplot(
-    df_labeled,
-    aes(
-      x = share,
-      y = wr,
-      color = point_col,
-      label = label_text
-    )
+  # ---- Scatter panel: numbered dots ----------------------------------------
+  dot_size <- 3
+  num_size <- 1.4
+  scatter <- ggplot(
+    df,
+    aes(x = share, y = wr)
   ) +
-    geom_point(size = 2.5, alpha = 0.9) +
-    ggrepel::geom_text_repel(
-      show.legend = FALSE,
-      size = 1.5,
+    geom_hline(
+      yintercept = 0.5,
+      linetype = "longdash",
+      color = CHART_COLORS$reference_line,
+      alpha = 0.6
+    ) +
+    geom_point(aes(color = point_col), size = dot_size, alpha = 0.9) +
+    # Number centered exactly on each dot.
+    geom_text(
+      aes(label = idx),
+      size = num_size,
       family = "Inter",
-      max.overlaps = Inf,
-      segment.size = 0.15,
-      segment.color = CHART_COLORS$segment_light,
-      box.padding = 0.8,
-      point.padding = 0.8,
-      force = 5,
-      force_pull = 1,
-      min.segment.length = 0.02,
-      max.time = 2,
-      max.iter = 10000,
-      seed = 42
+      fontface = "bold",
+      color = CHART_COLORS$text_primary
     ) +
     scale_x_sqrt(
       labels = percent_format(accuracy = 1),
-      expand = expansion(mult = c(0.02, 0.08))
+      expand = expansion(mult = c(0.04, 0.08))
     ) +
     scale_y_continuous(
       labels = percent_format(accuracy = 1),
@@ -105,38 +86,13 @@ plot_wr_vs_presence <- function(
       expand = expansion(mult = c(0.02, 0.02))
     ) +
     scale_color_identity(guide = "none") +
-    geom_hline(
-      yintercept = 0.5,
-      linetype = "longdash",
-      color = CHART_COLORS$reference_line,
-      alpha = 0.6
-    ) +
-    labs(
-      title = title,
-      subtitle = subtitle,
-      caption = caption,
-      x = "Presence (%)",
-      y = "Win Rate"
-    ) +
+    labs(x = "Presence (%)", y = "Win Rate") +
     theme_minimal(base_size = 12, base_family = "Inter") +
     theme(
       axis.text.x = element_text(size = 6, family = "Inter"),
       axis.text.y = element_text(size = 6, family = "Inter"),
       axis.title.x = element_text(size = 10, family = "Inter"),
       axis.title.y = element_text(size = 10, family = "Inter"),
-      plot.title = element_text(
-        size = 11.7,
-        face = "bold",
-        hjust = 0.5,
-        family = "Inter"
-      ),
-      plot.subtitle = element_text(hjust = 0.5, size = 7, family = "Inter"),
-      plot.caption = element_text(
-        hjust = 0.2,
-        size = 5,
-        family = "Inter",
-        color = CHART_COLORS$text_secondary
-      ),
       panel.grid.major = element_line(
         color = CHART_COLORS$grid_light,
         linewidth = 0.3
@@ -144,6 +100,60 @@ plot_wr_vs_presence <- function(
       panel.grid.minor = element_blank(),
       panel.background = element_rect(fill = "white", color = NA),
       plot.background = element_rect(fill = "white", color = NA),
-      plot.margin = margin(10, 10, 10, 10)
+      plot.margin = margin(6, 10, 6, 4)
+    )
+
+  # ---- Legend panel: number + colored dot + deck name ----------------------
+  legend_df <- df %>%
+    mutate(y = -idx)
+
+  legend <- ggplot(legend_df, aes(x = 0, y = y)) +
+    geom_point(aes(color = point_col), size = dot_size, alpha = 0.9) +
+    geom_text(
+      aes(label = idx),
+      size = num_size,
+      family = "Inter",
+      fontface = "bold",
+      color = CHART_COLORS$text_primary
+    ) +
+    geom_text(
+      aes(x = 0.35, label = archetype_name),
+      hjust = 0,
+      size = 2.1,
+      family = "Inter",
+      color = CHART_COLORS$text_primary
+    ) +
+    scale_color_identity(guide = "none") +
+    scale_x_continuous(limits = c(-0.35, 4.5)) +
+    scale_y_continuous(expand = expansion(mult = c(0.04, 0.04))) +
+    theme_void(base_family = "Inter") +
+    theme(
+      plot.background = element_rect(fill = "white", color = NA),
+      plot.margin = margin(6, 0, 6, 8)
+    )
+
+  # ---- Compose: legend on the left, scatter on the right -------------------
+  (legend + scatter) +
+    plot_layout(widths = c(1, 2.2)) +
+    plot_annotation(
+      title = title,
+      subtitle = subtitle,
+      caption = caption,
+      theme = theme(
+        plot.title = element_text(
+          size = 11.7,
+          face = "bold",
+          hjust = 0.5,
+          family = "Inter"
+        ),
+        plot.subtitle = element_text(hjust = 0.5, size = 7, family = "Inter"),
+        plot.caption = element_text(
+          hjust = 0.5,
+          size = 5,
+          family = "Inter",
+          color = CHART_COLORS$text_secondary
+        ),
+        plot.background = element_rect(fill = "white", color = NA)
+      )
     )
 }
