@@ -7,9 +7,17 @@ conflict(A,B) pair for a conflict entry, instead of guessing via card-grep.
 
 import json
 import os
+import re
 import sqlite3
 import sys
 import glob
+
+
+def load_rule(path):
+    """Tolerant JSON load: the C# parser allows trailing commas, Python does not."""
+    txt = open(path).read()
+    txt = re.sub(r",(\s*[}\]])", r"\1", txt)
+    return json.loads(txt)
 
 FMT_DIR = os.path.expanduser(
     "~/Development/dev-win/Parser/MTGOFormatData/Formats/{fmt}/Archetypes"
@@ -40,6 +48,10 @@ def cond_ok(cond, main, side, whole):
         return len(cards & main) >= 1
     if t == "OneOrMoreInMainOrSideboard":
         return len(cards & whole) >= 1
+    if t == "InMainOrSideboard":
+        return cards <= whole
+    if t == "TwoOrMoreInMainOrSideboard":
+        return len(cards & whole) >= 2
     if t == "TwoOrMoreInMainboard":
         return len(cards & main) >= 2
     if t == "DoesNotContainMainboard":
@@ -60,7 +72,7 @@ def matching_archetypes(fmt, main, side, whole):
     for path in glob.glob(FMT_DIR.format(fmt=fmt) + "/*.json"):
         if os.path.basename(path).startswith("Archived"):
             continue
-        rule = json.load(open(path))
+        rule = load_rule(path)
         base = rule.get("Conditions", [])
         if not rule_matches(base, main, side, whole):
             continue
@@ -84,7 +96,7 @@ def main_cli():
            JOIN formats f ON f.id=t.format_id
            JOIN archetypes a ON a.id=te.archetype_id
            WHERE lower(f.name)=lower(?) AND a.name='conflict'
-             AND date(t.date) BETWEEN '2026-05-07' AND '2026-06-07'"""
+             AND date(t.date) BETWEEN '2026-05-19' AND '2026-06-28'"""
     args = [fmt]
     if handle:
         q += " AND p.handle=?"
