@@ -300,10 +300,13 @@ SIXTY_CARD_FORMATS = {
     "vintage",
     "pauper",
 }
-# A legal 60-card maindeck is occasionally 61-75 (big-mana piles); 100-card
-# singleton decks sit far above. 80 cleanly separates the two with no real
-# false positives.
-WRONG_FORMAT_MAIN_THRESHOLD = 80
+# Singleton formats (Commander, Canadian/European Highlander) require a 100-card
+# maindeck, so that is where the wrong-format pollution lives. A legal 60-card
+# maindeck runs 60-75 (big-mana piles), and a Yorion, Sky Nomad companion deck
+# *requires* a minimum 80-card maindeck (legal in Legacy/Modern/Pioneer), with
+# real lists landing at 80-86. A threshold of 100 drops the singleton piles
+# without ever touching a legal Yorion deck.
+WRONG_FORMAT_MAIN_THRESHOLD = 100
 
 
 def _maindeck_card_count(mainboard: List[Dict[str, Any]]) -> int:
