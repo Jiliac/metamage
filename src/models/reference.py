@@ -178,7 +178,7 @@ class MetaChange(Base, TimestampMixin):
         index=True,
     )
     date = Column(DateTime, nullable=False, index=True)
-    change_type = Column(Enum(ChangeType), nullable=False)
+    change_type = Column(Enum(ChangeType, native_enum=False), nullable=False)
     description = Column(Text, nullable=True)
     set_code = Column(String(10), nullable=True)  # if change is set release
 
