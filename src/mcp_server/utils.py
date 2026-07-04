@@ -1,7 +1,8 @@
 from datetime import datetime
 from contextlib import contextmanager
 from sqlalchemy import event, text
-from ..models import get_engine, get_session_factory, get_alias_write_engine
+from sqlalchemy.orm import sessionmaker
+from ..models import get_engine, get_alias_write_engine
 import re
 import time
 
@@ -43,8 +44,10 @@ def apply_read_only(target_engine):
 
 engine = apply_read_only(get_engine())
 
-# Session factory for ORM usage
-session_factory = get_session_factory()
+# Session factory for ORM usage, bound to the SAME read-only-guarded engine.
+# (get_session_factory() would build a fresh, unguarded engine — sessions must
+# not bypass the read-only guard applied above.)
+session_factory = sessionmaker(bind=engine)
 
 # Write-enabled engine for alias operations only
 alias_write_engine = get_alias_write_engine()

@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import OperationalError, InternalError, ProgrammingError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -48,6 +49,27 @@ def test_sqlite_read_engine_blocks_writes():
     # SELECT still works.
     with engine.connect() as conn:
         assert conn.execute(text("SELECT 1")).scalar() == 1
+
+
+def test_session_on_guarded_engine_blocks_writes():
+    # A session bound to a guarded engine must inherit the read-only guard.
+    engine = apply_read_only(create_engine("sqlite://"))
+    Session = sessionmaker(bind=engine)
+    s = Session()
+    try:
+        with pytest.raises(OperationalError):
+            s.execute(text("CREATE TABLE probe (a INTEGER)"))
+            s.commit()
+    finally:
+        s.close()
+
+
+def test_module_session_factory_bound_to_guarded_engine():
+    # Regression: get_session() must use the SAME guarded engine, not a fresh
+    # unguarded one built by get_session_factory().
+    from src.mcp_server import utils
+
+    assert utils.session_factory.kw["bind"] is utils.engine
 
 
 @pytest.mark.skipif(

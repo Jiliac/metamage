@@ -40,10 +40,13 @@ from models import (  # noqa: E402
     Match,
 )
 from models.base import get_database_path  # noqa: E402
+from models.reference import ArchetypeAlias  # noqa: E402
 
 load_dotenv()
 
-# FK-dependency order: parents before children.
+# FK-dependency order: parents before children. A missing table here would be
+# silently skipped by BOTH transfer and the parity check, so this list is
+# explicit and every model is imported hard (fail loud, not silently partial).
 TRANSFER_ORDER = [
     Format,
     Set,
@@ -51,19 +54,13 @@ TRANSFER_ORDER = [
     Card,
     CardColor,
     Archetype,
+    ArchetypeAlias,
     MetaChange,
     Tournament,
     TournamentEntry,
     DeckCard,
     Match,
 ]
-# archetype_aliases is included via the ArchetypeAlias model import below.
-try:
-    from models.reference import ArchetypeAlias  # noqa: E402
-
-    TRANSFER_ORDER.insert(TRANSFER_ORDER.index(MetaChange), ArchetypeAlias)
-except Exception:
-    pass
 
 
 def _normalize_pg_url(url: str) -> str:
