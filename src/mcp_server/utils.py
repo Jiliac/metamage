@@ -6,7 +6,42 @@ import re
 import time
 
 
-engine = get_engine()
+def apply_read_only(target_engine):
+    """Attach a dialect-aware read-only guard to an engine's connections.
+
+    SQLite has no read-only role, so ``PRAGMA query_only=ON`` is the guard.
+    Postgres read-only is primarily enforced by connecting as a SELECT-only
+    role (see scripts/setup_pg_roles.sql); ``default_transaction_read_only``
+    is defense-in-depth so a write fails even if the role were over-granted.
+    ``PRAGMA`` does not exist on Postgres and must never be issued there.
+    """
+
+    @event.listens_for(target_engine, "connect")
+    def _set_read_only(dbapi_connection, connection_record):
+        if target_engine.dialect.name == "sqlite":
+            cur = dbapi_connection.cursor()
+            try:
+                cur.execute("PRAGMA query_only=ON")
+            finally:
+                cur.close()
+            return
+
+        # Postgres: a session-level SET is transactional and would be undone by
+        # SQLAlchemy's first rollback, so run it under autocommit to persist it
+        # for the connection's lifetime.
+        prior_autocommit = dbapi_connection.autocommit
+        dbapi_connection.autocommit = True
+        cur = dbapi_connection.cursor()
+        try:
+            cur.execute("SET default_transaction_read_only = on")
+        finally:
+            cur.close()
+            dbapi_connection.autocommit = prior_autocommit
+
+    return target_engine
+
+
+engine = apply_read_only(get_engine())
 
 # Session factory for ORM usage
 session_factory = get_session_factory()
@@ -38,13 +73,6 @@ def get_session():
         yield session
     finally:
         session.close()
-
-
-@event.listens_for(engine, "connect")
-def _set_ro_pragmas(dbapi_connection, connection_record):
-    cur = dbapi_connection.cursor()
-    cur.execute("PRAGMA query_only=ON")
-    cur.close()
 
 
 def validate_select_only(sql: str) -> str:
