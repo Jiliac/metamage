@@ -1,0 +1,1813 @@
+<title>MetaMage — The Standard Ledger (look spike)</title>
+<style>
+  /* ============ TOKENS — The Gathering Ledger · Arena Bronze ============ */
+  :root {
+    /* light: parchment study (a card's text box at noon) */
+    --bg: #f1ebdc;
+    --surface: #f9f5e9;
+    --raised: #ece5d0;
+    --line: #dcd2b8;
+    --line-strong: #c5b892;
+    --ink: #292418;
+    --ink-2: #5f5741;
+    --ink-3: #8d8368;
+    --gold: #8c6d23;
+    --gold-soft: #b3924d;
+    --gold-wash: rgba(140, 109, 35, 0.1);
+    --good: #0e8a72;
+    --bad: #bc4066;
+    --mid: #8a8574;
+    --ref: #7d97b8;
+    --shadow:
+      0 1px 0 rgba(41, 36, 24, 0.06), 0 10px 30px -18px rgba(41, 36, 24, 0.35);
+    /* mana chips — the printed pip colors; constant across themes, like cardboard */
+    --chip-w: #f5f0ce;
+    --chip-u: #abd8ee;
+    --chip-b: #ccc5c0;
+    --chip-r: #f4a78d;
+    --chip-g: #9bd3ae;
+    --chip-ink: #141010;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16130e;
+      --surface: #1e1a13;
+      --raised: #282216;
+      --line: #37301e;
+      --line-strong: #4d422a;
+      --ink: #eae3ce;
+      --ink-2: #a99f85;
+      --ink-3: #726a55;
+      --gold: #c9a855;
+      --gold-soft: #98803f;
+      --gold-wash: rgba(201, 168, 85, 0.09);
+      --good: #2e9e8f;
+      --bad: #d45a7e;
+      --mid: #6e7280;
+      --ref: #5f7ea6;
+      --shadow:
+        0 1px 0 rgba(0, 0, 0, 0.3), 0 16px 44px -20px rgba(0, 0, 0, 0.75);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #16130e;
+    --surface: #1e1a13;
+    --raised: #282216;
+    --line: #37301e;
+    --line-strong: #4d422a;
+    --ink: #eae3ce;
+    --ink-2: #a99f85;
+    --ink-3: #726a55;
+    --gold: #c9a855;
+    --gold-soft: #98803f;
+    --gold-wash: rgba(201, 168, 85, 0.09);
+    --good: #2e9e8f;
+    --bad: #d45a7e;
+    --mid: #6e7280;
+    --ref: #5f7ea6;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 16px 44px -20px rgba(0, 0, 0, 0.75);
+  }
+  :root[data-theme="light"] {
+    --bg: #f1ebdc;
+    --surface: #f9f5e9;
+    --raised: #ece5d0;
+    --line: #dcd2b8;
+    --line-strong: #c5b892;
+    --ink: #292418;
+    --ink-2: #5f5741;
+    --ink-3: #8d8368;
+    --gold: #8c6d23;
+    --gold-soft: #b3924d;
+    --gold-wash: rgba(140, 109, 35, 0.1);
+    --good: #0e8a72;
+    --bad: #bc4066;
+    --mid: #8a8574;
+    --ref: #7d97b8;
+    --shadow:
+      0 1px 0 rgba(41, 36, 24, 0.06), 0 10px 30px -18px rgba(41, 36, 24, 0.35);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Avenir Next", "Avenir", "Segoe UI", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .display {
+    font-family: "Optima", "Candara", "Segoe UI", system-ui, sans-serif;
+  }
+  .data,
+  .num {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 28px 96px;
+  }
+
+  /* ============ CHROME ============ */
+  header.site {
+    display: flex;
+    align-items: baseline;
+    gap: 28px;
+    padding: 26px 0 16px;
+  }
+  .wubrg {
+    height: 2.5px;
+    border: none;
+    margin: 0 0 2px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--chip-w) 8%,
+      var(--chip-u) 30%,
+      var(--chip-b) 50%,
+      var(--chip-r) 70%,
+      var(--chip-g) 92%,
+      transparent
+    );
+    opacity: 0.85;
+  }
+  .brand {
+    font-family: "Optima", "Candara", system-ui, sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .brand .mage {
+    color: var(--gold);
+  }
+  nav.primary {
+    display: flex;
+    gap: 22px;
+    margin-left: auto;
+  }
+  nav.primary a {
+    color: var(--ink-2);
+    text-decoration: none;
+    font-size: 13.5px;
+    letter-spacing: 0.04em;
+    padding: 2px 0;
+    border-bottom: 2px solid transparent;
+  }
+  nav.primary a:hover {
+    color: var(--ink);
+  }
+  nav.primary a[aria-current] {
+    color: var(--gold);
+    border-bottom-color: var(--gold);
+  }
+  nav.primary a:focus-visible,
+  .chip:focus-visible,
+  .knob:focus-visible,
+  .mcell:focus-visible,
+  .deck-card:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+
+  /* ============ LENS BAR ============ */
+  .lens {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: 20px 0 0;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    clip-path: polygon(
+      14px 0,
+      100% 0,
+      100% calc(100% - 14px),
+      calc(100% - 14px) 100%,
+      0 100%,
+      0 14px
+    );
+  }
+  .lens .divider {
+    width: 1px;
+    align-self: stretch;
+    background: var(--line);
+    margin: 0 4px;
+  }
+  .formats {
+    display: flex;
+    gap: 2px;
+  }
+  .chip,
+  .knob {
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink-2);
+    font: inherit;
+    font-size: 13px;
+    padding: 5px 12px;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+  }
+  .chip:hover,
+  .knob:hover {
+    border-color: var(--line-strong);
+    color: var(--ink);
+  }
+  .chip[aria-pressed="true"] {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: var(--bg);
+    font-weight: 600;
+  }
+  .knob b {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .lens .share {
+    margin-left: auto;
+    color: var(--gold);
+    border-color: var(--gold-soft);
+  }
+  .lens .share:hover {
+    background: var(--gold-wash);
+    color: var(--gold);
+  }
+
+  /* ============ HEADINGS / EYEBROWS ============ */
+  .eyebrow {
+    font-size: 11.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--gold);
+    font-weight: 600;
+    margin: 0 0 6px;
+  }
+  h1 {
+    font-family: "Optima", "Candara", system-ui, sans-serif;
+    font-size: clamp(30px, 4.5vw, 44px);
+    line-height: 1.08;
+    margin: 0;
+    letter-spacing: 0.005em;
+    text-wrap: balance;
+    font-weight: 700;
+  }
+  h1 .thin {
+    color: var(--ink-2);
+    font-weight: 400;
+  }
+  h2 {
+    font-family: "Optima", "Candara", system-ui, sans-serif;
+    font-size: 23px;
+    margin: 0 0 2px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+  .sub {
+    color: var(--ink-2);
+    font-size: 13.5px;
+    margin: 2px 0 0;
+  }
+  section {
+    margin-top: 56px;
+  }
+  .headline {
+    margin-top: 40px;
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 36px;
+    align-items: end;
+    position: relative;
+  }
+  .headline::before {
+    content: "";
+    position: absolute;
+    inset: -70px -120px auto -120px;
+    height: 300px;
+    z-index: -1;
+    background: radial-gradient(
+      closest-side,
+      var(--gold-wash),
+      transparent 72%
+    );
+    pointer-events: none;
+  }
+  .headline p.lede {
+    color: var(--ink-2);
+    max-width: 58ch;
+    margin: 14px 0 0;
+    font-size: 15.5px;
+  }
+  .headline p.lede b {
+    color: var(--ink);
+  }
+
+  /* ============ KPI ============ */
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+  }
+  .kpi {
+    background: var(--surface);
+    padding: 14px 18px 12px;
+  }
+  .kpi .v {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+  .kpi .l {
+    font-size: 11.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-top: 2px;
+  }
+
+  /* ============ MANA PIPS — printed chips ============ */
+  .pips {
+    display: inline-flex;
+    gap: 3px;
+    vertical-align: -2px;
+  }
+  .pip {
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    display: inline-grid;
+    place-items: center;
+    font-size: 9px;
+    font-weight: 800;
+    color: var(--chip-ink);
+    font-family: "Avenir Next", system-ui, sans-serif;
+    box-shadow:
+      inset -1px -1.5px 0 rgba(0, 0, 0, 0.28),
+      inset 0 0 0 0.5px rgba(0, 0, 0, 0.18);
+  }
+  .pip.W {
+    background: var(--chip-w);
+  }
+  .pip.U {
+    background: var(--chip-u);
+  }
+  .pip.B {
+    background: var(--chip-b);
+  }
+  .pip.R {
+    background: var(--chip-r);
+  }
+  .pip.G {
+    background: var(--chip-g);
+  }
+
+  /* ============ DECK TILES — cards get round corners; chrome doesn't ============ */
+  .deck-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+    margin-top: 18px;
+  }
+  .deck-card {
+    display: block;
+    text-decoration: none;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid color-mix(in oklab, var(--gold) 34%, var(--line));
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    transition:
+      transform 0.12s ease,
+      border-color 0.12s ease;
+  }
+  .deck-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--gold);
+  }
+  .deck-card .art {
+    position: relative;
+    aspect-ratio: 2.3;
+    background: var(--raised);
+  }
+  .deck-card .art img,
+  .deck-card .art canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .deck-card .art::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    box-shadow: inset 0 -34px 30px -20px rgba(10, 8, 4, 0.66);
+  }
+  .deck-card .art .rank {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    z-index: 2;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: rgba(12, 10, 6, 0.72);
+    color: #eadfbe;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: 0 0 0 1px rgba(201, 168, 85, 0.55);
+  }
+  .deck-card .art .pips {
+    position: absolute;
+    right: 10px;
+    bottom: 8px;
+    z-index: 2;
+  }
+  .deck-card .art .pips .pip {
+    width: 17px;
+    height: 17px;
+    font-size: 10px;
+  }
+  .deck-card .body {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 11px 14px 12px;
+  }
+  .deck-card .name {
+    font-family: "Optima", "Candara", system-ui, sans-serif;
+    font-weight: 700;
+    font-size: 16.5px;
+    letter-spacing: 0.01em;
+  }
+  .deck-card .stats {
+    margin-left: auto;
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    white-space: nowrap;
+  }
+  .deck-card .meta {
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 13px;
+    color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
+  }
+  .deck-card .wr {
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  /* ============ TABLE ============ */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+  }
+  table.ledger {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+  .ledger th {
+    text-align: left;
+    font-size: 11px;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 600;
+    padding: 12px 14px 9px;
+    border-bottom: 1px solid var(--line-strong);
+    white-space: nowrap;
+  }
+  .ledger th.r,
+  .ledger td.r {
+    text-align: right;
+  }
+  .ledger td {
+    padding: 7px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .ledger tbody tr:hover {
+    background: var(--gold-wash);
+  }
+  .ledger tbody tr:last-child td {
+    border-bottom: none;
+  }
+  .ledger .idx {
+    color: var(--ink-3);
+    font-size: 12px;
+    width: 30px;
+  }
+  .ledger .name {
+    min-width: 240px;
+  }
+  .ledger .name .cellflex {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .thumb {
+    width: 58px;
+    height: 36px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid var(--line-strong);
+    flex: none;
+    display: block;
+    background: var(--raised);
+  }
+  .ledger .name a {
+    color: var(--ink);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .ledger .name a:hover {
+    color: var(--gold);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .sharebar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 180px;
+  }
+  .sharebar .track {
+    flex: 1;
+    height: 14px;
+    background: var(--raised);
+    position: relative;
+  }
+  .sharebar .fill {
+    position: absolute;
+    inset: 2px auto 2px 2px;
+    background: var(--gold-soft);
+  }
+  .sharebar .fill::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--gold);
+  }
+  .wr.up {
+    color: var(--good);
+  }
+  .wr.down {
+    color: var(--bad);
+  }
+  .wr.flat {
+    color: var(--ink);
+  }
+  td .wr {
+    font-weight: 700;
+  }
+  .ci {
+    color: var(--ink-3);
+    font-size: 11.5px;
+  }
+  .tier {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 2px 8px;
+    border: 1px solid var(--gold-soft);
+    color: var(--gold);
+  }
+  .tier.t1 {
+    background: var(--gold);
+    color: var(--bg);
+    border-color: var(--gold);
+  }
+  .tier.t2 {
+    border-color: var(--line-strong);
+    color: var(--ink-3);
+  }
+  .foot-note {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    padding: 10px 14px;
+    border-top: 1px solid var(--line);
+    color: var(--ink-3);
+    font-size: 12.5px;
+  }
+  .foot-note button {
+    background: none;
+    border: none;
+    color: var(--gold);
+    font: inherit;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /* ============ SCATTER ============ */
+  .scatter-grid {
+    display: grid;
+    grid-template-columns: 230px 1fr;
+    gap: 0;
+  }
+  .scatter-legend {
+    border-right: 1px solid var(--line);
+    padding: 16px 8px 16px 16px;
+  }
+  .scatter-legend ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 12.5px;
+  }
+  .scatter-legend li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3.5px 0;
+    color: var(--ink-2);
+  }
+  .scatter-legend li:hover {
+    color: var(--ink);
+  }
+  .lgd-dot {
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    flex: none;
+    display: grid;
+    place-items: center;
+    font-size: 9.5px;
+    font-weight: 700;
+    color: var(--bg);
+    font-family: ui-monospace, Menlo, monospace;
+  }
+  .lgd-dot.up {
+    background: var(--good);
+  }
+  .lgd-dot.down {
+    background: var(--bad);
+  }
+  .lgd-dot.flat {
+    background: var(--mid);
+  }
+  #scatter {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  #scatter .grid-line {
+    stroke: var(--line);
+    stroke-width: 1;
+  }
+  #scatter .axis-label {
+    fill: var(--ink-3);
+    font-size: 11px;
+    font-family: ui-monospace, Menlo, monospace;
+  }
+  #scatter .axis-title {
+    fill: var(--ink-2);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  #scatter .refline {
+    stroke: var(--ref);
+    stroke-dasharray: 7 5;
+    stroke-width: 1.5;
+    opacity: 0.8;
+  }
+  #scatter .dot {
+    stroke: var(--surface);
+    stroke-width: 2;
+    cursor: pointer;
+  }
+  #scatter .dot.up {
+    fill: var(--good);
+  }
+  #scatter .dot.down {
+    fill: var(--bad);
+  }
+  #scatter .dot.flat {
+    fill: var(--mid);
+  }
+  #scatter .dot-num {
+    fill: var(--bg);
+    font-size: 10px;
+    font-weight: 700;
+    font-family: ui-monospace, Menlo, monospace;
+    text-anchor: middle;
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    #scatter g.pt {
+      animation: pop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.4) backwards;
+    }
+    @keyframes pop {
+      from {
+        opacity: 0;
+        transform: scale(0.4);
+      }
+    }
+  }
+
+  /* ============ MATRIX (hero) ============ */
+  .frame {
+    background: linear-gradient(
+      160deg,
+      var(--gold-soft),
+      var(--line-strong) 40%,
+      var(--gold-soft)
+    );
+    padding: 1px;
+    clip-path: polygon(
+      18px 0,
+      100% 0,
+      100% calc(100% - 18px),
+      calc(100% - 18px) 100%,
+      0 100%,
+      0 18px
+    );
+  }
+  .frame-inner {
+    background: var(--surface);
+    padding: 20px;
+    clip-path: polygon(
+      17.4px 0,
+      100% 0,
+      100% calc(100% - 17.4px),
+      calc(100% - 17.4px) 100%,
+      0 100%,
+      0 17.4px
+    );
+  }
+  .matrix-scroll {
+    overflow-x: auto;
+  }
+  .matrix {
+    display: grid;
+    gap: 2px;
+    min-width: 830px;
+  }
+  .mhead {
+    font-size: 11px;
+    color: var(--ink-3);
+    display: grid;
+    place-items: center;
+    padding: 6px 0;
+  }
+  .mhead .lgd-dot {
+    width: 19px;
+    height: 19px;
+    font-size: 10px;
+  }
+  .mrow-h {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px 0 2px;
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .mrow-h .gwr {
+    margin-left: auto;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 11.5px;
+    color: var(--ink-2);
+    font-variant-numeric: tabular-nums;
+  }
+  .mrow-h .n {
+    color: var(--ink-3);
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 11px;
+    width: 16px;
+    text-align: right;
+  }
+  .mcell {
+    position: relative;
+    min-height: 48px;
+    display: grid;
+    place-content: center;
+    text-align: center;
+    background: var(--raised);
+    cursor: default;
+    transition: transform 0.08s ease;
+  }
+  .mcell .v {
+    font-size: 13.5px;
+    font-weight: 700;
+    font-family: ui-monospace, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .mcell .rec {
+    font-size: 10px;
+    color: var(--ink-2);
+    font-family: ui-monospace, Menlo, monospace;
+  }
+  .mcell.lown .v {
+    color: var(--ink-3);
+    font-weight: 400;
+  }
+  .mcell.mirror {
+    background: transparent;
+    border: 1px dashed var(--line);
+  }
+  .mcell.mirror::after {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--line-strong);
+  }
+  .mcell.hl {
+    transform: scale(1.04);
+    box-shadow: 0 0 0 1.5px var(--gold);
+    z-index: 2;
+  }
+  .mcell:hover {
+    transform: scale(1.06);
+    box-shadow: 0 0 0 1.5px var(--gold);
+    z-index: 3;
+  }
+  .matrix-key {
+    display: flex;
+    gap: 22px;
+    align-items: center;
+    margin-top: 14px;
+    font-size: 12px;
+    color: var(--ink-2);
+    flex-wrap: wrap;
+  }
+  .keyswatch {
+    display: inline-block;
+    width: 26px;
+    height: 12px;
+    vertical-align: -1px;
+    margin-right: 6px;
+  }
+
+  /* ============ TOOLTIP ============ */
+  #tip {
+    position: fixed;
+    z-index: 50;
+    pointer-events: none;
+    display: none;
+    background: var(--ink);
+    color: var(--bg);
+    padding: 8px 11px;
+    font-size: 12px;
+    line-height: 1.45;
+    max-width: 260px;
+    box-shadow: var(--shadow);
+  }
+  #tip b {
+    font-size: 12.5px;
+  }
+  #tip .d {
+    opacity: 0.75;
+  }
+
+  /* ============ DESIGN SYSTEM SHEET ============ */
+  .ds {
+    border-top: 1px double var(--line-strong);
+    margin-top: 80px;
+    padding-top: 40px;
+  }
+  .ds-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 28px;
+    margin-top: 24px;
+  }
+  .ds-block h3 {
+    font-family: "Optima", "Candara", system-ui, sans-serif;
+    font-size: 15px;
+    margin: 0 0 10px;
+    letter-spacing: 0.02em;
+  }
+  .swatches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .sw {
+    width: 92px;
+  }
+  .sw .c {
+    height: 44px;
+    border: 1px solid var(--line);
+  }
+  .sw .t {
+    font-size: 10.5px;
+    color: var(--ink-3);
+    font-family: ui-monospace, Menlo, monospace;
+    margin-top: 3px;
+    line-height: 1.35;
+  }
+  .type-spec .row {
+    border-bottom: 1px solid var(--line);
+    padding: 8px 0;
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+  .type-spec .tag {
+    font-size: 10.5px;
+    color: var(--ink-3);
+    width: 118px;
+    flex: none;
+    font-family: ui-monospace, Menlo, monospace;
+  }
+  .ds p.note {
+    color: var(--ink-2);
+    font-size: 13px;
+    max-width: 65ch;
+  }
+  .ds .rule-list {
+    margin: 8px 0 0;
+    padding-left: 18px;
+    color: var(--ink-2);
+    font-size: 13px;
+  }
+  .ds .rule-list li {
+    margin-bottom: 5px;
+  }
+  .ds .rule-list b {
+    color: var(--ink);
+  }
+
+  footer.site {
+    margin-top: 72px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+    color: var(--ink-3);
+    font-size: 12.5px;
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 880px) {
+    .headline {
+      grid-template-columns: 1fr;
+    }
+    .scatter-grid {
+      grid-template-columns: 1fr;
+    }
+    .scatter-legend {
+      border-right: none;
+      border-bottom: 1px solid var(--line);
+    }
+    .kpis {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+  }
+</style>
+
+<div class="wrap">
+  <header class="site">
+    <div class="brand">Meta<span class="mage">Mage</span></div>
+    <nav class="primary" aria-label="Site">
+      <a href="#" aria-current="page">Meta</a>
+      <a href="#matrix">Matchups</a>
+      <a href="#">Changes</a>
+      <a href="#">Tournaments</a>
+    </nav>
+  </header>
+  <hr class="wubrg" />
+
+  <!-- LENS BAR — every control writes the URL -->
+  <div class="lens" role="toolbar" aria-label="View parameters">
+    <div class="formats" role="group" aria-label="Format">
+      <button class="chip" aria-pressed="true">Standard</button>
+      <button class="chip" aria-pressed="false">Modern</button>
+      <button class="chip" aria-pressed="false">Pioneer</button>
+      <button class="chip" aria-pressed="false">Legacy</button>
+      <button class="chip" aria-pressed="false">Pauper</button>
+      <button class="chip" aria-pressed="false">Vintage</button>
+    </div>
+    <div class="divider" role="none"></div>
+    <button class="knob">Window <b>Jun 1 → Jun 30</b></button>
+    <button class="knob">Top <b>20</b> · min <b>80</b></button>
+    <button class="knob">Weight <b>match</b></button>
+    <button class="knob">+ Add archetype</button>
+    <button class="knob share">Share this view</button>
+  </div>
+
+  <!-- HEADLINE -->
+  <div class="headline">
+    <div>
+      <p class="eyebrow">The Ledger · Standard · June 2026</p>
+      <h1>
+        Ouroboroid holds the room.<br /><span class="thin"
+          >The spells are winning it.</span
+        >
+      </h1>
+      <p class="lede">
+        <b>Selesnya Ouroboroid</b> is the most-played deck at <b>17.7%</b> of
+        all matches — but it wins just 50.9% of them. The performance edge sits
+        with <b>Izzet Spellementals</b> (53.1%) and
+        <b>Jeskai Lessons</b> (52.6%), while the fringe
+        <b>Selesnya Landfall</b> posts the month's best rate at 62.5% on a thin
+        96-match sample.
+      </p>
+    </div>
+    <div class="kpis" aria-label="Window totals">
+      <div class="kpi">
+        <div class="v">58</div>
+        <div class="l">Tournaments</div>
+      </div>
+      <div class="kpi">
+        <div class="v">1,042</div>
+        <div class="l">Decks</div>
+      </div>
+      <div class="kpi">
+        <div class="v">4,277</div>
+        <div class="l">Matches</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DECK TILES -->
+  <section aria-labelledby="tiles-h">
+    <p class="eyebrow">The decks to beat</p>
+    <h2 id="tiles-h">Top of the field</h2>
+    <p class="sub">
+      The six most-played archetypes of the window. Art follows each deck's
+      signature card.
+    </p>
+    <div class="deck-tiles" id="tiles"></div>
+  </section>
+
+  <!-- TABLE -->
+  <section aria-labelledby="tbl-h">
+    <p class="eyebrow">Presence &amp; performance</p>
+    <h2 id="tbl-h">The field, ranked</h2>
+    <p class="sub">
+      Match-weighted share of the metagame. Win rate carries a 95% confidence
+      interval, clustered by player.
+    </p>
+    <div class="panel" style="margin-top: 16px">
+      <div style="overflow-x: auto">
+        <table class="ledger">
+          <thead>
+            <tr>
+              <th class="idx">#</th>
+              <th>Archetype</th>
+              <th>Tier</th>
+              <th>Share of matches</th>
+              <th class="r">Win rate</th>
+              <th class="r">95% CI</th>
+              <th class="r">Record</th>
+              <th class="r">Matches</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="foot-note">
+        <span
+          >Buckets hidden:
+          <span class="data">unknown 2.4% · conflict 0.7%</span></span
+        >
+        <button type="button">show buckets</button>
+        <span style="margin-left: auto"
+          >4 archetypes below the 80-match floor —
+          <button type="button">reveal</button></span
+        >
+      </div>
+    </div>
+  </section>
+
+  <!-- SCATTER -->
+  <section aria-labelledby="sc-h">
+    <p class="eyebrow">Position</p>
+    <h2 id="sc-h">Win rate vs presence</h2>
+    <p class="sub">
+      Every archetype above 30 matches. Right of the pack is popular; above the
+      line is winning. Color marks the side of 50% the record actually supports.
+    </p>
+    <div class="panel scatter-grid" style="margin-top: 16px">
+      <div class="scatter-legend"><ol id="legend"></ol></div>
+      <div style="padding: 12px 14px 6px 4px">
+        <svg
+          id="scatter"
+          viewBox="0 0 680 430"
+          role="img"
+          aria-label="Scatter plot of win rate against metagame presence for 14 Standard archetypes"
+        ></svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- MATRIX -->
+  <section id="matrix" aria-labelledby="mx-h">
+    <p class="eyebrow">The moat</p>
+    <h2 id="mx-h">Matchup matrix</h2>
+    <p class="sub">
+      Row beats column. Ink density is confidence — pale cells are small
+      samples; a dash means fewer than five matches. Nobody else publishes this.
+    </p>
+    <div class="frame" style="margin-top: 16px">
+      <div class="frame-inner">
+        <div class="matrix-scroll">
+          <div class="matrix" id="mx"></div>
+        </div>
+        <div class="matrix-key">
+          <span
+            ><span
+              class="keyswatch"
+              style="
+                background: color-mix(in oklab, var(--good) 55%, var(--raised));
+              "
+            ></span
+            >row favored</span
+          >
+          <span
+            ><span
+              class="keyswatch"
+              style="
+                background: color-mix(in oklab, var(--bad) 55%, var(--raised));
+              "
+            ></span
+            >column favored</span
+          >
+          <span
+            ><span class="keyswatch" style="background: var(--raised)"></span
+            >even / low ink = low sample</span
+          >
+          <span style="margin-left: auto" class="data"
+            >hover a cell for the interval</span
+          >
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DESIGN SYSTEM ============ -->
+  <section class="ds" aria-labelledby="ds-h">
+    <p class="eyebrow">Appendix</p>
+    <h2 id="ds-h">
+      The Gathering Ledger — design system, Arena Bronze revision
+    </h2>
+    <p class="note">
+      A tournament-hall almanac in the key of 2020-era Magic: warm bronze-black
+      under lamplight, parchment by day, gold filigree as structure. Card art
+      does the world-building — every deck wears its signature card. Data color
+      stays semantic: rose↔teal for matchup polarity (CVD-validated, ΔE 14.0
+      dark / 12.4 light). Identity is pips, numbers, and art — never chart hue.
+    </p>
+    <div class="ds-grid">
+      <div class="ds-block">
+        <h3>Palette</h3>
+        <div class="swatches">
+          <div class="sw">
+            <div class="c" style="background: var(--bg)"></div>
+            <div class="t">--bg<br />ground</div>
+          </div>
+          <div class="sw">
+            <div class="c" style="background: var(--surface)"></div>
+            <div class="t">--surface<br />panel</div>
+          </div>
+          <div class="sw">
+            <div class="c" style="background: var(--raised)"></div>
+            <div class="t">--raised<br />track/cell</div>
+          </div>
+          <div class="sw">
+            <div class="c" style="background: var(--ink)"></div>
+            <div class="t">--ink<br />text</div>
+          </div>
+          <div class="sw">
+            <div class="c" style="background: var(--gold)"></div>
+            <div class="t">--gold<br />structure</div>
+          </div>
+          <div class="sw">
+            <div class="c" style="background: var(--good)"></div>
+            <div class="t">--good<br />favored</div>
+          </div>
+          <div class="sw">
+            <div class="c" style="background: var(--bad)"></div>
+            <div class="t">--bad<br />unfavored</div>
+          </div>
+          <div class="sw">
+            <div class="c" style="background: var(--ref)"></div>
+            <div class="t">--ref<br />50% line</div>
+          </div>
+        </div>
+        <h3 style="margin-top: 18px">Mana identity — printed chips</h3>
+        <div style="display: flex; gap: 10px; align-items: center">
+          <span class="pips">
+            <span class="pip W">W</span><span class="pip U">U</span
+            ><span class="pip B">B</span><span class="pip R">R</span
+            ><span class="pip G">G</span>
+          </span>
+          <span style="color: var(--ink-3); font-size: 12.5px"
+            >the card-frame pip colors; constant across themes, like
+            cardboard</span
+          >
+        </div>
+      </div>
+      <div class="ds-block type-spec">
+        <h3>Type</h3>
+        <div class="row">
+          <span class="tag">display / Optima</span
+          ><span class="display" style="font-size: 22px; font-weight: 700"
+            >The Standard Ledger</span
+          >
+        </div>
+        <div class="row">
+          <span class="tag">body / Avenir</span
+          ><span>Matchup data nobody else publishes, on your terms.</span>
+        </div>
+        <div class="row">
+          <span class="tag">data / mono</span
+          ><span class="data">53.1% · 227-201 · CI 48.4–57.7</span>
+        </div>
+        <div class="row">
+          <span class="tag">eyebrow</span
+          ><span class="eyebrow" style="margin: 0"
+            >Presence &amp; Performance</span
+          >
+        </div>
+      </div>
+      <div class="ds-block">
+        <h3>Rules of use</h3>
+        <ul class="rule-list">
+          <li>
+            <b>Gold = structure.</b> Frames, eyebrows, active states. Never
+            encodes a value.
+          </li>
+          <li>
+            <b>Rose↔teal = polarity.</b> Matchups, deltas, above/below 50%.
+            Neutral gray at the midpoint.
+          </li>
+          <li>
+            <b>Pips, numbers &amp; art = identity.</b> An archetype keeps its
+            rank number across tiles, table, scatter, and matrix; its art is its
+            signature card.
+          </li>
+          <li>
+            <b>Cards are round, chrome is cut.</b> Only card-like objects (deck
+            art tiles, thumbs) get rounded corners; panels and frames are
+            notched or sharp.
+          </li>
+          <li>
+            <b>Confidence = ink.</b> Sample size drives fill opacity; under five
+            matches, no claim is made at all.
+          </li>
+          <li>
+            <b>Numbers are tabular</b>, right-aligned, monospaced. Prose stays
+            under 65 characters per line.
+          </li>
+          <li>
+            <b>Art source:</b> Scryfall art crops of each deck's signature card
+            (embedded here for the spike; served proper with attribution in
+            production).
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site">
+    <span>Source: MTGO Top32 &amp; Melee · 2026-06-01 → 2026-06-30</span>
+    <span>Card art © Wizards of the Coast, via Scryfall</span>
+    <span
+      >Every view is a URL — this page is
+      <span class="data"
+        >/meta/standard?start=2026-06-01&amp;end=2026-06-30</span
+      ></span
+    >
+  </footer>
+</div>
+
+<div id="tip" role="tooltip"></div>
+
+<script>
+  /* DECK_ART stripped for repo copy — production uses Scryfall art_crop URLs */
+</script>
+<script>
+  // ---------- DATA (June 2026 Standard — real numbers from the monthly R charts) ----------
+  const A = [
+    {
+      n: 1,
+      name: "Selesnya Ouroboroid",
+      mana: ["G", "W"],
+      share: 17.7,
+      wr: 50.9,
+      m: 757,
+      tier: "1",
+    },
+    {
+      n: 2,
+      name: "Izzet Prowess",
+      mana: ["U", "R"],
+      share: 17.2,
+      wr: 48.6,
+      m: 735,
+      tier: "1.5",
+    },
+    {
+      n: 3,
+      name: "Jeskai Lessons",
+      mana: ["U", "R", "W"],
+      share: 12.3,
+      wr: 52.6,
+      m: 527,
+      tier: "1",
+    },
+    {
+      n: 4,
+      name: "Izzet Spellementals",
+      mana: ["U", "R"],
+      share: 10.1,
+      wr: 53.1,
+      m: 433,
+      tier: "1",
+    },
+    {
+      n: 5,
+      name: "Jeskai Control",
+      mana: ["U", "R", "W"],
+      share: 7.6,
+      wr: 48.2,
+      m: 326,
+      tier: "2",
+    },
+    {
+      n: 6,
+      name: "Dimir Excruciator",
+      mana: ["U", "B"],
+      share: 6.5,
+      wr: 48.2,
+      m: 276,
+      tier: "2",
+    },
+    {
+      n: 7,
+      name: "Mono Green Landfall",
+      mana: ["G"],
+      share: 4.0,
+      wr: 52.9,
+      m: 172,
+      tier: "1.5",
+    },
+    {
+      n: 8,
+      name: "Azorius Momo",
+      mana: ["W", "U"],
+      share: 3.8,
+      wr: 45.1,
+      m: 162,
+      tier: "2",
+    },
+    {
+      n: 9,
+      name: "Selesnya Aggro",
+      mana: ["G", "W"],
+      share: 2.7,
+      wr: 48.7,
+      m: 115,
+      tier: "2",
+    },
+    {
+      n: 10,
+      name: "Selesnya Landfall",
+      mana: ["G", "W"],
+      share: 2.2,
+      wr: 62.5,
+      m: 96,
+      tier: "1.5",
+    },
+    {
+      n: 11,
+      name: "Izzet Lessons",
+      mana: ["U", "R"],
+      share: 1.5,
+      wr: 55.4,
+      m: 64,
+      tier: null,
+    },
+    {
+      n: 12,
+      name: "Mardu Discard",
+      mana: ["W", "B", "R"],
+      share: 1.3,
+      wr: 41.0,
+      m: 55,
+      tier: null,
+    },
+    {
+      n: 13,
+      name: "Izzet Midrange",
+      mana: ["U", "R"],
+      share: 1.2,
+      wr: 48.3,
+      m: 51,
+      tier: null,
+    },
+    {
+      n: 14,
+      name: "Izzet Aggro",
+      mana: ["U", "R"],
+      share: 0.8,
+      wr: 41.0,
+      m: 34,
+      tier: null,
+    },
+  ];
+  // Matchup records [wins, losses] — row index vs column index (top 10 only). null = no data.
+  const M = [
+    [
+      null,
+      [74, 69],
+      [62, 45],
+      [24, 45],
+      [24, 28],
+      [20, 25],
+      [22, 15],
+      [11, 13],
+      [12, 7],
+      [11, 6],
+    ],
+    [
+      [69, 74],
+      null,
+      [38, 58],
+      [38, 32],
+      [19, 26],
+      [26, 17],
+      [11, 15],
+      [17, 14],
+      [13, 12],
+      [2, 6],
+    ],
+    [
+      [45, 62],
+      [58, 38],
+      null,
+      [25, 21],
+      [24, 14],
+      [18, 18],
+      [9, 9],
+      [10, 8],
+      [4, 8],
+      [7, 10],
+    ],
+    [
+      [45, 24],
+      [32, 38],
+      [21, 25],
+      null,
+      [15, 21],
+      [11, 11],
+      [6, 5],
+      [13, 6],
+      [10, 6],
+      [4, 3],
+    ],
+    [
+      [28, 24],
+      [26, 19],
+      [14, 24],
+      [21, 15],
+      null,
+      [11, 12],
+      [3, 16],
+      [5, 4],
+      [7, 2],
+      [2, 6],
+    ],
+    [
+      [25, 20],
+      [17, 26],
+      [18, 18],
+      [11, 11],
+      [12, 11],
+      null,
+      [9, 6],
+      [8, 4],
+      [3, 3],
+      [1, 7],
+    ],
+    [
+      [15, 22],
+      [15, 11],
+      [9, 9],
+      [5, 6],
+      [16, 3],
+      [6, 9],
+      null,
+      [3, 5],
+      null,
+      [3, 4],
+    ],
+    [
+      [13, 11],
+      [14, 17],
+      [8, 10],
+      [6, 13],
+      [4, 5],
+      [4, 8],
+      [5, 3],
+      null,
+      [2, 4],
+      [2, 3],
+    ],
+    [
+      [7, 12],
+      [12, 13],
+      [8, 4],
+      [6, 10],
+      [2, 7],
+      [3, 3],
+      null,
+      [4, 2],
+      null,
+      null,
+    ],
+    [
+      [6, 11],
+      [6, 2],
+      [10, 7],
+      [3, 4],
+      [6, 2],
+      [7, 1],
+      [4, 3],
+      [3, 2],
+      null,
+      null,
+    ],
+  ];
+
+  const $ = (s) => document.querySelector(s);
+  const pct = (x, d = 1) => x.toFixed(d) + "%";
+  const cls = (wr, lo, hi) => (lo > 50 ? "up" : hi < 50 ? "down" : "flat");
+  // Wilson 95% interval, in percent
+  function wilson(p, n) {
+    if (!n) return [0, 100];
+    const z = 1.96,
+      q = p / 100,
+      z2 = z * z;
+    const den = 1 + z2 / n,
+      c = q + z2 / (2 * n),
+      h = z * Math.sqrt((q * (1 - q) + z2 / (4 * n)) / n);
+    return [((c - h) / den) * 100, ((c + h) / den) * 100];
+  }
+  const pips = (mana) =>
+    '<span class="pips">' +
+    mana.map((c) => `<span class="pip ${c}">${c}</span>`).join("") +
+    "</span>";
+
+  // ---------- ART: Scryfall crops (embedded) with procedural fallback ----------
+  const ART =
+    typeof window !== "undefined" && window.DECK_ART ? window.DECK_ART : {};
+  const ART_COLORS = {
+    W: "#d9c87e",
+    U: "#3d7fb8",
+    B: "#7a5c9e",
+    R: "#c85a3e",
+    G: "#4c8f58",
+  };
+  function mulberry32(a) {
+    return function () {
+      a |= 0;
+      a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function procArt(mana, seed, w = 480, h = 210) {
+    const cv = document.createElement("canvas");
+    cv.width = w;
+    cv.height = h;
+    const cx = cv.getContext("2d");
+    const rnd = mulberry32(seed * 7919 + 13);
+    cx.fillStyle = "#12100b";
+    cx.fillRect(0, 0, w, h);
+    cx.globalCompositeOperation = "lighter";
+    const cols = mana.map((c) => ART_COLORS[c]);
+    for (let i = 0; i < 7; i++) {
+      const col = cols[i % cols.length];
+      const x = rnd() * w,
+        y = rnd() * h,
+        r = (0.25 + rnd() * 0.5) * h * 1.6;
+      const g = cx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, col + "aa");
+      g.addColorStop(1, col + "00");
+      cx.fillStyle = g;
+      cx.fillRect(0, 0, w, h);
+    }
+    cx.globalCompositeOperation = "source-over";
+    const vg = cx.createRadialGradient(
+      w / 2,
+      h / 2,
+      h * 0.3,
+      w / 2,
+      h / 2,
+      w * 0.72,
+    );
+    vg.addColorStop(0, "rgba(0,0,0,0)");
+    vg.addColorStop(1, "rgba(8,6,3,0.55)");
+    cx.fillStyle = vg;
+    cx.fillRect(0, 0, w, h);
+    return cv.toDataURL("image/jpeg", 0.8);
+  }
+  const artSrc = (a) => ART[String(a.n)] || procArt(a.mana, a.n);
+
+  // ---------- DECK TILES ----------
+  $("#tiles").innerHTML = A.slice(0, 6)
+    .map((a) => {
+      const [lo, hi] = wilson(a.wr, a.m);
+      return `<a class="deck-card" href="#">
+      <div class="art">
+        <span class="rank">${a.n}</span>
+        <img src="${artSrc(a)}" alt="" loading="lazy" />
+        ${pips(a.mana)}
+      </div>
+      <div class="body">
+        <span class="name">${a.name}</span>
+        <span class="stats">
+          <span class="meta">${pct(a.share)} meta</span>
+          <span class="wr ${cls(a.wr, lo, hi)}">${pct(a.wr)}</span>
+        </span>
+      </div>
+    </a>`;
+    })
+    .join("");
+
+  // ---------- TABLE ----------
+  $("#tbody").innerHTML = A.filter((a) => a.tier !== null)
+    .map((a) => {
+      const [lo, hi] = wilson(a.wr, a.m);
+      const w = Math.round((a.m * a.wr) / 100),
+        l = a.m - w;
+      const tierCls = a.tier === "1" ? "t1" : a.tier === "1.5" ? "" : "t2";
+      return `<tr>
+      <td class="idx data">${a.n}</td>
+      <td class="name"><span class="cellflex"><img class="thumb" src="${artSrc(a)}" alt="" loading="lazy" />${pips(a.mana)}&ensp;<a href="#">${a.name}</a></span></td>
+      <td><span class="tier ${tierCls}">T${a.tier}</span></td>
+      <td><div class="sharebar"><div class="track"><div class="fill" style="width:${((a.share / 18) * 100).toFixed(1)}%"></div></div><span class="data" style="font-size:12px">${pct(a.share)}</span></div></td>
+      <td class="r"><span class="wr ${cls(a.wr, lo, hi)} data">${pct(a.wr)}</span></td>
+      <td class="r ci data">${lo.toFixed(1)}–${hi.toFixed(1)}</td>
+      <td class="r data">${w}–${l}</td>
+      <td class="r data">${a.m}</td>
+    </tr>`;
+    })
+    .join("");
+
+  // ---------- SCATTER ----------
+  (function scatter() {
+    const W = 680,
+      H = 430,
+      L = 56,
+      R = 18,
+      T = 16,
+      B = 52;
+    const pw = W - L - R,
+      ph = H - T - B;
+    const xMax = Math.sqrt(19),
+      yMin = 38,
+      yMax = 65;
+    const sx = (s) => L + (Math.sqrt(s) / xMax) * pw;
+    const sy = (v) => T + (1 - (v - yMin) / (yMax - yMin)) * ph;
+    let g = "";
+    for (const v of [40, 45, 50, 55, 60]) {
+      const y = sy(v);
+      g +=
+        v === 50
+          ? `<line class="refline" x1="${L}" y1="${y}" x2="${W - R}" y2="${y}"/>`
+          : `<line class="grid-line" x1="${L}" y1="${y}" x2="${W - R}" y2="${y}"/>`;
+      g += `<text class="axis-label" x="${L - 9}" y="${y + 4}" text-anchor="end">${v}%</text>`;
+    }
+    for (const s of [1, 5, 10, 15]) {
+      const x = sx(s);
+      g += `<line class="grid-line" x1="${x}" y1="${T}" x2="${x}" y2="${T + ph}"/>`;
+      g += `<text class="axis-label" x="${x}" y="${T + ph + 18}" text-anchor="middle">${s}%</text>`;
+    }
+    g += `<text class="axis-title" x="${L + pw / 2}" y="${H - 8}" text-anchor="middle">Presence · √ scale</text>`;
+    g += `<text class="axis-title" x="14" y="${T + ph / 2}" text-anchor="middle" transform="rotate(-90 14 ${T + ph / 2})">Win rate</text>`;
+    A.forEach((a, i) => {
+      const [lo, hi] = wilson(a.wr, a.m);
+      const c = cls(a.wr, lo, hi);
+      g += `<g class="pt" style="animation-delay:${i * 40}ms">
+        <circle class="dot ${c}" cx="${sx(a.share).toFixed(1)}" cy="${sy(a.wr).toFixed(1)}" r="11"
+          data-tip="<b>${a.n}. ${a.name}</b><br/>${pct(a.wr)} over ${a.m} matches<br/><span class='d'>CI ${lo.toFixed(1)}–${hi.toFixed(1)} · ${pct(a.share)} of meta</span>"></circle>
+        <text class="dot-num" x="${sx(a.share).toFixed(1)}" y="${(sy(a.wr) + 3.5).toFixed(1)}">${a.n}</text>
+      </g>`;
+    });
+    $("#scatter").innerHTML = g;
+    $("#legend").innerHTML = A.map((a) => {
+      const [lo, hi] = wilson(a.wr, a.m);
+      return `<li><span class="lgd-dot ${cls(a.wr, lo, hi)}">${a.n}</span> ${a.name} ${pips(a.mana)}</li>`;
+    }).join("");
+  })();
+
+  // ---------- MATRIX ----------
+  (function matrix() {
+    const top = A.slice(0, 10);
+    const mx = $("#mx");
+    mx.style.gridTemplateColumns = `minmax(210px, 1.3fr) repeat(10, minmax(56px, 1fr))`;
+    let html =
+      "<div></div>" +
+      top
+        .map(
+          (a) =>
+            `<div class="mhead"><span class="lgd-dot flat" style="background:var(--ink-3)">${a.n}</span></div>`,
+        )
+        .join("");
+    top.forEach((row, r) => {
+      html += `<div class="mrow-h"><span class="n">${row.n}</span> ${pips(row.mana)} ${row.name}<span class="gwr">${pct(row.wr)}</span></div>`;
+      top.forEach((col, c) => {
+        const rec = M[r][c];
+        if (r === c) {
+          html += `<div class="mcell mirror" aria-label="mirror match"></div>`;
+          return;
+        }
+        if (!rec) {
+          html += `<div class="mcell lown"><span class="v">–</span></div>`;
+          return;
+        }
+        const [w, l] = rec,
+          n = w + l;
+        const wr = (w / n) * 100;
+        const [lo, hi] = wilson(wr, n);
+        const tip = `<b>${row.name}</b> vs <b>${col.name}</b><br/>${pct(wr, 0)} · ${w}–${l}<br/><span class='d'>95% CI ${lo.toFixed(0)}–${hi.toFixed(0)}${hi < 50 || lo > 50 ? "" : " · could go either way"}</span>`;
+        if (n < 5) {
+          html += `<div class="mcell lown" data-tip="${tip}" tabindex="0"><span class="v">–</span><span class="rec">${w}–${l}</span></div>`;
+          return;
+        }
+        const conf = Math.min(1, n / 50);
+        const dev = Math.min(28, Math.abs(wr - 50));
+        const amt = (6 + dev * 2.1) * (0.35 + 0.65 * conf);
+        const pole = wr >= 50 ? "var(--good)" : "var(--bad)";
+        html += `<div class="mcell" tabindex="0" data-r="${r}" data-c="${c}" data-tip="${tip}"
+          style="background:color-mix(in oklab, ${pole} ${amt.toFixed(0)}%, var(--raised))">
+          <span class="v">${Math.round(wr)}%</span><span class="rec">${w}–${l}</span>
+        </div>`;
+      });
+    });
+    mx.innerHTML = html;
+    // row/col cross-highlight
+    mx.addEventListener("mouseover", (e) => {
+      const cell = e.target.closest(".mcell[data-r]");
+      if (!cell) return;
+      const { r, c } = cell.dataset;
+      mx.querySelectorAll(".mcell[data-r]").forEach((el) => {
+        el.classList.toggle(
+          "hl",
+          (el.dataset.r === r && el !== cell) ||
+            (el.dataset.c === c && el !== cell),
+        );
+      });
+    });
+    mx.addEventListener("mouseleave", () =>
+      mx.querySelectorAll(".hl").forEach((el) => el.classList.remove("hl")),
+    );
+  })();
+
+  // ---------- TOOLTIP ----------
+  const tip = $("#tip");
+  document.addEventListener("mouseover", (e) => {
+    const t = e.target.closest("[data-tip]");
+    if (!t) {
+      tip.style.display = "none";
+      return;
+    }
+    tip.innerHTML = t.dataset.tip;
+    tip.style.display = "block";
+  });
+  document.addEventListener("mousemove", (e) => {
+    if (tip.style.display !== "block") return;
+    const pad = 14,
+      w = tip.offsetWidth,
+      h = tip.offsetHeight;
+    let x = e.clientX + pad,
+      y = e.clientY + pad;
+    if (x + w > innerWidth - 8) x = e.clientX - w - pad;
+    if (y + h > innerHeight - 8) y = e.clientY - h - pad;
+    tip.style.left = x + "px";
+    tip.style.top = y + "px";
+  });
+</script>

@@ -1,56 +1,255 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
-@custom-variant dark (&:is(.dark *));
+/* next-themes uses the `class` strategy; keep the `dark:` variant working for
+   any copied shadcn primitive that still ships dark: utilities. Our tokens flip
+   automatically, so dark: is rarely needed — but it must not break. */
+@custom-variant dark (&:is(.dark *, [data-theme='dark'] *));
 
+/* ===========================================================================
+   THE GATHERING LEDGER · ARENA BRONZE — token system (design spike is source
+   of truth: docs/plans/2026-07-04-design-spike-gathering-ledger.html + §9).
+
+   Raw Ledger tokens flip per theme. shadcn aliases (--background, --primary, …)
+   are mapped ONCE onto the raw tokens and inherit the flip automatically. Mana
+   chips are theme-CONSTANT (printed cardboard). Light is the default; dark comes
+   in via prefers-color-scheme AND an explicit .dark / [data-theme] override so
+   the theme toggle always wins.
+   =========================================================================== */
+
+:root {
+  /* ---- Ledger raw — light (parchment study) ---- */
+  --bg: #f1ebdc;
+  --surface: #f9f5e9;
+  --raised: #ece5d0;
+  --line: #dcd2b8;
+  --line-strong: #c5b892;
+  --ink: #292418;
+  --ink-2: #5f5741;
+  --ink-3: #8d8368;
+  --gold: #8c6d23;
+  --gold-soft: #b3924d;
+  --gold-wash: rgba(140, 109, 35, 0.1);
+  --good: #0e8a72;
+  --bad: #bc4066;
+  --mid: #8a8574;
+  --ref: #7d97b8;
+  --shadow:
+    0 1px 0 rgba(41, 36, 24, 0.06), 0 10px 30px -18px rgba(41, 36, 24, 0.35);
+
+  /* ---- Chart palette (light): warm/cool + std-dev tier bands 0..6 ---- */
+  --chart-warm: #e15759;
+  --chart-cool: #4e79a7;
+  --tier-0: #0e8a72;
+  --tier-1: #4e7d4a;
+  --tier-2: #8c6d23;
+  --tier-3: #a06a2e;
+  --tier-4: #b0553f;
+  --tier-5: #bc4066;
+  --tier-6: #8f3350;
+
+  /* ---- Mana chips — THEME-CONSTANT printed pip colors ---- */
+  --chip-w: #f5f0ce;
+  --chip-u: #abd8ee;
+  --chip-b: #ccc5c0;
+  --chip-r: #f4a78d;
+  --chip-g: #9bd3ae;
+  --chip-ink: #141010;
+
+  /* ---- shadcn aliases mapped onto the Ledger palette (defined once; they
+     inherit the per-theme flip because the raw tokens flip under them). Chrome
+     is cut/sharp by default (§9 rule 4) → a small base radius; card-like
+     objects opt back into rounding themselves. ---- */
+  --radius: 0.25rem;
+  --background: var(--bg);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--surface);
+  --popover-foreground: var(--ink);
+  --primary: var(--gold);
+  --primary-foreground: var(--bg);
+  --secondary: var(--raised);
+  --secondary-foreground: var(--ink);
+  --muted: var(--raised);
+  --muted-foreground: var(--ink-3);
+  --accent: var(--gold-wash);
+  --accent-foreground: var(--ink);
+  --destructive: var(--bad);
+  --border: var(--line);
+  --input: var(--line-strong);
+  --ring: var(--gold);
+
+  /* ---- Chart semantic aliases (WP2 consumes these) ---- */
+  --chart-good: var(--good);
+  --chart-bad: var(--bad);
+  --chart-neutral: var(--mid);
+  --chart-reference: var(--ref);
+}
+
+/* Dark via system preference (default when no explicit theme is set). */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16130e;
+    --surface: #1e1a13;
+    --raised: #282216;
+    --line: #37301e;
+    --line-strong: #4d422a;
+    --ink: #eae3ce;
+    --ink-2: #a99f85;
+    --ink-3: #726a55;
+    --gold: #c9a855;
+    --gold-soft: #98803f;
+    --gold-wash: rgba(201, 168, 85, 0.09);
+    --good: #2e9e8f;
+    --bad: #d45a7e;
+    --mid: #6e7280;
+    --ref: #5f7ea6;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 16px 44px -20px rgba(0, 0, 0, 0.75);
+    --chart-warm: #f0888a;
+    --chart-cool: #6b93c9;
+    --tier-0: #2e9e8f;
+    --tier-1: #6f9a5c;
+    --tier-2: #c9a855;
+    --tier-3: #c99a52;
+    --tier-4: #d07a5e;
+    --tier-5: #d45a7e;
+    --tier-6: #b04d68;
+  }
+}
+
+/* Explicit dark toggle (next-themes .dark class / data-theme attribute). Placed
+   after the media query so a user override beats the system preference. */
+.dark,
+:root[data-theme='dark'] {
+  --bg: #16130e;
+  --surface: #1e1a13;
+  --raised: #282216;
+  --line: #37301e;
+  --line-strong: #4d422a;
+  --ink: #eae3ce;
+  --ink-2: #a99f85;
+  --ink-3: #726a55;
+  --gold: #c9a855;
+  --gold-soft: #98803f;
+  --gold-wash: rgba(201, 168, 85, 0.09);
+  --good: #2e9e8f;
+  --bad: #d45a7e;
+  --mid: #6e7280;
+  --ref: #5f7ea6;
+  --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 16px 44px -20px rgba(0, 0, 0, 0.75);
+  --chart-warm: #f0888a;
+  --chart-cool: #6b93c9;
+  --tier-0: #2e9e8f;
+  --tier-1: #6f9a5c;
+  --tier-2: #c9a855;
+  --tier-3: #c99a52;
+  --tier-4: #d07a5e;
+  --tier-5: #d45a7e;
+  --tier-6: #b04d68;
+}
+
+/* Explicit light toggle — force the light palette even when the system is dark.
+   Last in source order so it wins the equal-specificity race with the media
+   query. */
+.light,
+:root[data-theme='light'] {
+  --bg: #f1ebdc;
+  --surface: #f9f5e9;
+  --raised: #ece5d0;
+  --line: #dcd2b8;
+  --line-strong: #c5b892;
+  --ink: #292418;
+  --ink-2: #5f5741;
+  --ink-3: #8d8368;
+  --gold: #8c6d23;
+  --gold-soft: #b3924d;
+  --gold-wash: rgba(140, 109, 35, 0.1);
+  --good: #0e8a72;
+  --bad: #bc4066;
+  --mid: #8a8574;
+  --ref: #7d97b8;
+  --shadow:
+    0 1px 0 rgba(41, 36, 24, 0.06), 0 10px 30px -18px rgba(41, 36, 24, 0.35);
+  --chart-warm: #e15759;
+  --chart-cool: #4e79a7;
+  --tier-0: #0e8a72;
+  --tier-1: #4e7d4a;
+  --tier-2: #8c6d23;
+  --tier-3: #a06a2e;
+  --tier-4: #b0553f;
+  --tier-5: #bc4066;
+  --tier-6: #8f3350;
+}
+
+/* ===========================================================================
+   Map tokens into Tailwind's theme so utilities resolve to the Ledger palette:
+   `bg-surface`, `text-ink`, `border-line`, `text-gold`, `bg-good`, plus the
+   shadcn `bg-background` / `text-primary` family the copied primitives use.
+   =========================================================================== */
 @theme inline {
+  /* fonts (§9): Optima display, Avenir body, mono data — all system stacks */
+  --font-display: 'Optima', 'Candara', 'Segoe UI', system-ui, sans-serif;
+  --font-sans: 'Avenir Next', 'Avenir', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 8px);
+
+  /* shadcn aliases */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
 
-  /* ---- MetaMage chart palette (see globals.css :root / .dark below) ---- */
-  /* Matchup-matrix diverging scale (bad → good) and reference/series colors. */
+  /* Ledger palette utilities */
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-gold-wash: var(--gold-wash);
+  --color-good: var(--good);
+  --color-bad: var(--bad);
+  --color-mid: var(--mid);
+  --color-ref: var(--ref);
+
+  /* mana chips (theme-constant) */
+  --color-chip-w: var(--chip-w);
+  --color-chip-u: var(--chip-u);
+  --color-chip-b: var(--chip-b);
+  --color-chip-r: var(--chip-r);
+  --color-chip-g: var(--chip-g);
+  --color-chip-ink: var(--chip-ink);
+
+  /* chart palette */
   --color-chart-good: var(--chart-good);
   --color-chart-bad: var(--chart-bad);
   --color-chart-neutral: var(--chart-neutral);
+  --color-chart-reference: var(--chart-reference);
   --color-chart-warm: var(--chart-warm);
   --color-chart-cool: var(--chart-cool);
-  --color-chart-reference: var(--chart-reference);
-  /* Tier bands (0 = best … 3 = worst), aligned to the 0/0.5/1/1.5/2/2.5/3 scale. */
   --color-tier-0: var(--tier-0);
   --color-tier-1: var(--tier-1);
   --color-tier-2: var(--tier-2);
@@ -60,114 +259,47 @@
   --color-tier-6: var(--tier-6);
 }
 
-:root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-
-  /* ---- Chart palette (light) ---- */
-  /* Diverging win-rate scale; light mode uses deeper, higher-contrast hues. */
-  --chart-bad: #dc2626; /* dark of R gradient_bad #F87171 */
-  --chart-good: #16a34a; /* dark of R gradient_good #4ADE80 */
-  --chart-neutral: #94a3b8;
-  --chart-warm: #e15759; /* R warm */
-  --chart-cool: #4e79a7; /* R cool */
-  --chart-reference: #2563eb; /* dark of R reference #60A5FA */
-  /* Tier bands 0..6 map to tier values 0, 0.5, 1, 1.5, 2, 2.5, 3. */
-  --tier-0: #15803d;
-  --tier-1: #4d7c0f;
-  --tier-2: #a16207;
-  --tier-3: #b45309;
-  --tier-4: #c2410c;
-  --tier-5: #b91c1c;
-  --tier-6: #7f1d1d;
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-
-  /* ---- Chart palette (dark) ---- */
-  /* Brighter hues read better on the dark canvas; these are the R defaults. */
-  --chart-bad: #f87171; /* R gradient_bad */
-  --chart-good: #4ade80; /* R gradient_good */
-  --chart-neutral: #64748b;
-  --chart-warm: #f0888a;
-  --chart-cool: #6b93c9;
-  --chart-reference: #60a5fa; /* R reference */
-  /* Tier bands 0..6 map to tier values 0, 0.5, 1, 1.5, 2, 2.5, 3. */
-  --tier-0: #4ade80;
-  --tier-1: #a3e635;
-  --tier-2: #facc15;
-  --tier-3: #fb923c;
-  --tier-4: #f97316;
-  --tier-5: #f87171;
-  --tier-6: #ef4444;
-}
-
+/* ===========================================================================
+   Base layer + structural helpers ported from the spike (global concerns only).
+   =========================================================================== */
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Type roles (§9): editorial display vs. tabular data. */
+  .font-display {
+    font-family: var(--font-display);
+  }
+  .data,
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The WUBRG hairline under the site header (§9 rule 6). Reusable structural
+     chrome, so it lives here rather than in a single component. */
+  .wubrg-rule {
+    height: 2.5px;
+    border: none;
+    margin: 0;
+    opacity: 0.85;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--chip-w) 8%,
+      var(--chip-u) 30%,
+      var(--chip-b) 50%,
+      var(--chip-r) 70%,
+      var(--chip-g) 92%,
+      transparent
+    );
   }
 }

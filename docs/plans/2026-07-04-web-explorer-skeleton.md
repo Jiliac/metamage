@@ -551,6 +551,66 @@ WP1 after WP0 stubs it. No two work packages edit the same file except the coord
   keep the sortable tier/rank column behind the data layer so the blend can change without UI churn.
 - Rich per-view polish, interactivity beyond tooltips, real theme-aware chart palette tuning.
 
-```
+---
 
-```
+## 9. Visual design direction — "The Gathering Ledger · Arena Bronze" (APPROVED)
+
+Validated by the owner on a live spike (2026-07-04). **The spike is the visual source of truth:**
+`docs/plans/2026-07-04-design-spike-gathering-ledger.html` — read its CSS tokens and component
+treatments before styling anything. Do NOT default to stock shadcn look; adapt the primitives to
+these tokens.
+
+### Tokens (CSS custom properties in `globals.css`; light default, dark via `prefers-color-scheme` + `.dark`/`data-theme` override)
+
+| Token                                  | Light (parchment)                 | Dark (Arena bronze)               |
+| -------------------------------------- | --------------------------------- | --------------------------------- |
+| `--bg`                                 | `#f1ebdc`                         | `#16130e`                         |
+| `--surface`                            | `#f9f5e9`                         | `#1e1a13`                         |
+| `--raised`                             | `#ece5d0`                         | `#282216`                         |
+| `--line` / `--line-strong`             | `#dcd2b8` / `#c5b892`             | `#37301e` / `#4d422a`             |
+| `--ink` / `--ink-2` / `--ink-3`        | `#292418` / `#5f5741` / `#8d8368` | `#eae3ce` / `#a99f85` / `#726a55` |
+| `--gold` / `--gold-soft`               | `#8c6d23` / `#b3924d`             | `#c9a855` / `#98803f`             |
+| `--good` (favored)                     | `#0e8a72`                         | `#2e9e8f`                         |
+| `--bad` (unfavored)                    | `#bc4066`                         | `#d45a7e`                         |
+| `--mid` (neutral) / `--ref` (50% line) | `#8a8574` / `#7d97b8`             | `#6e7280` / `#5f7ea6`             |
+
+Mana chips are **theme-constant** (printed-cardboard colors): W `#f5f0ce`, U `#abd8ee`,
+B `#ccc5c0`, R `#f4a78d`, G `#9bd3ae`, glyph ink `#141010`.
+
+The rose↔teal polarity pair is **CVD-validated** (ΔE 14.0 dark / 12.4 light) — do not swap back
+to red/green.
+
+### Type
+
+Display: `Optima, Candara, 'Segoe UI', system-ui` (Beleren-adjacent). Body: `'Avenir Next', Avenir,
+'Segoe UI', system-ui`. Data: `ui-monospace, 'SF Mono', Menlo` with `font-variant-numeric: tabular-nums`.
+
+### Rules (bake into components)
+
+1. **Gold = structure** (eyebrows, frames, active lens). Never encodes a value.
+2. **Rose↔teal = polarity** only; neutral gray midpoint; text never wears series color.
+3. **Pips + rank numbers + card art = identity.** Same rank number across tiles/table/scatter/matrix.
+4. **Cards are round, chrome is cut**: art tiles/thumbs get border-radius; panels sharp; hero frames
+   and the LensBar get notched corners (`clip-path` polygon, 14–18px cuts).
+5. **Confidence = ink**: matrix fill = `color-mix(in oklab, pole amt%, var(--raised))` where amt
+   scales with |wr−50| × min(1, games/50); `games<5` → '–', mirror → blanked dot.
+6. **WUBRG hairline** under the site header (soft gradient through the five chip colors).
+7. Headline pattern: editorial H1 + supporting lede ("Ouroboroid holds the room. The spells are
+   winning it.") — the meta-watcher's one-glance answer, derived from the window's data.
+
+### Contract amendment (pre-freeze)
+
+`ArchetypeRowDTO` gains `art: { cardName: string; artCropUrl: string | null } | null` — the
+archetype's signature card (Scryfall `art_crop`). Fixtures seed the 14 known Standard mappings
+(Badgermole Cub, Slickshot Show-Off, Tablet of Discovery, Eddymurk Crab, Inevitable Defeat, Deceit,
+Icetill Explorer, Momo Friendly Flier, Mightform Harmonizer, Felidar Retreat, Divide by Zero,
+Rite of Oblivion, Ledger Shredder, Kiln Fiend); other formats may use `null` → mana-gradient
+placeholder. The production site loads Scryfall images directly (next/image `remotePatterns` for
+`cards.scryfall.io` + attribution in the footer); only the OG route stays asset-embedded.
+
+### New components implied
+
+- `ManaPips` + `ArtCrop` (img with mana-gradient fallback) — shared primitives, owned by **WP0**.
+- `DeckTile` ("Top of the field" card grid, top-6 by share) — owned by **WP4**; landing page
+  section owned by **WP5**.
+- `MetaTable` rows include art thumb (58×36, radius 4) — WP4.

@@ -39,6 +39,9 @@ export type ArchetypeRowDTO = {
   slug: ArchetypeSlug
   name: string
   color: string | null // guild code e.g. 'BR', part of name too
+  // identity — the archetype's signature card (Scryfall art_crop). Null for
+  // formats without a seeded mapping → UI falls back to a mana gradient (§9).
+  art: { cardName: string; artCropUrl: string | null } | null
   // presence — MATCH-weighted by default; both counts exposed
   matches: number // COUNT(matches)
   decks: number // COUNT(DISTINCT entry_id)
