@@ -124,7 +124,9 @@ Uses `TOURNAMENT_DB_PATH` if the DB is not at `data/tournament.db`.
 
 Database
 
-- TOURNAMENT_DB_PATH — path to tournament.db (default: data/tournament.db)
+- TOURNAMENT_DATABASE_URL — tournament DB Postgres URL (read-only role for MCP/R). When set, overrides SQLite. Dev: unset it to use SQLite, or point it at a Neon branch. See `docs/hidden_docs/POSTGRES_MIGRATION.md`.
+- TOURNAMENT_DATABASE_WRITE_URL — read/write role, used only by the MCP alias-write path.
+- TOURNAMENT_DB_PATH — SQLite dev fallback path (default: data/tournament.db), used when TOURNAMENT_DATABASE_URL is unset
 - POSTGRES_URL — Ops DB for chat logs (preferred)
 - OPS_DB_PATH or BRIDGE_DB_PATH — fallback Ops SQLite path (default: data/ops.db)
 

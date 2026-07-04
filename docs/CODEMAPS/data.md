@@ -4,9 +4,9 @@
 
 Two databases. Tournament DB is the domain store; Ops DB stores agent telemetry.
 
-## Tournament DB (SQLite default, Postgres-compatible types)
+## Tournament DB (Postgres prod / SQLite dev)
 
-Models: `src/models/reference.py` + `src/models/tournament.py`. Schema diagram: `docs/schema.mmd`. Migrations: `alembic/versions/` (11 revisions to date).
+Dual-mode engine in `src/models/base.py`: Postgres when `TOURNAMENT_DATABASE_URL` is set (`postgres://` normalized to `postgresql://`), else the local SQLite file (`TOURNAMENT_DB_PATH` or `data/tournament.db`). Models: `src/models/reference.py` + `src/models/tournament.py`. Schema diagram: `docs/schema.mmd`. Migrations: `alembic/versions/` (10 revisions). The four enum columns use `native_enum=False` (VARCHAR+CHECK) so `create_all` is portable. Case-insensitive columns use the `CaseInsensitiveText` shim (lowercases on write) on both dialects — not native `citext`. Fuzzy search uses portable `LOWER() LIKE` (no FTS5). Fresh Postgres is bootstrapped via `create_all` + `alembic stamp head`.
 
 ### Tables
 
