@@ -133,7 +133,7 @@ get_engine() / get_alias_write_engine():
      existing SQLite pragma listener (WAL, foreign_keys, ...)
 ```
 
-*Directional guidance, not implementation specification.*
+_Directional guidance, not implementation specification._
 
 ---
 
@@ -152,6 +152,7 @@ get_engine() / get_alias_write_engine():
 **Patterns to follow:** `src/ops_model/base.py:40-104` (URL builder + dialect-branched engine).
 
 **Test scenarios:**
+
 - With `TOURNAMENT_DATABASE_URL=postgresql://...`, `_build_database_url` returns it verbatim and `get_engine` builds a Postgres engine with no PRAGMA listener registered.
 - With the var unset, `_build_database_url` returns a `sqlite:///` URL honoring `TOURNAMENT_DB_PATH`, and the SQLite PRAGMA listener still attaches.
 - `get_alias_write_engine` follows the same dialect branch as `get_engine`.
@@ -174,6 +175,7 @@ get_engine() / get_alias_write_engine():
 **Patterns to follow:** existing SQLite/Postgres branch style from `src/ops_model/base.py`.
 
 **Test scenarios:**
+
 - On a Postgres engine, no `PRAGMA` statement is emitted at connect (no error).
 - `validate_select_only` still rejects `INSERT`/`UPDATE`/`DROP`/multi-statement/`PRAGMA` inputs (dialect-agnostic — unchanged behavior).
 - A read query issued through the `SELECT`-only role against a write statement fails at the DB level (role denies), proving defense-in-depth.
@@ -214,6 +216,7 @@ get_engine() / get_alias_write_engine():
 **Patterns to follow:** `alembic/ops/env.py:50-77`.
 
 **Test scenarios:**
+
 - `alembic upgrade head` against an empty Postgres database creates all tournament tables and stamps head (integration, run against a throwaway Neon branch).
 - With `TOURNAMENT_DATABASE_URL` unset, Alembic still targets the SQLite file (dev unchanged).
 - Edge: a migration using `render_as_batch` does not error on Postgres once batch mode is gated.
@@ -235,6 +238,7 @@ get_engine() / get_alias_write_engine():
 **Execution note:** Start by characterizing current search behavior with a test capturing today's SQLite results for representative queries, then make Postgres match.
 
 **Test scenarios:**
+
 - Player handle partial-match returns the same expected player on Postgres and SQLite for a known fixture.
 - Archetype name search returns expected archetypes on Postgres (no reliance on `archetype_fts`).
 - Date-range queries (`t.date >= :start AND t.date <= :end`) return the same rows on both dialects for a fixed window (guards the TEXT-date vs timestamp difference).
@@ -257,6 +261,7 @@ get_engine() / get_alias_write_engine():
 **Patterns to follow:** `scripts/migrate_to_postgres.py` structure (connection test → schema → transfer → verify), with batched inserts replacing per-row `session.add`.
 
 **Test scenarios:**
+
 - Backfill of a small multi-table SQLite fixture reproduces identical row counts per table on Postgres.
 - FK integrity holds: a `matches` row's `entry_id`/`opponent_entry_id` resolve to migrated entries.
 - Idempotency/guard: re-running against a non-empty target is refused or handled explicitly (no silent partial dupes).
@@ -279,6 +284,7 @@ get_engine() / get_alias_write_engine():
 **Execution note:** Add a characterization test on a fixture tournament (row counts + recomputed W/L/D) before changing the recompute/existence logic, to prove behavior is preserved.
 
 **Test scenarios:**
+
 - Ingesting a fixture tournament into Postgres yields the same tournaments/entries/deck_cards/matches counts as the SQLite path.
 - W/L/D recompute produces identical per-entry values after the query rework.
 - Duplicate-pairing suppression still holds (re-ingesting the same tournament creates no duplicate `matches`).
@@ -325,10 +331,12 @@ get_engine() / get_alias_write_engine():
 **In scope:** tournament data on Neon Postgres; all existing consumers (MCP, ingest, R) working against it; read-only role; one-time backfill; Postgres-only runtime with a SQLite dev fallback.
 
 **Deferred for later** (from origin):
+
 - The website's read path (Prisma second datasource vs Python API vs direct SQL) — an explorer-track decision.
 - Schema trimming / `matches` dedup — data moves as-is.
 
 **Deferred to Follow-Up Work** (surfaced during planning):
+
 - Native `citext` adoption (KTD-1) — only if a concrete need arises.
 - Real `pg_trgm` gin trigram indexing for fuzzy search (KTD-2) — parity ships first.
 
@@ -351,10 +359,12 @@ get_engine() / get_alias_write_engine():
 ## Open Questions
 
 **Resolve before/at cutover (operator):**
+
 - Provision the tournament database + RO/RW roles on the existing Neon project; confirm connection strings and `?sslmode=require`.
 - Right-size the Neon plan (R2) and confirm scale-to-zero for the ~$2–4/mo target.
 
 **Deferred to implementation:**
+
 - Exact fuzzy-search call-site inventory and the minimal parity query per site (U5) — enumerated once code is open.
 - Whether the ingest W/L/D recompute is best done as grouped aggregates or a single pass (U7) — decided against real timings on a Neon branch.
 - Optimal backfill chunk size / whether `COPY` beats `bulk_insert_mappings` for `deck_cards`/`matches` (U6) — tuned against real load time.

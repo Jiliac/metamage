@@ -1,0 +1,11 @@
+# Standalone app — not part of any parent workspace. This file exists only to
+# pin pnpm behaviour (build-script allowlist) and to stop pnpm from walking up
+# to a parent workspace if one is ever added at the repo root.
+packages:
+  - '.'
+
+onlyBuiltDependencies:
+  - '@tailwindcss/oxide'
+  - esbuild
+  - sharp
+  - unrs-resolver
