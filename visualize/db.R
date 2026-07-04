@@ -1,6 +1,5 @@
 suppressPackageStartupMessages({
   library(DBI)
-  library(RSQLite)
   library(glue)
   library(dplyr)
   library(tidyr)
@@ -8,8 +7,34 @@ suppressPackageStartupMessages({
   library(lubridate)
 })
 
-connect_db <- function(db_path) {
-  if (!file.exists(db_path)) {
+# Parse a postgresql:// URL into discrete libpq params. RPostgres does not
+# reliably expand a full URI passed as `dbname`, so pass components explicitly.
+.parse_pg_url <- function(url) {
+  re <- "^postgres(?:ql)?://(?:([^:/@]+)(?::([^@/]*))?@)?([^:/?]+)(?::([0-9]+))?/([^?]+)(?:\\?(.*))?$"
+  m <- regmatches(url, regexec(re, url))[[1]]
+  if (length(m) == 0) stop(sprintf("Unrecognized Postgres URL: %s", url))
+  list(user = m[2], password = m[3], host = m[4], port = m[5],
+       dbname = m[6], query = m[7])
+}
+
+# Dialect-aware connection, mirroring the Python model layer: use Postgres when
+# TOURNAMENT_DATABASE_URL is set (the read-only role), else fall back to the
+# local SQLite file for dev. Drivers are loaded on demand via ::, so neither
+# RPostgres nor RSQLite needs to be installed unless it is actually used.
+connect_db <- function(db_path = NULL) {
+  pg_url <- Sys.getenv("TOURNAMENT_DATABASE_URL", unset = "")
+  if (nzchar(pg_url)) {
+    p <- .parse_pg_url(pg_url)
+    args <- list(RPostgres::Postgres(), dbname = p$dbname, host = p$host)
+    if (nzchar(p$user)) args$user <- p$user
+    if (nzchar(p$password)) args$password <- p$password
+    if (nzchar(p$port)) args$port <- as.integer(p$port)
+    if (nzchar(p$query) && grepl("sslmode=require", p$query)) {
+      args$sslmode <- "require"  # Neon requires TLS
+    }
+    return(do.call(DBI::dbConnect, args))
+  }
+  if (is.null(db_path) || !file.exists(db_path)) {
     stop(sprintf("SQLite database not found at %s", db_path))
   }
   DBI::dbConnect(RSQLite::SQLite(), dbname = db_path)
