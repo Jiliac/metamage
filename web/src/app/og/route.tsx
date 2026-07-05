@@ -412,7 +412,11 @@ function FallbackCard() {
 export async function GET(req: Request): Promise<ImageResponse> {
   try {
     const { searchParams } = new URL(req.url)
-    const format = searchParams.get('format') ?? 'pauper'
+    // Normalize the slug (casing variants arrive from hand-typed share URLs);
+    // an unknown format falls through to the generic fallback card via catch.
+    const format = (searchParams.get('format') ?? 'standard')
+      .trim()
+      .toLowerCase()
     const view = searchParams.get('view') ?? 'meta'
     const q = parseMetaQuery(format, searchParams)
     const ds = getDataSource()

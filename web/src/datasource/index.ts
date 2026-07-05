@@ -46,7 +46,15 @@ function createRawDataSource(): MetaDataSource {
   switch (kind) {
     case 'postgres':
       // Deferred (blueprint §8): the Postgres read-path lands as a single file
-      // add. Until then, fall back to fixtures rather than crash the app.
+      // add. Until then, fall back to fixtures rather than crash the app — but
+      // LOUDLY: serving fixture data under DATA_SOURCE=postgres would be a
+      // silent data-integrity failure in production. When PostgresDataSource
+      // exists, replace this fallback with the real source and make an unknown
+      // kind a hard error (tracked in the Postgres migration requirements doc).
+      console.warn(
+        '[datasource] DATA_SOURCE=postgres requested but PostgresDataSource ' +
+          'is not implemented yet — FALLING BACK TO FIXTURE DATA.'
+      )
       return new FixtureDataSource()
     case 'fixtures':
     default:

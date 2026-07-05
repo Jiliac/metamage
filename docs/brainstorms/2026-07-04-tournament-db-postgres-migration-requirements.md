@@ -118,6 +118,13 @@ data is online.
   second Prisma datasource, a Python API over the MCP layer, or direct SQL is an
   explorer-track decision. Consolidating onto the same Neon as the Ops DB keeps a
   future Prisma datasource cheap, but the choice is not made here.
+  - _Note (2026-07-05, web explorer skeleton):_ the new `web/` app reads through a
+    `MetaDataSource` interface (`web/src/datasource/index.ts`). Today
+    `DATA_SOURCE=postgres` **silently falls back to fixtures** (with a
+    `console.warn`). Whoever implements the website's Postgres read path must
+    replace that fallback with the real `PostgresDataSource` and make an unknown
+    `DATA_SOURCE` a hard error — serving fixture data under a postgres config in
+    production would be a silent data-integrity failure.
 - **Schema trimming / dedup.** The `matches` table stores both sides of each pairing
   and reference data could be pruned; the data moves as-is this round. Footprint
   reduction is a separate, optional follow-up.

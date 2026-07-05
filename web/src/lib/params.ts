@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { z } from 'zod'
 import type {
   ArchetypeSlug,
@@ -65,6 +66,17 @@ function readParam(sp: SearchParamsInput, key: string): string | undefined {
 }
 
 // ---- Date helpers (UTC to avoid timezone drift in canonical URLs) ----
+
+/**
+ * Per-request clock. Within one RSC render, `parseMetaQuery` and every
+ * `buildHref` call share the same `now`, so the default-window-omission check
+ * cannot disagree with the parse across a month boundary mid-request (links
+ * built at 23:59:59 vs parsed at 00:00:01 would otherwise flip). React's
+ * `cache` memoizes per server request and is an identity pass-through on the
+ * client, where the drift window is a single event handler tick.
+ */
+export const requestNow = cache((): Date => new Date())
+
 const ISO_RE = /^\d{4}-\d{2}-\d{2}$/
 
 function pad2(n: number): string {
@@ -131,7 +143,7 @@ export const PRESET_LABELS: Record<Preset, string> = {
 /** Expand a preset chip into an explicit inclusive `{ start, end }` window. */
 export function expandPreset(
   preset: Preset,
-  now: Date = new Date()
+  now: Date = requestNow()
 ): { start: IsoDate; end: IsoDate } {
   const y = now.getUTCFullYear()
   const m = now.getUTCMonth()
@@ -211,7 +223,7 @@ function parseAdd(raw: string | undefined): ArchetypeSlug[] {
 export function parseMetaQuery(
   format: string,
   sp: SearchParamsInput,
-  now: Date = new Date()
+  now: Date = requestNow()
 ): MetaQuery {
   const def = defaultWindow(now)
   const startRaw = readParam(sp, 'start')
@@ -285,7 +297,7 @@ export function buildHref(
   query: MetaQuery,
   opts: BuildHrefOpts = {}
 ): string {
-  const def = defaultWindow(opts.now ?? new Date())
+  const def = defaultWindow(opts.now ?? requestNow())
   const params = new URLSearchParams()
   // Window is a pair: omit both when it matches the current-month default.
   if (!(query.start === def.start && query.end === def.end)) {
