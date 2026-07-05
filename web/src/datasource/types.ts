@@ -99,6 +99,7 @@ export type MatrixOrderEntryDTO = {
   globalWr: number | null // vs whole meta (left WINRATE column)
   share: number
   matches: number
+  presenceRank: number // dense identity rank (§9 rule 3), shared with the table
 }
 
 export type MatrixDTO = {
@@ -160,6 +161,12 @@ export type ArchetypeRef = { slug: ArchetypeSlug; name: string }
 
 export interface MetaDataSource {
   listFormats(): Promise<FormatDTO[]>
+  /** The most-recent window (by end date) that actually has data, or null.
+   *  Lets the default landing fall back to the latest populated window instead
+   *  of blanking once the live-clock month has no seeded/ingested window. */
+  getLatestWindow(
+    format: FormatSlug
+  ): Promise<{ start: IsoDate; end: IsoDate } | null>
   getMetaReport(q: MetaQuery): Promise<MetaReportDTO>
   getArchetypeDetail(
     q: MetaQuery & { slug: ArchetypeSlug }

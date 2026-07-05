@@ -4,20 +4,21 @@ import { Toaster as Sonner } from 'sonner'
 
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
+// Gathering Ledger toast: parchment surface, gold-hairline border, sharp chrome
+// (§9 rule 4). Tokens flip with the theme; `theme` defaults to `system` so it
+// tracks prefers-color-scheme until WP3's next-themes provider drives it.
 const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
-      theme="dark"
+      theme="system"
       className="toaster group"
       toastOptions={{
         classNames: {
           toast:
-            'group toast group-[.toaster]:bg-slate-800 group-[.toaster]:text-slate-200 group-[.toaster]:border-slate-700 group-[.toaster]:shadow-lg',
-          description: 'group-[.toast]:text-slate-400',
-          actionButton:
-            'group-[.toast]:bg-slate-600 group-[.toast]:text-slate-200',
-          cancelButton:
-            'group-[.toast]:bg-slate-700 group-[.toast]:text-slate-300',
+            'group toast group-[.toaster]:bg-surface group-[.toaster]:text-ink group-[.toaster]:border group-[.toaster]:border-gold-soft group-[.toaster]:rounded-none group-[.toaster]:shadow-lg',
+          description: 'group-[.toast]:text-ink-2',
+          actionButton: 'group-[.toast]:bg-gold group-[.toast]:text-bg',
+          cancelButton: 'group-[.toast]:bg-raised group-[.toast]:text-ink-2',
         },
       }}
       {...props}

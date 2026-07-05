@@ -174,6 +174,11 @@ function intField(
   min: number,
   max: number
 ): number {
+  // Empty/blank input is not a number (Number('') === 0) — fall back to the
+  // default rather than silently coercing to 0 and disabling clamped floors.
+  if (raw === undefined || raw.trim() === '') {
+    return Math.min(max, Math.max(min, def))
+  }
   const parsed = z.coerce.number().int().safeParse(raw)
   const n = parsed.success ? parsed.data : def
   return Math.min(max, Math.max(min, n))

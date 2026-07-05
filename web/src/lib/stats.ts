@@ -1,7 +1,3 @@
-/* Stub file: WP0 ships signatures only; every body throws until WP1 implements
- * it. The unused-parameter lint is silenced here on purpose — the real names
- * document the contract. WP1 removes this directive when it fills in the bodies. */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import type { CiMethod } from '@/datasource/types'
 
 // ---------------------------------------------------------------------------
@@ -12,8 +8,8 @@ import type { CiMethod } from '@/datasource/types'
 // disagree on CI/tier math. A snapshot test on the seeded fixtures (WP1) guards
 // against silent changes.
 //
-// WP0 ships SIGNATURES ONLY — bodies throw. WP1 fills in the implementations;
-// no other work package edits this file.
+// WP0 shipped SIGNATURES ONLY; WP1 (this file) fills in the implementations. No
+// other work package edits this file.
 // ---------------------------------------------------------------------------
 
 /** Win/loss/draw counts — the atomic input to every rate + CI calc. */
@@ -28,6 +24,14 @@ export type CiResult = CiBounds & { method: CiMethod }
 /** Tier band (non-null); the DTO widens this to `Tier | null` for buckets. */
 export type Tier = 0 | 0.5 | 1 | 1.5 | 2 | 2.5 | 3
 
+// ---- Internal helpers ------------------------------------------------------
+
+/** Clamp a number to the closed unit interval [0, 1]. */
+function clamp01(x: number): number {
+  if (Number.isNaN(x)) return 0
+  return x < 0 ? 0 : x > 1 ? 1 : x
+}
+
 // ---- Win rate: two formulas, both carried, never silently picked ----------
 
 /**
@@ -35,7 +39,9 @@ export type Tier = 0 | 0.5 | 1 | 1.5 | 2 | 2.5 | 3
  * Draws count as half a win. Returns 0 when there are no games.
  */
 export function wr(wins: number, losses: number, draws: number): number {
-  throw new Error('WP1')
+  const games = wins + losses + draws
+  if (games <= 0) return 0
+  return (wins + 0.5 * draws) / games
 }
 
 /**
@@ -43,7 +49,9 @@ export function wr(wins: number, losses: number, draws: number): number {
  * no decisive games.
  */
 export function wrExclDraws(wins: number, losses: number): number {
-  throw new Error('WP1')
+  const decisive = wins + losses
+  if (decisive <= 0) return 0
+  return wins / decisive
 }
 
 // ---- Confidence intervals: three methods -----------------------------------
@@ -59,7 +67,16 @@ export function wilsonCi(
   total: number,
   z: number = 1.96
 ): CiBounds {
-  throw new Error('WP1')
+  if (total <= 0) return { lo: 0, hi: 1 }
+  const p = successes / total
+  const z2 = z * z
+  const denom = 1 + z2 / total
+  const center = p + z2 / (2 * total)
+  const margin = z * Math.sqrt((p * (1 - p) + z2 / (4 * total)) / total)
+  return {
+    lo: clamp01((center - margin) / denom),
+    hi: clamp01((center + margin) / denom),
+  }
 }
 
 /**
@@ -68,35 +85,86 @@ export function wilsonCi(
  * observations. This is the moat: its lower bound `lo` is the CANONICAL ranking
  * key (`wrLo`). Needs ≥ 2 non-degenerate clusters; callers fall back to Wilson
  * below that. Bounds clamped to [0, 1].
+ *
+ * Each game contributes a win value in {1 (win), 0.5 (draw), 0 (loss)}. The mean
+ * `p̂ = Σ(Wg + 0.5·Dg) / N`. The CR1 cluster-robust variance of the mean is
+ * `(G/(G−1)) · Σ eg² / N²` with cluster residual `eg = (Wg + 0.5·Dg) − p̂·ng`.
  */
 export function clusteredCi(clusters: WLD[], z: number = 1.96): CiBounds {
-  throw new Error('WP1')
+  const active = clusters.filter(c => c.wins + c.losses + c.draws > 0)
+  const G = active.length
+  const N = active.reduce((s, c) => s + c.wins + c.losses + c.draws, 0)
+  if (G < 2 || N <= 0) return { lo: 0, hi: 1 }
+  const successes = active.reduce((s, c) => s + c.wins + 0.5 * c.draws, 0)
+  const pHat = successes / N
+  let sumSq = 0
+  for (const c of active) {
+    const ng = c.wins + c.losses + c.draws
+    const eg = c.wins + 0.5 * c.draws - pHat * ng
+    sumSq += eg * eg
+  }
+  const variance = (G / (G - 1)) * (sumSq / (N * N))
+  const se = Math.sqrt(Math.max(0, variance))
+  return { lo: clamp01(pHat - z * se), hi: clamp01(pHat + z * se) }
 }
 
 /**
  * Normal-approximation (Wald) binomial interval — the small-sample fallback
  * used when neither clustering nor Wilson is appropriate. Bounds clamped to
- * [0, 1].
+ * [0, 1]. Degenerate `total === 0` → `{ lo: 0, hi: 1 }`.
  */
 export function binomialCi(
   successes: number,
   total: number,
   z: number = 1.96
 ): CiBounds {
-  throw new Error('WP1')
+  if (total <= 0) return { lo: 0, hi: 1 }
+  const p = successes / total
+  const se = Math.sqrt((p * (1 - p)) / total)
+  return { lo: clamp01(p - z * se), hi: clamp01(p + z * se) }
 }
 
 /**
  * CI dispatcher: pick the strongest applicable method and tag it. Prefers
- * `clustered` (≥ 2 clusters with enough games), else `wilson`, else `binomial`
- * for tiny samples. Returns bounds plus the `CiMethod` for UI badging. This is
- * the one entry point both backends call so the `ciMethod` field is consistent.
+ * `clustered` (≥ 2 non-degenerate clusters and ≥ 5 games), else `wilson` (a
+ * single cluster or thin clustering but ≥ 5 games), else `binomial` for tiny
+ * samples (1–4 games), and `binomial` `{0,1}` for zero games. Returns bounds
+ * plus the `CiMethod` for UI badging. This is the one entry point both backends
+ * call so the `ciMethod` field is consistent.
  */
 export function winrateCi(clusters: WLD[], z: number = 1.96): CiResult {
-  throw new Error('WP1')
+  const active = clusters.filter(c => c.wins + c.losses + c.draws > 0)
+  const games = active.reduce((s, c) => s + c.wins + c.losses + c.draws, 0)
+  const successes = active.reduce((s, c) => s + c.wins + 0.5 * c.draws, 0)
+  if (games <= 0) return { lo: 0, hi: 1, method: 'binomial' }
+  if (active.length >= 2 && games >= 5) {
+    return { ...clusteredCi(active, z), method: 'clustered' }
+  }
+  if (games >= 5) {
+    return { ...wilsonCi(successes, games, z), method: 'wilson' }
+  }
+  return { ...binomialCi(successes, games, z), method: 'binomial' }
 }
 
 // ---- Tier bands ------------------------------------------------------------
+
+/**
+ * Map a single value to its tier band given the population `mean` and `sd`
+ * (standard deviation). Higher value → better (lower-numbered) tier. Bands are
+ * 0.5σ wide and centered so the population mean lands in the middle band (1.5).
+ * A degenerate `sd <= 0` (all values equal) → every row is the middle band.
+ */
+export function tierForValue(value: number, mean: number, sd: number): Tier {
+  if (!(sd > 0)) return 1.5
+  const zScore = (value - mean) / sd
+  if (zScore >= 1.5) return 0
+  if (zScore >= 1.0) return 0.5
+  if (zScore >= 0.5) return 1
+  if (zScore > -0.5) return 1.5
+  if (zScore > -1.0) return 2
+  if (zScore > -1.5) return 2.5
+  return 3
+}
 
 /**
  * Assign std-dev tier bands over the ranking metric (clustered `wrLo`). Rows are
@@ -108,32 +176,34 @@ export function assignTiers(
   values: number[],
   isBucket: boolean[]
 ): (Tier | null)[] {
-  throw new Error('WP1')
-}
-
-/**
- * Map a single value to its tier band given the population `mean` and `sd`
- * (standard deviation). Higher value → better (lower-numbered) tier.
- */
-export function tierForValue(value: number, mean: number, sd: number): Tier {
-  throw new Error('WP1')
+  const pop: number[] = []
+  for (let i = 0; i < values.length; i++) {
+    if (!isBucket[i]) pop.push(values[i])
+  }
+  if (pop.length === 0) return values.map(() => null)
+  const mean = pop.reduce((s, v) => s + v, 0) / pop.length
+  const variance =
+    pop.reduce((s, v) => s + (v - mean) * (v - mean), 0) / pop.length
+  const sd = Math.sqrt(variance)
+  return values.map((v, i) => (isBucket[i] ? null : tierForValue(v, mean, sd)))
 }
 
 // ---- Matrix cell helpers ---------------------------------------------------
 
 /** Cell reliability shading weight: `min(1, games / 50)`. */
 export function reliability(games: number): number {
-  throw new Error('WP1')
+  if (games <= 0) return 0
+  return Math.min(1, games / 50)
 }
 
 /** Low-sample flag: `games < 5` → the cell renders as an em dash '–'. */
 export function lowN(games: number): boolean {
-  throw new Error('WP1')
+  return games < 5
 }
 
 /** True when the CI straddles 50% (`ciLow < 0.5 < ciHigh`) — inconclusive. */
 export function ciCrosses50(ciLow: number, ciHigh: number): boolean {
-  throw new Error('WP1')
+  return ciLow < 0.5 && ciHigh > 0.5
 }
 
 // ---- Presence ranking ------------------------------------------------------
@@ -141,8 +211,11 @@ export function ciCrosses50(ciLow: number, ciHigh: number): boolean {
 /**
  * Dense 1-based presence ranks for a set of presence weights (match- or
  * entry-weighted, per the lens). Highest weight → rank 1. Returns one rank per
- * input, index-aligned; ties share a rank.
+ * input, index-aligned; ties share a rank (dense ranking — no gaps).
  */
 export function presenceRank(weights: number[]): number[] {
-  throw new Error('WP1')
+  const sorted = [...new Set(weights)].sort((a, b) => b - a)
+  const rankOf = new Map<number, number>()
+  sorted.forEach((w, i) => rankOf.set(w, i + 1))
+  return weights.map(w => rankOf.get(w) as number)
 }

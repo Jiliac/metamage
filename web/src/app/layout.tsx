@@ -1,12 +1,20 @@
 import './globals.css'
 import type { Metadata } from 'next'
+
+import { Providers } from './providers'
+import { Navbar } from '@/components/Navbar'
 import { Toaster } from '@/components/ui/sonner'
 
-// WP5 replaces this — the real shell adds <Providers> (next-themes + PostHog,
-// WP3), <Navbar> (WP3) and the metadataBase/OG template wiring. This placeholder
-// only establishes the <html>/<body> spine, the Gathering Ledger fonts (system
-// stacks applied in globals.css per §9 — no next/font), and the toaster mount so
-// the app builds and renders end-to-end on the frozen contract.
+// ---------------------------------------------------------------------------
+// Root shell (WP5). Establishes the <html>/<body> spine, the metadataBase +
+// '%s | MetaMage' title template, the Gathering Ledger fonts (system stacks in
+// globals.css — no next/font), the client Providers (next-themes + PostHog,
+// owned by WP3), the site Navbar (WP3), the WUBRG hairline under the header
+// (§9 rule 6), and the toaster mount.
+//
+// WP7: the OG defaults below are static; the per-route generateMetadata blocks
+// point openGraph.images at the /og route once lib/seo lands.
+// ---------------------------------------------------------------------------
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -36,7 +44,16 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        {children}
+        <Providers>
+          <div className="mx-auto w-full max-w-[1120px] px-7 pb-24">
+            {/* Navbar (WP3) renders the MetaMage brand + primary nav; it derives
+                the active format from usePathname and preserves the lens via
+                buildHref. The WUBRG hairline sits directly beneath it (§9). */}
+            <Navbar />
+            <hr className="wubrg-rule mb-0.5" />
+            <main>{children}</main>
+          </div>
+        </Providers>
         <Toaster position="top-center" />
       </body>
     </html>

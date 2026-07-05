@@ -1,24 +1,33 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
-/* next-themes uses the `class` strategy; keep the `dark:` variant working for
-   any copied shadcn primitive that still ships dark: utilities. Our tokens flip
-   automatically, so dark: is rarely needed — but it must not break. */
+/* ===========================================================================
+ * THE GATHERING LEDGER · ARENA BRONZE  (owner-approved, blueprint §9)
+ * Source of truth: docs/plans/2026-07-04-design-spike-gathering-ledger.html
+ *
+ * Two token layers live here:
+ *   1. RAW LEDGER TOKENS (--bg, --surface, --ink, --gold, --good, --bad, …)
+ *      — the palette the whole site paints with; also exposed as Tailwind color
+ *      utilities (bg-surface, text-ink, bg-gold, border-gold-soft, text-good…).
+ *   2. shadcn SEMANTIC ALIASES (--background, --card, --primary, --border…)
+ *      mapped ONTO the Ledger palette so the copied shadcn primitives render in
+ *      Arena Bronze instead of stock slate — no primitive edits required.
+ *
+ * Theming: light parchment is the default. Dark Arena-bronze arrives three ways
+ * so it is correct with or without JS:
+ *   - `@media (prefers-color-scheme: dark)`  → no-JS / pre-hydration fallback
+ *   - `.dark` class                          → next-themes class strategy (WP3)
+ *   - `[data-theme="dark"]`                  → explicit attribute override
+ * Explicit `.light` / `[data-theme="light"]` re-assert parchment so the toggle
+ * always wins over the media query. Mana chips are THEME-CONSTANT (cardboard).
+ * =========================================================================== */
+
+/* Dark utility variant: match the next-themes class AND the data-theme attr. */
 @custom-variant dark (&:is(.dark *, [data-theme='dark'] *));
 
-/* ===========================================================================
-   THE GATHERING LEDGER · ARENA BRONZE — token system (design spike is source
-   of truth: docs/plans/2026-07-04-design-spike-gathering-ledger.html + §9).
-
-   Raw Ledger tokens flip per theme. shadcn aliases (--background, --primary, …)
-   are mapped ONCE onto the raw tokens and inherit the flip automatically. Mana
-   chips are theme-CONSTANT (printed cardboard). Light is the default; dark comes
-   in via prefers-color-scheme AND an explicit .dark / [data-theme] override so
-   the theme toggle always wins.
-   =========================================================================== */
-
+/* ---- LIGHT (parchment study) — the default -------------------------------- */
 :root {
-  /* ---- Ledger raw — light (parchment study) ---- */
+  /* raw Ledger palette */
   --bg: #f1ebdc;
   --surface: #f9f5e9;
   --raised: #ece5d0;
@@ -37,18 +46,7 @@
   --shadow:
     0 1px 0 rgba(41, 36, 24, 0.06), 0 10px 30px -18px rgba(41, 36, 24, 0.35);
 
-  /* ---- Chart palette (light): warm/cool + std-dev tier bands 0..6 ---- */
-  --chart-warm: #e15759;
-  --chart-cool: #4e79a7;
-  --tier-0: #0e8a72;
-  --tier-1: #4e7d4a;
-  --tier-2: #8c6d23;
-  --tier-3: #a06a2e;
-  --tier-4: #b0553f;
-  --tier-5: #bc4066;
-  --tier-6: #8f3350;
-
-  /* ---- Mana chips — THEME-CONSTANT printed pip colors ---- */
+  /* mana chips — printed pip colors; CONSTANT across themes, like cardboard */
   --chip-w: #f5f0ce;
   --chip-u: #abd8ee;
   --chip-b: #ccc5c0;
@@ -56,11 +54,14 @@
   --chip-g: #9bd3ae;
   --chip-ink: #141010;
 
-  /* ---- shadcn aliases mapped onto the Ledger palette (defined once; they
-     inherit the per-theme flip because the raw tokens flip under them). Chrome
-     is cut/sharp by default (§9 rule 4) → a small base radius; card-like
-     objects opt back into rounding themselves. ---- */
-  --radius: 0.25rem;
+  /* chart polarity palette (§4) — diverging rose↔teal, wired for both themes */
+  --chart-good: var(--good);
+  --chart-bad: var(--bad);
+  --chart-mid: var(--mid);
+  --chart-ref: var(--ref);
+
+  /* shadcn semantic aliases → mapped onto the Ledger palette */
+  --radius: 0px; /* chrome is sharp/cut by default (§9 rule 4) */
   --background: var(--bg);
   --foreground: var(--ink);
   --card: var(--surface);
@@ -79,15 +80,9 @@
   --border: var(--line);
   --input: var(--line-strong);
   --ring: var(--gold);
-
-  /* ---- Chart semantic aliases (WP2 consumes these) ---- */
-  --chart-good: var(--good);
-  --chart-bad: var(--bad);
-  --chart-neutral: var(--mid);
-  --chart-reference: var(--ref);
 }
 
-/* Dark via system preference (default when no explicit theme is set). */
+/* ---- DARK (Arena bronze) — no-JS / pre-hydration fallback ------------------ */
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #16130e;
@@ -106,21 +101,12 @@
     --mid: #6e7280;
     --ref: #5f7ea6;
     --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 16px 44px -20px rgba(0, 0, 0, 0.75);
-    --chart-warm: #f0888a;
-    --chart-cool: #6b93c9;
-    --tier-0: #2e9e8f;
-    --tier-1: #6f9a5c;
-    --tier-2: #c9a855;
-    --tier-3: #c99a52;
-    --tier-4: #d07a5e;
-    --tier-5: #d45a7e;
-    --tier-6: #b04d68;
   }
 }
 
-/* Explicit dark toggle (next-themes .dark class / data-theme attribute). Placed
-   after the media query so a user override beats the system preference. */
-.dark,
+/* ---- DARK — explicit override (next-themes class + data-theme attr) -------- */
+/* Placed AFTER the media query so the toggle wins on equal specificity. */
+:root.dark,
 :root[data-theme='dark'] {
   --bg: #16130e;
   --surface: #1e1a13;
@@ -138,21 +124,10 @@
   --mid: #6e7280;
   --ref: #5f7ea6;
   --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 16px 44px -20px rgba(0, 0, 0, 0.75);
-  --chart-warm: #f0888a;
-  --chart-cool: #6b93c9;
-  --tier-0: #2e9e8f;
-  --tier-1: #6f9a5c;
-  --tier-2: #c9a855;
-  --tier-3: #c99a52;
-  --tier-4: #d07a5e;
-  --tier-5: #d45a7e;
-  --tier-6: #b04d68;
 }
 
-/* Explicit light toggle — force the light palette even when the system is dark.
-   Last in source order so it wins the equal-specificity race with the media
-   query. */
-.light,
+/* ---- LIGHT — explicit override re-asserts parchment over the media query --- */
+:root.light,
 :root[data-theme='light'] {
   --bg: #f1ebdc;
   --surface: #f9f5e9;
@@ -171,34 +146,31 @@
   --ref: #7d97b8;
   --shadow:
     0 1px 0 rgba(41, 36, 24, 0.06), 0 10px 30px -18px rgba(41, 36, 24, 0.35);
-  --chart-warm: #e15759;
-  --chart-cool: #4e79a7;
-  --tier-0: #0e8a72;
-  --tier-1: #4e7d4a;
-  --tier-2: #8c6d23;
-  --tier-3: #a06a2e;
-  --tier-4: #b0553f;
-  --tier-5: #bc4066;
-  --tier-6: #8f3350;
 }
 
 /* ===========================================================================
-   Map tokens into Tailwind's theme so utilities resolve to the Ledger palette:
-   `bg-surface`, `text-ink`, `border-line`, `text-gold`, `bg-good`, plus the
-   shadcn `bg-background` / `text-primary` family the copied primitives use.
-   =========================================================================== */
+ * @theme inline — expose the tokens as Tailwind v4 utilities. Both the shadcn
+ * semantic names (bg-background, bg-card, bg-primary, border-border…) and the
+ * raw Ledger names (bg-bg, bg-surface, text-ink, text-ink-2, bg-gold,
+ * border-gold-soft, text-good, text-bad, bg-raised…) resolve here.
+ * =========================================================================== */
 @theme inline {
-  /* fonts (§9): Optima display, Avenir body, mono data — all system stacks */
+  /* radius scale — sharp chrome (§9 rule 4). Cards/pips opt back in explicitly
+     (rounded-full, or an inline border-radius on ArtCrop/DeckTile). */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+
+  /* type stacks (§9) — system fonts, no next/font */
   --font-display: 'Optima', 'Candara', 'Segoe UI', system-ui, sans-serif;
   --font-sans: 'Avenir Next', 'Avenir', 'Segoe UI', system-ui, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
-  --radius-sm: calc(var(--radius) - 2px);
-  --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 4px);
-  --radius-xl: calc(var(--radius) + 8px);
+  /* ledger shadow */
+  --shadow-ledger: var(--shadow);
 
-  /* shadcn aliases */
+  /* shadcn semantic colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -218,7 +190,7 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  /* Ledger palette utilities */
+  /* raw Ledger colors */
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-raised: var(--raised);
@@ -229,7 +201,6 @@
   --color-ink-3: var(--ink-3);
   --color-gold: var(--gold);
   --color-gold-soft: var(--gold-soft);
-  --color-gold-wash: var(--gold-wash);
   --color-good: var(--good);
   --color-bad: var(--bad);
   --color-mid: var(--mid);
@@ -242,29 +213,14 @@
   --color-chip-r: var(--chip-r);
   --color-chip-g: var(--chip-g);
   --color-chip-ink: var(--chip-ink);
-
-  /* chart palette */
-  --color-chart-good: var(--chart-good);
-  --color-chart-bad: var(--chart-bad);
-  --color-chart-neutral: var(--chart-neutral);
-  --color-chart-reference: var(--chart-reference);
-  --color-chart-warm: var(--chart-warm);
-  --color-chart-cool: var(--chart-cool);
-  --color-tier-0: var(--tier-0);
-  --color-tier-1: var(--tier-1);
-  --color-tier-2: var(--tier-2);
-  --color-tier-3: var(--tier-3);
-  --color-tier-4: var(--tier-4);
-  --color-tier-5: var(--tier-5);
-  --color-tier-6: var(--tier-6);
 }
 
 /* ===========================================================================
-   Base layer + structural helpers ported from the spike (global concerns only).
-   =========================================================================== */
+ * Base — parchment ground, Ledger fonts, tabular data convention (§9).
+ * =========================================================================== */
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
@@ -272,25 +228,40 @@
     font-size: 15px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+}
 
-  /* Type roles (§9): editorial display vs. tabular data. */
+/* ===========================================================================
+ * Global structural helpers ported from the spike (shared design vocabulary).
+ * =========================================================================== */
+@layer components {
+  /* Display face for editorial headings (H1/H2, brand). */
   .font-display {
     font-family: var(--font-display);
   }
+
+  /* Data convention: monospaced, tabular figures (§9). */
   .data,
   .num {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
   }
 
-  /* The WUBRG hairline under the site header (§9 rule 6). Reusable structural
-     chrome, so it lives here rather than in a single component. */
+  /* Eyebrow — gold, uppercase, tracked (§9: gold = structure). */
+  .eyebrow {
+    font-size: 11.5px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--gold);
+    font-weight: 600;
+  }
+
+  /* WUBRG hairline under the site header (§9 rule 6). */
   .wubrg-rule {
     height: 2.5px;
     border: none;
     margin: 0;
-    opacity: 0.85;
     background: linear-gradient(
       90deg,
       transparent,
@@ -300,6 +271,29 @@
       var(--chip-r) 70%,
       var(--chip-g) 92%,
       transparent
+    );
+    opacity: 0.85;
+  }
+
+  /* Notched corners for cut chrome — LensBar, hero frames (§9 rule 4). */
+  .clip-notch {
+    clip-path: polygon(
+      14px 0,
+      100% 0,
+      100% calc(100% - 14px),
+      calc(100% - 14px) 100%,
+      0 100%,
+      0 14px
+    );
+  }
+  .clip-notch-lg {
+    clip-path: polygon(
+      18px 0,
+      100% 0,
+      100% calc(100% - 18px),
+      calc(100% - 18px) 100%,
+      0 100%,
+      0 18px
     );
   }
 }
