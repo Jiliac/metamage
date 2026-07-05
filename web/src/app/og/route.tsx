@@ -23,6 +23,16 @@ export const runtime = 'nodejs'
 
 const SIZE = { width: 1200, height: 630 } as const
 
+// Cache the rendered card so repeat unfurls skip Satori: browsers hold it 1h,
+// the CDN a day, and can serve a stale copy for a week while revalidating.
+const OG_RESPONSE = {
+  ...SIZE,
+  headers: {
+    'Cache-Control':
+      'public, immutable, no-transform, max-age=3600, s-maxage=86400, stale-while-revalidate=604800',
+  },
+} as const
+
 // Arena Bronze — dark tokens (§9), inlined because Satori has no CSS vars.
 const C = {
   bg: '#16130e',
@@ -472,7 +482,7 @@ export async function GET(req: Request): Promise<ImageResponse> {
             ]}
             leaders={[]}
           />,
-          SIZE
+          OG_RESPONSE
         )
       }
     }
@@ -491,7 +501,7 @@ export async function GET(req: Request): Promise<ImageResponse> {
           tiles={kpiTiles}
           leaders={leaders}
         />,
-        SIZE
+        OG_RESPONSE
       )
     }
 
@@ -516,9 +526,9 @@ export async function GET(req: Request): Promise<ImageResponse> {
         tiles={kpiTiles}
         leaders={leaders}
       />,
-      SIZE
+      OG_RESPONSE
     )
   } catch {
-    return new ImageResponse(<FallbackCard />, SIZE)
+    return new ImageResponse(<FallbackCard />, OG_RESPONSE)
   }
 }

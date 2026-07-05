@@ -94,7 +94,7 @@ client. It returns a singleton implementing the typed `MetaDataSource` interface
 memoized by `unstable_cache` keyed on the method + serialized query (ISR-style
 memo for the long tail of windows/knobs).
 
-```
+```text
 page.tsx ─► getDataSource() ─► withCache() ─► FixtureDataSource ─► db.json
                                                     │
                                                     └─ derives every stat via src/lib/stats.ts
@@ -128,7 +128,7 @@ Fixtures remain the test / OG / dev backend.
 
 ### Directory map
 
-```
+```text
 src/
   app/                      routes (layout, /, /meta/[format]/**, /og, sitemap, robots)
   components/

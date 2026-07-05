@@ -47,6 +47,11 @@ GRANT CONNECT ON DATABASE :dbname TO metamage_ro, metamage_rw;
 -- membership in it (superusers are exempt).
 GRANT metamage_rw TO CURRENT_USER;
 
+-- Defense-in-depth: strip the default CREATE/USAGE that PUBLIC holds on schema
+-- public (present on PG < 15) so only the roles explicitly granted below can use
+-- it; metamage_ro must stay SELECT-only and gains USAGE via the grant on line 52.
+REVOKE CREATE, USAGE ON SCHEMA public FROM PUBLIC;
+
 -- Read-only role: usage + SELECT on tables that already exist AND future ones
 -- created by metamage_rw (the backfill) or by the current admin.
 GRANT USAGE ON SCHEMA public TO metamage_ro;

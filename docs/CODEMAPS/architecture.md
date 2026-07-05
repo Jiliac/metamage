@@ -2,7 +2,7 @@
 
 # MetaMage — Architecture
 
-MTG tournament analysis toolkit. Tournament data → SQLite DB → MCP tools → chat/social/UI/R consumers.
+MTG tournament analysis toolkit. Tournament data → Tournament DB (Postgres prod / SQLite dev) → MCP tools → chat/social/UI/R consumers.
 
 ## System Map
 

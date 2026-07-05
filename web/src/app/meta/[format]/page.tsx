@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 
 import { getDataSource } from '@/datasource'
 import type {
@@ -157,7 +158,9 @@ export default async function MetaOverviewPage({
   if (report.kpis.matches === 0 || report.kpis.tournaments === 0) {
     return (
       <>
-        <LensBar formats={formats} archetypes={archetypes} />
+        <Suspense fallback={null}>
+          <LensBar formats={formats} archetypes={archetypes} />
+        </Suspense>
         <EmptyState
           title="No tournaments in this window"
           message={`We have no ${fmtName} results for ${win}. Widen the window or clear the filters to see the field.`}
@@ -168,7 +171,9 @@ export default async function MetaOverviewPage({
   if (report.rows.length === 0) {
     return (
       <>
-        <LensBar formats={formats} archetypes={archetypes} />
+        <Suspense fallback={null}>
+          <LensBar formats={formats} archetypes={archetypes} />
+        </Suspense>
         <EmptyState
           title="No archetypes clear the current filters"
           message={`${fmtName} has results for ${win}, but nothing clears your current filters. Lower the match floor (min) or clear the filters to see the field.`}
@@ -198,7 +203,9 @@ export default async function MetaOverviewPage({
 
   return (
     <>
-      <LensBar formats={formats} archetypes={archetypes} />
+      <Suspense fallback={null}>
+        <LensBar formats={formats} archetypes={archetypes} />
+      </Suspense>
 
       {/* ---- HEADLINE + KPI ---- */}
       <div className="mt-10 grid items-end gap-9 md:grid-cols-[1.5fr_1fr]">

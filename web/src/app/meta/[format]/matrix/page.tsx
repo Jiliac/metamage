@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 
 import { getDataSource } from '@/datasource'
 import type { ArchetypeRef, FormatDTO, MatrixDTO } from '@/datasource/types'
@@ -89,7 +90,9 @@ export default async function MatrixPage({
 
   return (
     <>
-      <LensBar formats={formats} archetypes={archetypes} variant="matrix" />
+      <Suspense fallback={null}>
+        <LensBar formats={formats} archetypes={archetypes} variant="matrix" />
+      </Suspense>
 
       <section className="mt-10">
         <p className="eyebrow mb-1.5">The moat</p>

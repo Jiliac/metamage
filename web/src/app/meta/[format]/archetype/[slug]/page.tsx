@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 
 import { getDataSource } from '@/datasource'
@@ -177,7 +178,7 @@ export default async function ArchetypeDetailPage({
             // asChild → the trigger IS the link, so switching tabs rewrites the
             // URL (?tab) and the RSC re-renders with the new active panel (§2).
             <TabsTrigger key={t} value={t} asChild className="capitalize">
-              <a href={tabHref(t)}>{t}</a>
+              <Link href={tabHref(t)}>{t}</Link>
             </TabsTrigger>
           ))}
         </TabsList>

@@ -151,7 +151,11 @@ class Archetype(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    name = Column(CaseInsensitiveText(100), nullable=False)
+    # Unbounded: SQLite never enforced the length, and duel-commander ingestion
+    # can emit a whole decklist as the "name" (a known data-quality bug, ~42 rows).
+    # Postgres VARCHAR(100) *would* enforce it and reject those rows on backfill,
+    # so we match SQLite's effective (unbounded) storage to preserve row parity.
+    name = Column(CaseInsensitiveText(), nullable=False)
     color = Column(String(10), nullable=True)  # e.g., "BR", "UB", "G"
 
     # Relationships

@@ -2,6 +2,7 @@ import * as React from 'react'
 
 import { ManaPips } from '@/components/ManaPips'
 import { cn } from '@/lib/utils'
+import { wrPolarity, type WrPolarity } from '@/lib/stats'
 import type { ArchetypeRowDTO } from '@/datasource/types'
 
 // ---------------------------------------------------------------------------
@@ -13,16 +14,10 @@ import type { ArchetypeRowDTO } from '@/datasource/types'
 // and untiered rows fall to an "Unranked" group at the end.
 // ---------------------------------------------------------------------------
 
-type Polarity = 'good' | 'bad' | 'mid'
-const POLE_VAR: Record<Polarity, string> = {
+const POLE_VAR: Record<WrPolarity, string> = {
   good: 'var(--good)',
   bad: 'var(--bad)',
   mid: 'var(--mid)',
-}
-function polarity(wrLo: number, wrHi: number): Polarity {
-  if (wrLo > 0.5) return 'good'
-  if (wrHi < 0.5) return 'bad'
-  return 'mid'
 }
 
 /** Tier chip styling — best bands solid gold, then gold outline, then muted. */
@@ -87,7 +82,7 @@ export function TierChart({ rows, className }: TierChartProps) {
   return (
     <div className={cn('flex flex-col', className)}>
       {sorted.map(r => {
-        const pol = polarity(r.wrLo, r.wrHi)
+        const pol = wrPolarity(r.wrLo, r.wrHi)
         return (
           <div
             key={r.slug}

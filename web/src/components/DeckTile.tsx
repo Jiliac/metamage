@@ -2,6 +2,7 @@ import * as React from 'react'
 import Link from 'next/link'
 
 import { cn } from '@/lib/utils'
+import { wrPolarity, type WrPolarity } from '@/lib/stats'
 import { ArtCrop } from '@/components/ArtCrop'
 import { ManaPips } from '@/components/ManaPips'
 import type { ArchetypeRowDTO } from '@/datasource/types'
@@ -15,16 +16,10 @@ import type { ArchetypeRowDTO } from '@/datasource/types'
 // ---------------------------------------------------------------------------
 
 /** Win-rate tone from the clustered CI position (§9 rule 2: polarity only). */
-function wrTone(wrLo: number, wrHi: number): 'up' | 'down' | 'flat' {
-  if (wrLo > 0.5) return 'up'
-  if (wrHi < 0.5) return 'down'
-  return 'flat'
-}
-
-const TONE_CLASS: Record<'up' | 'down' | 'flat', string> = {
-  up: 'text-good',
-  down: 'text-bad',
-  flat: 'text-ink',
+const TONE_CLASS: Record<WrPolarity, string> = {
+  good: 'text-good',
+  bad: 'text-bad',
+  mid: 'text-ink',
 }
 
 const pct1 = (x: number) => `${(x * 100).toFixed(1)}%`
@@ -48,7 +43,7 @@ export function DeckTile({
   priority,
   className,
 }: DeckTileProps) {
-  const tone = wrTone(row.wrLo, row.wrHi)
+  const tone = wrPolarity(row.wrLo, row.wrHi)
   const rankNum = rank ?? row.presenceRank
   return (
     <Link

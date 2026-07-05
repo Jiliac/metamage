@@ -206,6 +206,15 @@ export function ciCrosses50(ciLow: number, ciHigh: number): boolean {
   return ciLow < 0.5 && ciHigh > 0.5
 }
 
+/** Win-rate polarity from a 95% CI vs 50%: 'good' if CI is entirely above,
+ *  'bad' if entirely below, 'mid' if it straddles. */
+export type WrPolarity = 'good' | 'bad' | 'mid'
+export function wrPolarity(ciLow: number, ciHigh: number): WrPolarity {
+  if (ciLow > 0.5) return 'good'
+  if (ciHigh < 0.5) return 'bad'
+  return 'mid'
+}
+
 // ---- Presence ranking ------------------------------------------------------
 
 /**

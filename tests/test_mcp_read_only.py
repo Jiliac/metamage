@@ -21,7 +21,9 @@ from src.mcp_server.utils import apply_read_only, validate_select_only  # noqa: 
 
 def test_validate_select_only_accepts_select():
     assert validate_select_only("SELECT 1") == "SELECT 1"
-    assert validate_select_only("WITH x AS (SELECT 1) SELECT * FROM x;").startswith("WITH")
+    assert validate_select_only("WITH x AS (SELECT 1) SELECT * FROM x;").startswith(
+        "WITH"
+    )
 
 
 @pytest.mark.parametrize(

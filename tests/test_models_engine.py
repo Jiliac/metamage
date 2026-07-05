@@ -72,9 +72,7 @@ def test_sqlite_engine_has_pragma_and_dialect():
 
 
 def test_alias_write_engine_uses_write_url(monkeypatch):
-    monkeypatch.setenv(
-        "TOURNAMENT_DATABASE_WRITE_URL", "postgresql://w:p@host:5432/db"
-    )
+    monkeypatch.setenv("TOURNAMENT_DATABASE_WRITE_URL", "postgresql://w:p@host:5432/db")
     # Build URL logic is exercised without connecting: dialect is postgres.
     engine = base.get_alias_write_engine()
     assert engine.dialect.name == "postgresql"

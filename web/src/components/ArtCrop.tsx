@@ -2,7 +2,7 @@ import * as React from 'react'
 import Image from 'next/image'
 
 import { cn } from '@/lib/utils'
-import { toManaColors, type ManaColor } from '@/components/ManaPips'
+import { toManaColors, CHIP_VAR, type ManaColor } from '@/components/ManaPips'
 
 // ---------------------------------------------------------------------------
 // ArtCrop — shared identity primitive (§9 rule 3 + rule 4: "cards are round").
@@ -11,14 +11,6 @@ import { toManaColors, type ManaColor } from '@/components/ManaPips'
 // The component fills its parent (position it and give it a size); it owns the
 // rounded corner because it is a card-like object.
 // ---------------------------------------------------------------------------
-
-const CHIP_VAR: Record<ManaColor, string> = {
-  W: 'var(--chip-w)',
-  U: 'var(--chip-u)',
-  B: 'var(--chip-b)',
-  R: 'var(--chip-r)',
-  G: 'var(--chip-g)',
-}
 
 /** Build a layered mana gradient from the archetype's colors (or a neutral
  *  parchment wash when colorless/unknown). Used as the null-art fallback. */
@@ -89,6 +81,11 @@ export function ArtCrop({
       fill
       sizes={sizes}
       priority={priority}
+      // Skip Next's image optimizer: Scryfall art_crop is already CDN-served at
+      // a fixed size, and proxying a burst of these through the optimizer trips
+      // Scryfall's WAF (the "upstream image response failed … 400" errors). The
+      // browser now fetches Scryfall directly — the intended, cache-friendly use.
+      unoptimized
       className={cn('object-cover', className)}
       style={rounded}
     />

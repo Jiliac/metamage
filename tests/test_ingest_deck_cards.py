@@ -36,10 +36,19 @@ def _seed(engine):
             Format(id="f1", name="modern"),
             Player(id="p1", handle="A", normalized_handle="a"),
             Archetype(id="a1", format_id="f1", name="burn"),
-            Tournament(id="t1", name="Cup", date=datetime(2026, 1, 1),
-                       format_id="f1", source=TournamentSource.MTGO),
-            TournamentEntry(id="e1", tournament_id="t1", player_id="p1", archetype_id="a1"),
-            Card(id="c1", name="Lightning Bolt", scryfall_oracle_id="o1", is_land=False),
+            Tournament(
+                id="t1",
+                name="Cup",
+                date=datetime(2026, 1, 1),
+                format_id="f1",
+                source=TournamentSource.MTGO,
+            ),
+            TournamentEntry(
+                id="e1", tournament_id="t1", player_id="p1", archetype_id="a1"
+            ),
+            Card(
+                id="c1", name="Lightning Bolt", scryfall_oracle_id="o1", is_land=False
+            ),
             Card(id="c2", name="Island", scryfall_oracle_id="o2", is_land=True),
         ]
     )
@@ -65,7 +74,7 @@ def test_deck_cards_bulk_insert(name, engine):
         ]
         sideboard = [{"Count": 2, "CardName": "Lightning Bolt"}]
 
-        inserted, skipped, total = upsert_deck_cards_for_entry(
+        inserted, skipped, _total = upsert_deck_cards_for_entry(
             session, entry, mainboard, sideboard, CardCache()
         )
         session.commit()

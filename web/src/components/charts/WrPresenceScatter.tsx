@@ -14,6 +14,7 @@ import {
 
 import { ManaPips } from '@/components/ManaPips'
 import { cn } from '@/lib/utils'
+import { wrPolarity, type WrPolarity } from '@/lib/stats'
 import type { ArchetypeRowDTO } from '@/datasource/types'
 
 // ---------------------------------------------------------------------------
@@ -24,17 +25,10 @@ import type { ArchetypeRowDTO } from '@/datasource/types'
 // raw red/green). A plain <ol> side legend carries rank dot + name + ManaPips.
 // ---------------------------------------------------------------------------
 
-type Polarity = 'good' | 'bad' | 'mid'
-const POLE_VAR: Record<Polarity, string> = {
+const POLE_VAR: Record<WrPolarity, string> = {
   good: 'var(--good)',
   bad: 'var(--bad)',
   mid: 'var(--mid)',
-}
-
-function polarity(wrLo: number, wrHi: number): Polarity {
-  if (wrLo > 0.5) return 'good'
-  if (wrHi < 0.5) return 'bad'
-  return 'mid'
 }
 
 type ScatterDatum = {
@@ -47,7 +41,7 @@ type ScatterDatum = {
   matches: number
   wrLo: number
   wrHi: number
-  pol: Polarity
+  pol: WrPolarity
 }
 
 type DotShapeProps = {
@@ -133,7 +127,7 @@ export function WrPresenceScatter({
           matches: r.matches,
           wrLo: r.wrLo,
           wrHi: r.wrHi,
-          pol: polarity(r.wrLo, r.wrHi),
+          pol: wrPolarity(r.wrLo, r.wrHi),
         })),
     [rows, minMatches]
   )

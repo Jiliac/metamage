@@ -12,7 +12,7 @@ import type { CardAdoptionDTO } from '@/datasource/types'
 
 /** DB card names are lowercase — title-case for display (leaves // split cards). */
 function titleCase(name: string): string {
-  return name.replace(/\b[a-z]/g, c => c.toUpperCase())
+  return name.replace(/(^|\s)([a-z])/g, (_m, p, c) => p + c.toUpperCase())
 }
 
 export type CardAdoptionTableProps = {

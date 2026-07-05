@@ -32,7 +32,9 @@ def _seed(engine):
             Player(id="p1", handle="MisterBolt", normalized_handle="misterbolt"),
             Archetype(id="a1", format_id="f1", name="Izzet Prowess"),
             Set(id="s1", code="ABC", name="Alpha", released_at=datetime(2026, 1, 1)),
-            Card(id="c1", name="Lightning Bolt", scryfall_oracle_id="o1", is_land=False),
+            Card(
+                id="c1", name="Lightning Bolt", scryfall_oracle_id="o1", is_land=False
+            ),
         ]
     )
     s.commit()

@@ -48,18 +48,39 @@ def _seed_sqlite(path):
     st = Set(id="s1", code="ABC", name="Alpha", released_at=now)
     p1 = Player(id="p1", handle="Alice", normalized_handle="alice")
     p2 = Player(id="p2", handle="Bob", normalized_handle="bob")
-    card = Card(id="c1", name="lightning bolt", scryfall_oracle_id="o1",
-                is_land=False, first_printed_set_id="s1")
+    card = Card(
+        id="c1",
+        name="lightning bolt",
+        scryfall_oracle_id="o1",
+        is_land=False,
+        first_printed_set_id="s1",
+    )
     arch = Archetype(id="a1", format_id="f1", name="burn")
-    tour = Tournament(id="t1", name="Test Cup", date=now, format_id="f1",
-                      source=TournamentSource.MTGO, link=None)
+    tour = Tournament(
+        id="t1",
+        name="Test Cup",
+        date=now,
+        format_id="f1",
+        source=TournamentSource.MTGO,
+        link=None,
+    )
     e1 = TournamentEntry(id="e1", tournament_id="t1", player_id="p1", archetype_id="a1")
     e2 = TournamentEntry(id="e2", tournament_id="t1", player_id="p2", archetype_id="a1")
     dc = DeckCard(id="dc1", entry_id="e1", card_id="c1", count=4, board=BoardType.MAIN)
-    m1 = Match(id="m1", entry_id="e1", opponent_entry_id="e2",
-               result=MatchResult.WIN, pair_id="pair1")
-    m2 = Match(id="m2", entry_id="e2", opponent_entry_id="e1",
-               result=MatchResult.LOSS, pair_id="pair1")
+    m1 = Match(
+        id="m1",
+        entry_id="e1",
+        opponent_entry_id="e2",
+        result=MatchResult.WIN,
+        pair_id="pair1",
+    )
+    m2 = Match(
+        id="m2",
+        entry_id="e2",
+        opponent_entry_id="e1",
+        result=MatchResult.LOSS,
+        pair_id="pair1",
+    )
     s.add_all([fmt, st, p1, p2, card, arch, tour, e1, e2, dc, m1, m2])
     s.commit()
     s.close()
@@ -88,14 +109,19 @@ def test_backfill_parity_and_fk(tmp_path):
         # Row-count parity on the heaviest table.
         assert tgt_s.scalar(select(func.count()).select_from(Match)) == 2
         # ORM maps the column back to the enum member on read...
-        assert tgt_s.scalar(select(Match.result).where(Match.id == "m1")) == MatchResult.WIN
+        assert (
+            tgt_s.scalar(select(Match.result).where(Match.id == "m1"))
+            == MatchResult.WIN
+        )
         # ...and the raw stored value is the plain string (VARCHAR+CHECK, no native enum).
-        assert tgt_s.execute(
-            text("SELECT result FROM matches WHERE id='m1'")
-        ).scalar() == "WIN"
-        assert tgt_s.execute(
-            text("SELECT source FROM tournaments WHERE id='t1'")
-        ).scalar() == "MTGO"
+        assert (
+            tgt_s.execute(text("SELECT result FROM matches WHERE id='m1'")).scalar()
+            == "WIN"
+        )
+        assert (
+            tgt_s.execute(text("SELECT source FROM tournaments WHERE id='t1'")).scalar()
+            == "MTGO"
+        )
         # FK integrity: a match's entry ids resolve to migrated entries.
         row = tgt_s.execute(
             text(

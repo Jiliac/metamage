@@ -183,7 +183,7 @@ export function MatchupMatrix({
                     onMouseEnter: () => setHover({ r, c }),
                     className: cn(
                       'relative grid min-h-[48px] cursor-default place-content-center text-center no-underline transition-transform',
-                      'hover:z-[3] focus-visible:z-[3] outline-none',
+                      'hover:z-[3] focus-visible:z-[3] outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]',
                       low && 'text-ink-3'
                     ),
                     style: {

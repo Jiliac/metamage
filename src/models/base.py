@@ -4,6 +4,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import func
 import os
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 
@@ -132,4 +135,11 @@ def get_alias_write_engine():
         if write_url.startswith("postgres://"):
             write_url = "postgresql://" + write_url[len("postgres://") :]
         return _create_engine(write_url)
-    return _create_engine(_build_database_url())
+    fallback_url = _build_database_url()
+    if _is_postgres(fallback_url):
+        logger.warning(
+            "TOURNAMENT_DATABASE_WRITE_URL is not set while using Postgres; "
+            "falling back to the read URL for archetype_aliases writes. "
+            "Set a dedicated write URL with INSERT privileges to avoid runtime write failures."
+        )
+    return _create_engine(fallback_url)

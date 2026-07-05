@@ -66,7 +66,9 @@ def test_create_all_sqlite_in_memory():
     assert EXPECTED_TABLES.issubset(set(insp.get_table_names()))
     for table, column in ENUM_COLUMNS:
         col = next(c for c in insp.get_columns(table) if c["name"] == column)
-        assert "VARCHAR" in str(col["type"]).upper() or "CHAR" in str(col["type"]).upper()
+        assert (
+            "VARCHAR" in str(col["type"]).upper() or "CHAR" in str(col["type"]).upper()
+        )
 
 
 @pytest.mark.skipif(
@@ -75,16 +77,19 @@ def test_create_all_sqlite_in_memory():
 def test_create_all_postgres():
     # Use a dedicated schema-less throwaway; caller points TEST_PG_URL at an empty DB.
     engine = _bootstrap(os.environ["TEST_PG_URL"])
-    insp = inspect(engine)
-    assert EXPECTED_TABLES.issubset(set(insp.get_table_names()))
-    # No native ENUM types should have been created.
-    with engine.connect() as conn:
-        from sqlalchemy import text
+    try:
+        insp = inspect(engine)
+        assert EXPECTED_TABLES.issubset(set(insp.get_table_names()))
+        # No native ENUM types should have been created.
+        with engine.connect() as conn:
+            from sqlalchemy import text
 
-        rows = conn.execute(
-            text("SELECT typname FROM pg_type WHERE typtype = 'e'")
-        ).fetchall()
-    assert rows == [], f"unexpected native enum types created: {rows}"
-    for table, column in ENUM_COLUMNS:
-        col = next(c for c in insp.get_columns(table) if c["name"] == column)
-        assert "VARCHAR" in str(col["type"]).upper()
+            rows = conn.execute(
+                text("SELECT typname FROM pg_type WHERE typtype = 'e'")
+            ).fetchall()
+        assert rows == [], f"unexpected native enum types created: {rows}"
+        for table, column in ENUM_COLUMNS:
+            col = next(c for c in insp.get_columns(table) if c["name"] == column)
+            assert "VARCHAR" in str(col["type"]).upper()
+    finally:
+        Base.metadata.drop_all(engine)

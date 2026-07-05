@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 
 import { getDataSource } from '@/datasource'
 import type {
@@ -113,7 +114,9 @@ export default async function TournamentsPage({
 
   return (
     <>
-      <LensBar formats={formats} archetypes={archetypes} />
+      <Suspense fallback={null}>
+        <LensBar formats={formats} archetypes={archetypes} />
+      </Suspense>
 
       <section className="mt-10">
         <p className="eyebrow mb-1.5">The feed</p>

@@ -87,6 +87,44 @@ def bootstrap_schema(target_engine, target_url: str) -> None:
     command.stamp(cfg, "head")
 
 
+# FK constraints whose parent table has orphaned children in the legacy SQLite
+# source (SQLite never enforced FKs, so ~37.6K tournament_entries reference
+# tournaments that were deleted upstream). Postgres would reject those rows on
+# insert. We drop these FKs before the bulk load and re-add them NOT VALID after:
+# the constraint then guards every NEW write but does not retroactively reject the
+# historical orphans — preserving row-count parity with SQLite. Fixing the orphans
+# (restoring the missing tournaments) is a separate upstream data-quality task.
+RELAXED_FKS = [
+    (
+        "tournament_entries",
+        "fk_tournament_entries_tournament",
+        "FOREIGN KEY (tournament_id) REFERENCES tournaments(id)",
+    ),
+]
+
+
+def drop_relaxed_fks(target_engine) -> None:
+    from sqlalchemy import text
+
+    with target_engine.begin() as conn:
+        for table, name, _ in RELAXED_FKS:
+            conn.execute(text(f"ALTER TABLE {table} DROP CONSTRAINT IF EXISTS {name}"))
+    if RELAXED_FKS:
+        print(f"Dropped {len(RELAXED_FKS)} orphan-tolerant FK(s) for bulk load.")
+
+
+def readd_relaxed_fks_not_valid(target_engine) -> None:
+    from sqlalchemy import text
+
+    with target_engine.begin() as conn:
+        for table, name, defn in RELAXED_FKS:
+            conn.execute(
+                text(f"ALTER TABLE {table} ADD CONSTRAINT {name} {defn} NOT VALID")
+            )
+    if RELAXED_FKS:
+        print(f"Re-added {len(RELAXED_FKS)} FK(s) as NOT VALID (guards new writes).")
+
+
 def target_is_empty(target_session) -> bool:
     for model in TRANSFER_ORDER:
         count = target_session.scalar(select(func.count()).select_from(model))
@@ -102,7 +140,9 @@ def transfer(source_session, target_session, chunk_size: int) -> dict:
         total = 0
         batch = []
         # Stream the source to keep memory flat on large tables.
-        for row in source_session.execute(select(model)).yield_per(chunk_size).scalars():
+        for row in (
+            source_session.execute(select(model)).yield_per(chunk_size).scalars()
+        ):
             batch.append(_row_to_dict(row, model))
             if len(batch) >= chunk_size:
                 target_session.bulk_insert_mappings(model, batch)
@@ -174,7 +214,9 @@ def main() -> int:
             print("ERROR: target already has data. Re-run with --force to proceed.")
             return 1
 
+        drop_relaxed_fks(target_engine)
         transfer(source_session, target_session, args.chunk)
+        readd_relaxed_fks_not_valid(target_engine)
         ok = verify(source_session, target_session)
         if not ok:
             print("\nParity check FAILED.")

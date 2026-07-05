@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils'
 export type ManaColor = 'W' | 'U' | 'B' | 'R' | 'G'
 
 const ORDER: readonly ManaColor[] = ['W', 'U', 'B', 'R', 'G']
-const CHIP_VAR: Record<ManaColor, string> = {
+export const CHIP_VAR: Record<ManaColor, string> = {
   W: 'var(--chip-w)',
   U: 'var(--chip-u)',
   B: 'var(--chip-b)',
