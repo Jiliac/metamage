@@ -215,8 +215,12 @@ def main() -> int:
             return 1
 
         drop_relaxed_fks(target_engine)
-        transfer(source_session, target_session, args.chunk)
-        readd_relaxed_fks_not_valid(target_engine)
+        try:
+            transfer(source_session, target_session, args.chunk)
+        finally:
+            # Always re-balance the drop, even if transfer raised, so an aborted
+            # run never leaves the target with the FK missing.
+            readd_relaxed_fks_not_valid(target_engine)
         ok = verify(source_session, target_session)
         if not ok:
             print("\nParity check FAILED.")
