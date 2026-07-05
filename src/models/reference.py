@@ -151,7 +151,11 @@ class Archetype(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    name = Column(CaseInsensitiveText(100), nullable=False)
+    # Unbounded: SQLite never enforced the length, and duel-commander ingestion
+    # can emit a whole decklist as the "name" (a known data-quality bug, ~42 rows).
+    # Postgres VARCHAR(100) *would* enforce it and reject those rows on backfill,
+    # so we match SQLite's effective (unbounded) storage to preserve row parity.
+    name = Column(CaseInsensitiveText(), nullable=False)
     color = Column(String(10), nullable=True)  # e.g., "BR", "UB", "G"
 
     # Relationships
@@ -178,7 +182,7 @@ class MetaChange(Base, TimestampMixin):
         index=True,
     )
     date = Column(DateTime, nullable=False, index=True)
-    change_type = Column(Enum(ChangeType), nullable=False)
+    change_type = Column(Enum(ChangeType, native_enum=False), nullable=False)
     description = Column(Text, nullable=True)
     set_code = Column(String(10), nullable=True)  # if change is set release
 
@@ -212,8 +216,8 @@ class ArchetypeAlias(Base, TimestampMixin):
 # Create indexes for performance
 Index("idx_meta_change_format_date", MetaChange.format_id, MetaChange.date)
 
-# SQLite FTS5 virtual table for archetype fuzzy search
-# Note: This needs to be created via raw SQL as SQLAlchemy doesn't directly support FTS virtual tables
-# Example SQL to create:
-# CREATE VIRTUAL TABLE archetype_fts USING fts5(name, archetype_id, content='archetypes', content_rowid='rowid');
-# INSERT INTO archetype_fts(name, archetype_id) SELECT name, id FROM archetypes;
+# NOTE: Fuzzy archetype/player search does NOT use an FTS index. It runs
+# portable LOWER(...) LIKE LOWER(:pattern) queries (see src/analysis/*.py),
+# which work identically on SQLite and Postgres. An FTS5 virtual table was
+# once sketched here but never built; if trigram search is ever wanted on
+# Postgres, add a pg_trgm GIN index rather than reintroducing SQLite FTS5.

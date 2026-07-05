@@ -19,6 +19,7 @@ def load_rule(path):
     txt = re.sub(r",(\s*[}\]])", r"\1", txt)
     return json.loads(txt)
 
+
 FMT_DIR = os.path.expanduser(
     "~/Development/dev-win/Parser/MTGOFormatData/Formats/{fmt}/Archetypes"
 )

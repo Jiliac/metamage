@@ -276,13 +276,16 @@ def upsert_deck_cards_for_entry(
     handle_section(mainboard, BoardType.MAIN)
     handle_section(sideboard, BoardType.SIDE)
 
-    # Insert aggregated cards
-    for (card_id, board), total_count in card_aggregates.items():
-        dc = DeckCard(
-            entry_id=entry.id, card_id=card_id, count=total_count, board=board
-        )
-        session.add(dc)
-        inserted += 1
+    # Insert aggregated cards. These rows are terminal (nothing reads them back
+    # in this session before commit), so bulk_save_objects avoids a per-card
+    # network round-trip — the dominant cost when writing to remote Postgres.
+    new_cards = [
+        DeckCard(entry_id=entry.id, card_id=card_id, count=total_count, board=board)
+        for (card_id, board), total_count in card_aggregates.items()
+    ]
+    if new_cards:
+        session.bulk_save_objects(new_cards)
+    inserted = len(new_cards)
 
     return inserted, skipped, total_expected
 

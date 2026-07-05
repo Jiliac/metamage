@@ -24,7 +24,6 @@ suppressPackageStartupMessages({
   library(tidyr)
   library(stringr)
   library(DBI)
-  library(RSQLite)
   library(glue)
 })
 

@@ -2,13 +2,14 @@ from logging.config import fileConfig
 import sys
 from pathlib import Path
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
 from alembic import context
+from dotenv import load_dotenv
 
 # Add src directory to path to import our models
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+# Load .env so TOURNAMENT_DATABASE_URL is available when invoking alembic.
+load_dotenv()
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -43,7 +44,9 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    from models.base import _build_database_url
+
+    url = _build_database_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -62,20 +65,20 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    from models.base import _build_database_url, _create_engine, _is_postgres
+
+    database_url = _build_database_url()
+    is_sqlite = not _is_postgres(database_url)
+
+    connectable = _create_engine(database_url)
 
     with connectable.connect() as connection:
-        # Configure SQLite-specific options for better compatibility
         context.configure(
-            connection=connection, 
+            connection=connection,
             target_metadata=target_metadata,
-            render_as_batch=True,  # Use batch operations for SQLite
-            compare_type=True,     # Enable type comparison
-            compare_server_default=True  # Enable server default comparison
+            render_as_batch=is_sqlite,  # batch table-rebuilds are a SQLite need
+            compare_type=True,
+            compare_server_default=True,
         )
 
         with context.begin_transaction():
