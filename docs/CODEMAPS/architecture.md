@@ -2,7 +2,7 @@
 
 # MetaMage — Architecture
 
-MTG tournament analysis toolkit. Tournament data → SQLite DB → MCP tools → chat/social/UI/R consumers.
+MTG tournament analysis toolkit. Tournament data → Tournament DB (Postgres prod / SQLite dev) → MCP tools → chat/social/UI/R consumers.
 
 ## System Map
 
@@ -10,13 +10,13 @@ MTG tournament analysis toolkit. Tournament data → SQLite DB → MCP tools →
 External MTG data (MTGODecklistCache + MTGOArchetypeParser JSON)
             │
             ▼
-   src/ingest (Python)        ── builds ──▶  data/tournament.db  (SQLite, read-only at runtime)
+   src/ingest (Python)        ── builds ──▶  Tournament DB  (Postgres prod / SQLite dev; read-only at runtime)
                                               │
                                               ├──▶ src/mcp_server (FastMCP)          ── tools/resources ─▶  MCP clients
                                               │      │
                                               │      └──▶ src/analysis (compute_*)
                                               │
-                                              └──▶ visualize/ (R, RSQLite)           ── plots ─▶  Results/*.pdf, marav.csv
+                                              └──▶ visualize/ (R, RPostgres/RSQLite) ── plots ─▶  Results/*.pdf, marav.csv
 
    MCP clients (LLM agents reading tools):
      ├─ src/cli_chat/chat_agent      (terminal ReAct loop)
@@ -41,14 +41,16 @@ External MTG data (MTGODecklistCache + MTGOArchetypeParser JSON)
 
 ## Two Databases
 
-- **tournament.db** (SQLite, read-only) — domain data. Models in `src/models/`, schema in `docs/schema.mmd`.
+- **Tournament DB** (Postgres prod / SQLite dev) — domain data. Dual-mode engine in `src/models/base.py` selects Postgres via `TOURNAMENT_DATABASE_URL`, else the local SQLite file. Models in `src/models/`, schema in `docs/schema.mmd`. Fresh Postgres is bootstrapped via `create_all` + `alembic stamp head`; backfill via `scripts/migrate_tournament_to_postgres.py`.
 - **Ops DB** (Postgres prod / SQLite dev) — chat sessions, tool calls, social notifications. Models in `src/ops_model/`. UI Prisma schema mirrors `chat_models.py` at `ui/public/prisma/schema.prisma`.
+
+Both DBs can share one Neon project as separate databases.
 
 ## Read-only Hardening (MCP)
 
-- SQLite opened `mode=ro`; `PRAGMA query_only=ON` per connection (`src/mcp_server/utils.py:_set_ro_pragmas`).
-- `validate_select_only` SQL gate forbids DDL/DML/PRAGMA/transactions and multi-statement input.
-- Single write path: `add_archetype_alias` tool, guarded by `validate_alias_insert_sql`.
+- Read-only enforced per dialect by `apply_read_only` (`src/mcp_server/utils.py`): SQLite gets `PRAGMA query_only=ON`; Postgres uses the `metamage_ro` SELECT-only role plus `default_transaction_read_only` (defense-in-depth). Roles in `scripts/setup_pg_roles.sql`.
+- `validate_select_only` SQL gate forbids DDL/DML/PRAGMA/transactions and multi-statement input (dialect-agnostic).
+- Single write path: `add_archetype_alias` tool, guarded by `validate_alias_insert_sql`, via `get_alias_write_engine` (the `metamage_rw` role / `TOURNAMENT_DATABASE_WRITE_URL`).
 
 ## Cross-references
 

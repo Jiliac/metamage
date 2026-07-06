@@ -46,7 +46,9 @@ class Tournament(Base, TimestampMixin):
         index=True,
     )
     source = Column(
-        Enum(TournamentSource), nullable=False, default=TournamentSource.OTHER
+        Enum(TournamentSource, native_enum=False),
+        nullable=False,
+        default=TournamentSource.OTHER,
     )
     link = Column(Text, nullable=True)  # URL to tournament page
 
@@ -138,7 +140,9 @@ class DeckCard(Base, TimestampMixin):
         index=True,
     )
     count = Column(Integer, nullable=False)
-    board = Column(Enum(BoardType), nullable=False, default=BoardType.MAIN)
+    board = Column(
+        Enum(BoardType, native_enum=False), nullable=False, default=BoardType.MAIN
+    )
 
     # Relationships
     entry = relationship("TournamentEntry", back_populates="deck_cards")
@@ -175,7 +179,7 @@ class Match(Base, TimestampMixin):
         nullable=False,
         index=True,
     )
-    result = Column(Enum(MatchResult), nullable=False)
+    result = Column(Enum(MatchResult, native_enum=False), nullable=False)
     mirror = Column(Boolean, nullable=False, default=False)  # same archetype matchup
     pair_id = Column(
         String(36), nullable=False, index=True
