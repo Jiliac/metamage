@@ -92,8 +92,11 @@ name_mappings:
   "Light-Paws, Emperor's Voice": "Light-Paws"
   "Hei Bai, Forest Guardian": "Hei Bai"
   "Lumra, Bellow of the Woods": "Lumra"
-  "Tasigur, The Golden Fang": "Tasigur"
+  "Tasigur, the Golden Fang": "Tasigur"
   "Brigid, Clachan's Heart": "Brigid"
+  "Quintorius, History Chaser": "Quintorius"
+  "Emry, Lurker of the Loch": "Emry"
+  "Nick Fury, Agent of S.H.I.E.L.D.": "Nick Fury"
 
   # Add more mappings as needed
   # "Full Commander Name": "Short Name"
