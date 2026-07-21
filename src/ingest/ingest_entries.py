@@ -311,6 +311,21 @@ SIXTY_CARD_FORMATS = {
 # without ever touching a legal Yorion deck.
 WRONG_FORMAT_MAIN_THRESHOLD = 100
 
+# Some Highlander variants (e.g. Australian/NZ "Highlander Open Series",
+# "Sydney Showdown", "7pt Highlander") play a *60-card* singleton maindeck, so
+# they slip past WRONG_FORMAT_MAIN_THRESHOLD (they are exactly 60 cards). Their
+# tell is singleton-ness: a near-1-of maindeck. A real 60-card constructed deck
+# reuses cards (playsets, or restricted 1-ofs in Vintage) and tops out well
+# below 55 distinct maindeck cards (observed MTGO Vintage max ~52); a singleton
+# list has ~55-60 distinct cards. We detect these at the *event* level: if a
+# majority of an event's decks are singleton, the whole event is a wrong-format
+# (Highlander) event and every one of its entries is dropped — this also catches
+# the few Highlander decks in the event that ran extra basics and dipped below
+# the per-deck cutoff.
+SINGLETON_DISTINCT_MAIN_THRESHOLD = 55
+SINGLETON_EVENT_FRACTION = 0.5
+SINGLETON_EVENT_MIN_DECKS = 5
+
 
 def _maindeck_card_count(mainboard: List[Dict[str, Any]]) -> int:
     """Total number of maindeck cards (sum of Count) for a parsed entry."""
@@ -325,6 +340,55 @@ def _maindeck_card_count(mainboard: List[Dict[str, Any]]) -> int:
         except (TypeError, ValueError):
             continue
     return total
+
+
+def _distinct_maindeck_count(mainboard: List[Dict[str, Any]]) -> int:
+    """Number of distinct maindeck cards (by name) for a parsed entry."""
+    if not isinstance(mainboard, list):
+        return 0
+    names = set()
+    for itm in mainboard:
+        if not isinstance(itm, dict):
+            continue
+        name = itm.get("CardName") or itm.get("Name")
+        if name:
+            names.add(str(name).strip().lower())
+    return len(names)
+
+
+def _find_wrong_format_events(
+    entries: List[Dict[str, Any]],
+) -> set:
+    """Identify singleton (Highlander) events among 60-card-format entries.
+
+    Returns a set of (tournament_name, date) keys whose decks are majority
+    singleton — these are wrong-format events whose entries must all be dropped.
+    """
+    from collections import defaultdict
+
+    ev_total: Dict[Tuple[str, str], int] = defaultdict(int)
+    ev_singleton: Dict[Tuple[str, str], int] = defaultdict(int)
+    for e in entries:
+        t_name = e.get("Tournament")
+        date_str = e.get("Date")
+        if not t_name or not date_str:
+            continue
+        key = (t_name, date_str)
+        ev_total[key] += 1
+        if (
+            _distinct_maindeck_count(e.get("Mainboard", []))
+            >= SINGLETON_DISTINCT_MAIN_THRESHOLD
+        ):
+            ev_singleton[key] += 1
+
+    wrong: set = set()
+    for key, total in ev_total.items():
+        if (
+            total >= SINGLETON_EVENT_MIN_DECKS
+            and ev_singleton[key] >= total * SINGLETON_EVENT_FRACTION
+        ):
+            wrong.add(key)
+    return wrong
 
 
 def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: str):
@@ -379,6 +443,19 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
 
     # Pre-processing: do not skip entries from tournaments already in DB anymore
     filtered_entries = entries
+
+    # Event-level singleton (Highlander) detection for 60-card formats. Computed
+    # up front so every entry of a wrong-format event is dropped in the loop.
+    wrong_format_events: set = set()
+    if format_name in SIXTY_CARD_FORMATS:
+        wrong_format_events = _find_wrong_format_events(filtered_entries)
+        if wrong_format_events:
+            print(
+                f"  🚫 Detected {len(wrong_format_events)} singleton "
+                f"(Highlander) event(s) in {format_name}; dropping their entries:"
+            )
+            for ev_name, ev_date in sorted(wrong_format_events):
+                print(f"       • {ev_name} ({ev_date})")
 
     print(
         f"  🚮 Filtered out {stats['entries_filtered']} entries during pre-processing"
@@ -436,6 +513,11 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
                     f"({main_count}-card maindeck in {format_name}); "
                     f"player='{player_handle}'"
                 )
+                stats["entries_filtered"] += 1
+                continue
+            # Drop entries belonging to a singleton (Highlander) event, even the
+            # ones that ran extra basics and dipped below the per-deck cutoff.
+            if (t_name, date_str) in wrong_format_events:
                 stats["entries_filtered"] += 1
                 continue
 

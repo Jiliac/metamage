@@ -32,14 +32,51 @@ def deck_cards(conn, eid):
            JOIN cards c ON c.id=dc.card_id WHERE dc.entry_id=?""",
         (eid,),
     ).fetchall()
-    main = {n.lower() for n, b in rows if b == "MAIN"}
-    side = {n.lower() for n, b in rows if b == "SIDE"}
-    whole = {n.lower() for n, b in rows}
+    main = _names(rows, "MAIN")
+    side = _names(rows, "SIDE")
+    whole = main | side
     return main, side, whole
 
 
+def _names(rows, board):
+    """Card names for one board, including the front face of any DFC.
+
+    The DB stores double-faced cards under their full "Front // Back" name, but
+    rule files reference them inconsistently -- Standard/UWFlash.json triggers on
+    "Aang, Swift Savior" while UBDemon.json uses "Unholy Annex // Ritual Chamber".
+    The C# parser matches on the front face, so index both spellings.
+    """
+    out = set()
+    for n, b in rows:
+        if b != board:
+            continue
+        n = n.lower()
+        out.add(n)
+        if " // " in n:
+            out.add(n.split(" // ", 1)[0])
+    return out
+
+
+CONDITION_TYPES = (
+    "InMainboard",
+    "InSideboard",
+    "OneOrMoreInMainboard",
+    "OneOrMoreInMainOrSideboard",
+    "InMainOrSideboard",
+    "TwoOrMoreInMainOrSideboard",
+    "TwoOrMoreInMainboard",
+    "DoesNotContainMainboard",
+    "DoesNotContainSideboard",
+    "DoesNotContain",
+)
+_CANON_TYPE = {t.lower(): t for t in CONDITION_TYPES}
+
+
 def cond_ok(cond, main, side, whole):
-    t = cond["Type"]
+    # Rule files are hand-written and the casing of Type drifts (e.g.
+    # "OneorMoreInMainboard" in Standard/UWMomo.json). The C# parser tolerates
+    # it, so match case-insensitively rather than throwing.
+    t = _CANON_TYPE.get(cond["Type"].lower(), cond["Type"])
     cards = {c.lower() for c in cond.get("Cards", [])}
     if t == "InMainboard":
         return cards <= main
@@ -97,7 +134,7 @@ def main_cli():
            JOIN formats f ON f.id=t.format_id
            JOIN archetypes a ON a.id=te.archetype_id
            WHERE lower(f.name)=lower(?) AND a.name='conflict'
-             AND date(t.date) BETWEEN '2026-05-19' AND '2026-06-28'"""
+             AND date(t.date) BETWEEN '2026-06-10' AND '2026-07-13'"""
     args = [fmt]
     if handle:
         q += " AND p.handle=?"
