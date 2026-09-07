@@ -417,6 +417,7 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
         "skipped_missing_player": 0,
         "skipped_missing_archetype": 0,
         "tournaments_missing_rounds": 0,
+        "league_entries_skipped": 0,
         "pairings_seen": 0,
         "pairings_created": 0,
         "pairings_skipped_missing_entry": 0,
@@ -532,6 +533,15 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
 
         # Extract tournament ID from TournamentFile for disambiguation (needed for rounds file lookup)
         tournament_file = e.get("TournamentFile", "")
+
+        # MTGO Leagues have no pairings (players queue individually), so they
+        # can never be matched to a rounds file. Drop them silently here so the
+        # "Rounds file NOT found" warning below only fires for real gaps
+        # (Challenges / Showcases the recorder missed).
+        if source == TournamentSource.MTGO and "-league-" in tournament_file.lower():
+            stats["league_entries_skipped"] += 1
+            continue
+
         tournament_id = None
         if tournament_file:
             # Extract ID from end of filename (e.g., "modern-challenge-32-2025-08-0912807470" -> "12807470")
@@ -786,6 +796,7 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
     print(
         f"  📁 Tournaments skipped (no rounds file found): {stats['tournaments_missing_rounds']}"
     )
+    print(f"  🏆 League entries skipped (MTGO, no pairings): {stats['league_entries_skipped']}")
     print(
         f"  👤 Entries created: {stats['entries_created']}, existing: {stats['entries_existing']}"
     )
