@@ -9,10 +9,10 @@ env_or <- function(var, default) {
 
 # Get values once
 #format_name <- env_or("MTG_FORMAT", "duel-commander")
-format_name <- env_or("MTG_FORMAT", "Vintage")
-start_date <- env_or("START_DATE", "2026-06-29")
-#start_date <- env_or("START_DATE", "2026-06-20")
-end_date <- env_or("END_DATE", "2026-07-21")
+format_name <- env_or("MTG_FORMAT", "Pioneer")
+start_date <- env_or("START_DATE", "2026-08-01")
+# start_date <- env_or("START_DATE", "2026-08-11")
+end_date <- env_or("END_DATE", "2026-08-31")
 
 # Build output directory path
 start_year <- format(as.Date(start_date), "%Y")
@@ -34,6 +34,7 @@ params <- list(
   # Selection and rendering
   top_n = as.integer(env_or("TOP_N", "20")),
   matrix_top_n = as.integer(env_or("MATRIX_TOP_N", "12")),
+  matrix_min_matches = as.integer(env_or("MATRIX_MIN_MATCHES", "60")),
   output_dir = output_dir,
   db_path = env_or("TOURNAMENT_DB_PATH", "data/tournament.db"),
 

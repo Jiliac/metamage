@@ -134,8 +134,8 @@ def main_cli():
            JOIN formats f ON f.id=t.format_id
            JOIN archetypes a ON a.id=te.archetype_id
            WHERE lower(f.name)=lower(?) AND a.name='conflict'
-             AND date(t.date) BETWEEN '2026-06-10' AND '2026-07-13'"""
-    args = [fmt]
+             AND date(t.date) BETWEEN ? AND ?"""
+    args = [fmt, os.environ.get("FROM", "2026-06-10"), os.environ.get("TO", "2026-07-13")]
     if handle:
         q += " AND p.handle=?"
         args.append(handle)
