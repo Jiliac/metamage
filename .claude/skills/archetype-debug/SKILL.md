@@ -17,7 +17,7 @@ Trigger this when:
 ## Paths
 
 - DB: `data/tournament.db` (SQLite, WAL mode). Use `sqlite3` directly.
-- Archetype rules: `~/Development/dev-win/Parser/MTGOFormatData/Formats/<Format>/Archetypes/*.json`
+- Archetype rules: `~/Development/mtg/Parser/MTGOFormatData/Formats/<Format>/Archetypes/*.json`
 - Models: `src/models/{base,reference,tournament}.py` (read-only ORM; edits to `archetype_aliases` use `get_alias_write_engine()`).
 
 Charts are emitted by `visualize/` into `Results/<Format>/<Year>/<MM-DD-MM-DD>/`.
@@ -228,7 +228,7 @@ Worked example from session history: our `selesnya cub` archetype (`InMainboard:
 
 ## Quick rerun loop
 
-1. Edit JSON in `~/Development/dev-win/Parser/MTGOFormatData/Formats/<Format>/Archetypes/`.
+1. Edit JSON in `~/Development/mtg/Parser/MTGOFormatData/Formats/<Format>/Archetypes/`.
 2. Re-run the parser → it rewrites `archetypes` / entry classifications in the DB.
 3. Re-run Step 1 query for the same window to verify the bucket moved as predicted.
 4. If Unknown rose by ~the amount Conflict fell, you over-tightened a rule — apply a `DoesNotContain` instead.

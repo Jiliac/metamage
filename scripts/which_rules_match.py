@@ -21,7 +21,7 @@ def load_rule(path):
 
 
 FMT_DIR = os.path.expanduser(
-    "~/Development/dev-win/Parser/MTGOFormatData/Formats/{fmt}/Archetypes"
+    "~/Development/mtg/Parser/MTGOFormatData/Formats/{fmt}/Archetypes"
 )
 DB = os.path.join(os.path.dirname(__file__), "..", "data", "tournament.db")
 

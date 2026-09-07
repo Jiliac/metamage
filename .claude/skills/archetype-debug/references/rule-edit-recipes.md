@@ -1,7 +1,7 @@
 # Rule edit recipes
 
 Worked examples of the four common JSON-rule edits when resolving Conflict or Unknown buckets.
-Files live in `~/Development/dev-win/Parser/MTGOFormatData/Formats/<Format>/Archetypes/`.
+Files live in `~/Development/mtg/Parser/MTGOFormatData/Formats/<Format>/Archetypes/`.
 
 ## Recipe 1 — Exclude-by-card (resolve a 2-rule overlap)
 
