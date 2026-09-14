@@ -356,6 +356,12 @@ def _distinct_maindeck_count(mainboard: List[Dict[str, Any]]) -> int:
     return len(names)
 
 
+def _is_brew_off(tournament_name: str) -> bool:
+    """True for 'brew off' style events (players must bring off-meta decks)."""
+    n = tournament_name.lower()
+    return "brew off" in n or "brew-off" in n or "brewoff" in n
+
+
 def _find_wrong_format_events(
     entries: List[Dict[str, Any]],
 ) -> set:
@@ -500,6 +506,12 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
 
         if not t_name or not date_str or not player_handle or not arch_obj:
             print(f"  ⚠️ Missing required fields in entry #{i}; skipping")
+            continue
+
+        # Brew-off events require novel decks by design; they are ~90% unknown
+        # and only pollute the meta. Drop them silently.
+        if _is_brew_off(t_name):
+            stats["entries_filtered"] += 1
             continue
 
         # Wrong-format guard: drop Highlander/Commander-shaped lists (~100 cards)
@@ -796,7 +808,9 @@ def ingest_entries(session: Session, entries: List[Dict[str, Any]], format_id: s
     print(
         f"  📁 Tournaments skipped (no rounds file found): {stats['tournaments_missing_rounds']}"
     )
-    print(f"  🏆 League entries skipped (MTGO, no pairings): {stats['league_entries_skipped']}")
+    print(
+        f"  🏆 League entries skipped (MTGO, no pairings): {stats['league_entries_skipped']}"
+    )
     print(
         f"  👤 Entries created: {stats['entries_created']}, existing: {stats['entries_existing']}"
     )

@@ -9,7 +9,6 @@ import json
 import os
 import re
 import sqlite3
-import sys
 import glob
 
 
@@ -125,26 +124,70 @@ def matching_archetypes(fmt, main, side, whole):
 
 
 def main_cli():
-    fmt = sys.argv[1] if len(sys.argv) > 1 else "Legacy"
-    handle = sys.argv[2] if len(sys.argv) > 2 else None
+    import argparse
+    from collections import Counter
+
+    ap = argparse.ArgumentParser(
+        description="Re-evaluate archetype rules against DB entries."
+    )
+    ap.add_argument("fmt", nargs="?", default="Legacy")
+    ap.add_argument("handle", nargs="?", default=None)
+    ap.add_argument(
+        "--status",
+        default="conflict",
+        help="DB archetype name to select: conflict (default), unknown, all, or any archetype name",
+    )
+    ap.add_argument(
+        "--from", dest="date_from", default=os.environ.get("FROM", "2026-06-10")
+    )
+    ap.add_argument("--to", dest="date_to", default=os.environ.get("TO", "2099-12-31"))
+    ap.add_argument(
+        "--summary",
+        action="store_true",
+        help="print a tally of (DB archetype -> rule result) instead of one line per entry",
+    )
+    a = ap.parse_args()
+
     conn = sqlite3.connect(DB)
-    q = """SELECT te.id, p.handle FROM tournament_entries te
+    q = """SELECT te.id, p.handle, a.name, date(t.date), te.wins||'-'||te.losses
+           FROM tournament_entries te
            JOIN players p ON p.id=te.player_id
            JOIN tournaments t ON t.id=te.tournament_id
            JOIN formats f ON f.id=t.format_id
            JOIN archetypes a ON a.id=te.archetype_id
-           WHERE lower(f.name)=lower(?) AND a.name='conflict'
-             AND date(t.date) BETWEEN ? AND ?"""
-    args = [fmt, os.environ.get("FROM", "2026-06-10"), os.environ.get("TO", "2026-07-13")]
-    if handle:
+           WHERE lower(f.name)=lower(?) AND date(t.date) BETWEEN ? AND ?"""
+    args = [a.fmt, a.date_from, a.date_to]
+    if a.status != "all":
+        q += " AND a.name=?"
+        args.append(a.status)
+    if a.handle:
         q += " AND p.handle=?"
-        args.append(handle)
-    for eid, h in conn.execute(q, args).fetchall():
+        args.append(a.handle)
+    q += " ORDER BY t.date"
+
+    tally = Counter()
+    for eid, h, db_arch, d, rec in conn.execute(q, args).fetchall():
         m, s, w = deck_cards(conn, eid)
-        hits = matching_archetypes(fmt, m, s, w)
-        labels = ", ".join(sorted({n for _, n in hits}))
-        files = ", ".join(sorted({f for f, _ in hits}))
-        print(f"{h:16s} -> [{len(hits)}] {labels}   ({files})")
+        hits = matching_archetypes(a.fmt, m, s, w)
+        labels = sorted({n for _, n in hits})
+        if len(hits) == 0:
+            result = "unknown"
+        elif len(labels) == 1:
+            result = labels[0].lower()
+        else:
+            result = "conflict(" + ", ".join(labels) + ")"
+        if a.summary:
+            tally[(db_arch, result)] += 1
+        else:
+            files = ", ".join(sorted({f for f, _ in hits}))
+            print(
+                f"{d} {h:20.20s} {rec:6s} {db_arch:>12.12s} -> [{len(hits)}] {result}   ({files})"
+            )
+
+    if a.summary:
+        print(f"{'db_archetype':>22s}  {'rules_now_say':40s} n")
+        for (db_arch, result), n in sorted(tally.items(), key=lambda kv: -kv[1]):
+            print(f"{db_arch:>22s}  {result:40.40s} {n}")
 
 
 if __name__ == "__main__":
