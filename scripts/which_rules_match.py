@@ -77,6 +77,12 @@ def cond_ok(cond, main, side, whole):
     # it, so match case-insensitively rather than throwing.
     t = _CANON_TYPE.get(cond["Type"].lower(), cond["Type"])
     cards = {c.lower() for c in cond.get("Cards", [])}
+    if t.startswith("DoesNotContain") and len(cards) > 1:
+        # The C# parser does NOT treat a multi-card DoesNotContain as "none of
+        # these" (observed 2026-09: Grixis lists with DRC passed a
+        # DoesNotContainMainboard [Delver, DRC] condition). Upstream rules
+        # always use one card per DoesNotContain; do the same.
+        _warn_multi(cond)
     if t == "InMainboard":
         return cards <= main
     if t == "InSideboard":
@@ -98,6 +104,22 @@ def cond_ok(cond, main, side, whole):
     if t == "DoesNotContain":
         return len(cards & whole) == 0
     raise ValueError(f"unknown condition type {t}")
+
+
+_warned = set()
+
+
+def _warn_multi(cond):
+    import sys
+
+    key = tuple(sorted(cond.get("Cards", [])))
+    if key not in _warned:
+        _warned.add(key)
+        print(
+            f"WARNING: multi-card {cond['Type']} {list(key)} -- the C# parser does not "
+            "evaluate this as 'none present'; split into one card per condition",
+            file=sys.stderr,
+        )
 
 
 def rule_matches(conds, main, side, whole):
