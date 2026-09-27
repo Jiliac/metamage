@@ -140,7 +140,12 @@ export function Navbar() {
   // server markup never mismatches (same pattern as the ThemeToggle guard).
   const [menuOpen, setMenuOpen] = React.useState(false)
   const [mounted, setMounted] = React.useState(false)
+  const pathname = usePathname()
   React.useEffect(() => setMounted(true), [])
+  // Close the mobile menu after navigation (link tap or back/forward) so the
+  // open panel doesn't cover the top of the new route. Effect-only state
+  // change post-mount, so no hydration mismatch.
+  React.useEffect(() => setMenuOpen(false), [pathname])
 
   return (
     <header>

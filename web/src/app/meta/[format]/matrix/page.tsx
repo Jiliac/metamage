@@ -16,6 +16,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { MatchupMatrix } from '@/components/charts/MatchupMatrix'
 import { MatrixRowPicker } from '@/components/charts/MatrixRowPicker'
 import { MatchupList, selectRowCells } from '@/components/tables/MatchupList'
+import type { SelectedRowCells } from '@/components/tables/MatchupList'
 
 // ---------------------------------------------------------------------------
 // Matchup matrix route (WP5) — the moat, full N×N grid. RSC. Extra params
@@ -94,9 +95,14 @@ export default async function MatrixPage({
     ds.searchArchetypes(query.format, ''),
   ])
   const fmtName = formatName(formats, format)
+
   // Selected mobile-list archetype: `?row` resolved against the matrix order,
-  // defaulting to presence rank 1 (KTD4, R4).
-  const picked = selectRowCells(matrix, parseRow(sp, matrix.order))
+  // defaulting to presence rank 1 (KTD4, R4). Only computed for a non-empty
+  // matrix — an empty order has no row to select (see empty guard below).
+  let picked: SelectedRowCells | null = null
+  if (matrix.order.length > 0) {
+    picked = selectRowCells(matrix, parseRow(sp, matrix.order))
+  }
 
   return (
     <>
@@ -150,11 +156,13 @@ export default async function MatrixPage({
                   (R4) and defaults to presence rank 1. */}
               <div className="matrix:hidden">
                 <MatrixRowPicker order={matrix.order}>
-                  <MatchupList
-                    cells={picked.cells}
-                    sort="wrAsc"
-                    ranks={picked.ranks}
-                  />
+                  {picked && (
+                    <MatchupList
+                      cells={picked.cells}
+                      sort="wrAsc"
+                      ranks={picked.ranks}
+                    />
+                  )}
                 </MatrixRowPicker>
               </div>
             </div>
