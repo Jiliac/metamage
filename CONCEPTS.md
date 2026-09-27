@@ -15,6 +15,10 @@ The single environment switch that selects the `MetaDataSource` backend (current
 The build-time map of each archetype's signature card — its most-played non-land main-deck card, with a Scryfall `art_crop` URL — generated offline and consumed statically by the Postgres backend. Missing entries fall back to the mana-gradient placeholder in the UI; no runtime Scryfall calls happen in the request path.
 *Avoid:* art lookup, signature card API
 
+### Lens
+The complete set of URL-borne view parameters (window, format, top-N, min-matches, added archetypes, bucket visibility, presence weight, sort, matrix size, selected matrix row) that scopes what any web route renders. The URL is the only state store: `web/src/lib/params.ts` is the sole serializer and every control writes through `useMetaParams`, so any view is a shareable deep-link.
+*Aliases:* view state, URL state, lens params
+
 ## Domain
 
 ### Archetype
