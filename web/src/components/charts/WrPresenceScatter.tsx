@@ -25,6 +25,27 @@ import type { ArchetypeRowDTO } from '@/datasource/types'
 // raw red/green). A plain <ol> side legend carries rank dot + name + ManaPips.
 // ---------------------------------------------------------------------------
 
+// Desktop-height guard: charts keep their fixed desktop height at ≥768px and
+// shrink below `md`. SSR/first render assumes desktop (no layout shift on the
+// common viewport); mobile corrects at hydration.
+const MD_QUERY = '(min-width: 768px)'
+const desktopMql = (): MediaQueryList =>
+  typeof window === 'undefined'
+    ? ({} as MediaQueryList)
+    : window.matchMedia(MD_QUERY)
+function useIsDesktop(): boolean {
+  return React.useSyncExternalStore(
+    onMdChange,
+    () => desktopMql().matches,
+    () => true
+  )
+}
+function onMdChange(onChange: () => void): () => void {
+  const mql = desktopMql()
+  mql.addEventListener?.('change', onChange)
+  return () => mql.removeEventListener?.('change', onChange)
+}
+
 const POLE_VAR: Record<WrPolarity, string> = {
   good: 'var(--good)',
   bad: 'var(--bad)',
@@ -150,6 +171,9 @@ export function WrPresenceScatter({
 
   const xTicks = [1, 5, 10, 15, 20, 25, 30].filter(t => t <= xMax)
 
+  const isDesktop = useIsDesktop()
+  const chartHeight = isDesktop ? 430 : 300
+
   return (
     <div
       className={cn(
@@ -162,12 +186,12 @@ export function WrPresenceScatter({
           '@media (prefers-reduced-motion: no-preference){.mm-scatter-dot{animation:mm-pop .45s cubic-bezier(.2,.9,.3,1.4) backwards}@keyframes mm-pop{from{opacity:0;transform:scale(.4)}}}'
         }
       </style>
-      <div className="border-b border-line p-4 md:border-b-0 md:border-r">
+      <div className="border-b border-line px-4 py-3 md:border-b-0 md:border-r md:py-4">
         <ol className="m-0 list-none p-0 text-[12.5px]">
           {legend.map(d => (
             <li
               key={d.slug}
-              className="flex items-center gap-2 py-[3.5px] text-ink-2"
+              className="flex items-center gap-2 py-2 md:py-[3.5px]"
             >
               <span
                 className="data grid size-[17px] flex-none place-items-center rounded-full text-[9.5px] font-bold text-bg"
@@ -182,7 +206,7 @@ export function WrPresenceScatter({
         </ol>
       </div>
       <div className="p-3">
-        <ResponsiveContainer width="100%" height={430}>
+        <ResponsiveContainer width="100%" height={chartHeight}>
           <ScatterChart margin={{ top: 16, right: 18, bottom: 24, left: 4 }}>
             <CartesianGrid stroke="var(--line)" />
             <XAxis

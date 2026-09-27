@@ -64,8 +64,8 @@ export function WrCiChart({ rows, className }: WrCiChartProps) {
           <div
             key={r.slug}
             className={cn(
-              'grid items-center gap-3 border-b border-line py-2 last:border-b-0',
-              'grid-cols-[190px_1fr]',
+              'grid items-center gap-x-3 gap-y-1 border-b border-line py-2 last:border-b-0',
+              'grid-cols-1 md:grid-cols-[190px_1fr] md:gap-y-0',
               r.isBucket && 'opacity-60'
             )}
           >
@@ -113,8 +113,8 @@ export function WrCiChart({ rows, className }: WrCiChartProps) {
         )
       })}
       {/* axis */}
-      <div className="grid grid-cols-[190px_1fr] gap-3 pt-1.5">
-        <div />
+      <div className="grid grid-cols-1 gap-3 pt-1.5 md:grid-cols-[190px_1fr]">
+        <div className="hidden md:block" />
         <div className="relative h-4">
           {ticks.map(t => (
             <span

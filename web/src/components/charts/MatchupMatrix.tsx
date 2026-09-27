@@ -10,6 +10,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { ManaPips } from '@/components/ManaPips'
+import { inkFill, pctI, rec } from '@/lib/ink'
 import { cn } from '@/lib/utils'
 import type {
   ArchetypeSlug,
@@ -22,7 +23,7 @@ import type {
 // MatchupMatrix — the moat (blueprint §4, §9 rule 5). A hand-built CSS grid of
 // composite cells ported from the design spike:
 //   • fill = confidence-as-ink via `color-mix(in oklab, pole amt%, --raised)`
-//   • wr% + record text rows; '–' for low-N; blanked mirror with a dot
+//   • wr% + record text rows; '–' for low-N and the mirror cell (muted)
 //   • row/col cross-highlight on hover; Radix tooltip with the 95% CI
 //   • row headers: rank + ManaPips + name + global WR; numbered column heads
 //   • cells link to the row archetype when `rowHref` is supplied
@@ -30,18 +31,6 @@ import type {
 // This is a client component so the hover cross-highlight works, but because
 // client components are prerendered the full grid is in the SSR payload.
 // ---------------------------------------------------------------------------
-
-/** §9 rule 5 ink fill. `wr`, `reliability` are fractions (0..1). */
-function inkFill(wr: number, reliability: number): string {
-  const dev = Math.min(28, Math.abs(wr * 100 - 50))
-  const conf = Math.max(0, Math.min(1, reliability))
-  const amt = (6 + dev * 2.1) * (0.35 + 0.65 * conf)
-  const pole = wr >= 0.5 ? 'var(--good)' : 'var(--bad)'
-  return `color-mix(in oklab, ${pole} ${amt.toFixed(1)}%, var(--raised))`
-}
-
-const pctI = (x: number): string => `${Math.round(x * 100)}%`
-const rec = (w: number, l: number): string => `${w}–${l}`
 
 export type MatchupMatrixProps = {
   data: MatrixDTO
@@ -103,6 +92,9 @@ export function MatchupMatrix({
           {order.map(col => (
             <div
               key={`h-${col.slug}`}
+              role="columnheader"
+              aria-label={col.name}
+              title={col.name}
               className="grid place-items-center py-1.5 text-[11px] text-ink-3"
             >
               <span
@@ -157,10 +149,9 @@ export function MatchupMatrix({
                         aria-label="mirror match"
                         className="grid min-h-[48px] place-content-center border border-dashed border-line bg-transparent"
                       >
-                        <span
-                          className="size-2 rounded-full"
-                          style={{ background: 'var(--line-strong)' }}
-                        />
+                        <span className="data text-[13.5px] font-normal text-ink-3">
+                          –
+                        </span>
                       </div>
                     )
                   }

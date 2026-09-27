@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 
 import { Providers } from './providers'
 import { Navbar } from '@/components/Navbar'
+import { cn, CONTAINER_CLASS } from '@/lib/utils'
 import { Toaster } from '@/components/ui/sonner'
 
 // ---------------------------------------------------------------------------
@@ -45,7 +46,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body>
         <Providers>
-          <div className="mx-auto w-full max-w-[1120px] px-7 pb-24">
+          <div className={cn(CONTAINER_CLASS, 'w-full pb-24')}>
             {/* Navbar (WP3) renders the MetaMage brand + primary nav; it derives
                 the active format from usePathname and preserves the lens via
                 buildHref. The WUBRG hairline sits directly beneath it (§9). */}

@@ -15,6 +15,13 @@ function titleCase(name: string): string {
   return name.replace(/(^|\s)([a-z])/g, (_m, p, c) => p + c.toUpperCase())
 }
 
+/** Sticky pinned columns: `#` stays put and the card name pins just past it
+    (30px index + 2 × 14px cell padding), surface-backed with a right hairline. */
+const STICKY_INDEX =
+  'sticky left-0 z-20 bg-surface group-hover:bg-gold-wash after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-line'
+const STICKY_CARD =
+  'sticky left-[58px] z-20 bg-surface group-hover:bg-gold-wash after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-line'
+
 export type CardAdoptionTableProps = {
   cards: CardAdoptionDTO[]
   /** Board label shown in the caption eyebrow. */
@@ -47,13 +54,15 @@ export function CardAdoptionTable({
     <div
       className={cn('bg-surface border-line shadow-ledger border', className)}
     >
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto max-md:[mask-image:linear-gradient(to_right,#000_calc(100%_-_24px),transparent)] max-md:[-webkit-mask-image:linear-gradient(to_right,#000_calc(100%_-_24px),transparent)]">
         <table className="w-full border-collapse text-[13.5px]">
           <thead>
             <tr>
-              <Th className="w-[30px]">#</Th>
-              <Th>Card</Th>
-              <Th align="right">Copies</Th>
+              <Th className={cn('w-[30px]', STICKY_INDEX)}>#</Th>
+              <Th className={cn(STICKY_CARD)}>Card</Th>
+              <Th align="right" className="hidden md:table-cell">
+                Copies
+              </Th>
               <Th align="right">Decks</Th>
               <Th>Presence</Th>
             </tr>
@@ -62,15 +71,25 @@ export function CardAdoptionTable({
             {cards.map((c, i) => (
               <tr
                 key={c.cardId}
-                className="hover:bg-gold-wash [&:not(:last-child)>td]:border-line [&:not(:last-child)>td]:border-b"
+                className="group hover:bg-gold-wash [&:not(:last-child)>td]:border-line [&:not(:last-child)>td]:border-b"
               >
-                <td className="text-ink-3 px-3.5 py-[7px] text-[12px]">
+                <td
+                  className={cn(
+                    'text-ink-3 px-3.5 py-[7px] text-[12px]',
+                    STICKY_INDEX
+                  )}
+                >
                   {i + 1}
                 </td>
-                <td className="text-ink px-3.5 py-[7px] font-semibold">
+                <td
+                  className={cn(
+                    'text-ink px-3.5 py-[7px] font-semibold',
+                    STICKY_CARD
+                  )}
+                >
                   {titleCase(c.name)}
                 </td>
-                <td className="num text-ink px-3.5 py-[7px] text-right">
+                <td className="num text-ink px-3.5 py-[7px] text-right hidden md:table-cell">
                   {c.avgCount.toFixed(1)}
                 </td>
                 <td className="num text-ink-2 px-3.5 py-[7px] text-right">

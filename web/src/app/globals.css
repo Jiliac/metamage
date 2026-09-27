@@ -25,6 +25,14 @@
 /* Dark utility variant: match the next-themes class AND the data-theme attr. */
 @custom-variant dark (&:is(.dark *, [data-theme='dark'] *));
 
+/* Matrix seam variant (KTD3): the matchup grid renders only at >=880px (the
+ * grid's own minWidth 200 + 12×56 = 872px, plus breathing room) AND when the
+ * primary input can hover with a fine pointer — touch tablets at or above 768px
+ * and landscape phones stay on the per-archetype list, whose CIs are inline
+ * rather than hover-only (R3, R5). This is the ONLY place the seam query is
+ * written; surfaces use `hidden matrix:block` / `matrix:hidden`. */
+@custom-variant matrix (@media (min-width: 880px) and (hover: hover) and (pointer: fine));
+
 /* ---- LIGHT (parchment study) — the default -------------------------------- */
 :root {
   /* raw Ledger palette */
@@ -35,7 +43,7 @@
   --line-strong: #c5b892;
   --ink: #292418;
   --ink-2: #5f5741;
-  --ink-3: #8d8368;
+  --ink-3: #74694c;
   --gold: #8c6d23;
   --gold-soft: #b3924d;
   --gold-wash: rgba(140, 109, 35, 0.1);
@@ -92,7 +100,7 @@
     --line-strong: #4d422a;
     --ink: #eae3ce;
     --ink-2: #a99f85;
-    --ink-3: #726a55;
+    --ink-3: #8c836b;
     --gold: #c9a855;
     --gold-soft: #98803f;
     --gold-wash: rgba(201, 168, 85, 0.09);
@@ -115,7 +123,7 @@
   --line-strong: #4d422a;
   --ink: #eae3ce;
   --ink-2: #a99f85;
-  --ink-3: #726a55;
+  --ink-3: #8c836b;
   --gold: #c9a855;
   --gold-soft: #98803f;
   --gold-wash: rgba(201, 168, 85, 0.09);
@@ -136,7 +144,7 @@
   --line-strong: #c5b892;
   --ink: #292418;
   --ink-2: #5f5741;
-  --ink-3: #8d8368;
+  --ink-3: #74694c;
   --gold: #8c6d23;
   --gold-soft: #b3924d;
   --gold-wash: rgba(140, 109, 35, 0.1);
@@ -229,6 +237,13 @@
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Radix Select renders a visually hidden, unfocusable native select bubble
+   * (aria-hidden, tabindex=-1) that inherits body size; pin it at the 16px
+   * iOS-zoom floor so the R9 input assertion holds over every select node. */
+  select[aria-hidden='true'] {
+    font-size: 16px;
   }
 }
 

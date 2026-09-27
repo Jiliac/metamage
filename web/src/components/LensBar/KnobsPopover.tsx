@@ -64,7 +64,7 @@ function NumberField({ label, value, min, max, onCommit }: NumberFieldProps) {
             commit()
           }
         }}
-        className="w-full border border-line bg-bg px-2 py-1 font-mono text-[13px] text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
+        className="w-full border border-line bg-bg px-2 py-1 font-mono text-[16px] text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
       />
     </label>
   )
@@ -113,11 +113,15 @@ function ToggleRow<T extends string>({
 }
 
 export type KnobsPopoverProps = {
-  variant?: 'meta' | 'matrix'
+  variant?: 'meta' | 'matrix' | 'changes' | 'tournaments'
 }
 
 export function KnobsPopover({ variant = 'meta' }: KnobsPopoverProps) {
   const { query, matrixTopN, setParams } = useMetaParams()
+  // Generalized gating (R7): the knobs are meta/matrix concerns only — hidden
+  // where the route makes them no-ops. Callers decide the variant; no route
+  // sniffing here. Hooks run unconditionally; the null return is after.
+  if (variant === 'changes' || variant === 'tournaments') return null
   const summary = `Top ${query.topN} · min ${query.minMatches}`
 
   return (

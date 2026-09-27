@@ -6,6 +6,8 @@
 export const knobClass =
   'inline-flex items-center gap-1.5 border border-line bg-transparent text-ink-2 ' +
   'text-[13px] tracking-[0.02em] px-3 py-[5px] cursor-pointer transition-colors ' +
+  // R2: 44px minimum touch target below md (desktop padding unchanged ≥768px).
+  'max-md:min-h-[44px] max-md:px-4 ' +
   'hover:border-line-strong hover:text-ink ' +
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold ' +
   'disabled:cursor-not-allowed disabled:opacity-50'

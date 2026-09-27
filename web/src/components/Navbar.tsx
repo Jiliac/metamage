@@ -4,10 +4,15 @@ import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTheme } from 'next-themes'
-import { Moon, Sun } from 'lucide-react'
+import { Menu, Moon, Sun, X } from 'lucide-react'
 
 import { buildHref } from '@/lib/params'
-import { cn } from '@/lib/utils'
+import { cn, CONTAINER_CLASS } from '@/lib/utils'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 import {
   formatFromPathname,
   subPathFromPathname,
@@ -47,8 +52,9 @@ const navLinkClass =
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold'
 const navLinkActiveClass = 'border-gold text-gold'
 
-/** Lens-preserving nav links — reads the parsed lens and rebuilds each href. */
-function NavLinks() {
+/** Lens-preserving nav links — reads the parsed lens and rebuilds each href.
+ *  `linkClass` lets the mobile disclosure panel reuse the same href logic. */
+function NavLinks({ linkClass: linkCls }: { linkClass?: string }) {
   const { format, subPath, query, sort, matrixTopN } = useMetaParams()
   return (
     <>
@@ -64,7 +70,7 @@ function NavLinks() {
             key={item.label}
             href={href}
             aria-current={active ? 'page' : undefined}
-            className={cn(navLinkClass, active && navLinkActiveClass)}
+            className={cn(navLinkClass, linkCls, active && navLinkActiveClass)}
           >
             {item.label}
           </Link>
@@ -76,7 +82,7 @@ function NavLinks() {
 
 /** Static fallback while the searchParams-reading links suspend — plain links to
  *  each view at the current format, without lens preservation. */
-function NavLinksFallback() {
+function NavLinksFallback({ linkClass: linkCls }: { linkClass?: string }) {
   const pathname = usePathname()
   const format = formatFromPathname(pathname)
   const subPath = subPathFromPathname(pathname)
@@ -89,7 +95,7 @@ function NavLinksFallback() {
             key={item.label}
             href={`/meta/${format}${item.sub}`}
             aria-current={active ? 'page' : undefined}
-            className={cn(navLinkClass, active && navLinkActiveClass)}
+            className={cn(navLinkClass, linkCls, active && navLinkActiveClass)}
           >
             {item.label}
           </Link>
@@ -110,7 +116,7 @@ function ThemeToggle() {
       type="button"
       aria-label="Toggle color theme"
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      className="inline-grid size-8 place-items-center border border-line text-ink-2 transition-colors hover:border-line-strong hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+      className="inline-grid size-11 place-items-center border border-line text-ink-2 transition-colors hover:border-line-strong hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold md:size-8"
     >
       {mounted ? (
         isDark ? (
@@ -125,11 +131,67 @@ function ThemeToggle() {
   )
 }
 
+/** Mobile-only 44px-hit-area row link class, layered over `navLinkClass`. */
+const navLinkMobileClass = 'flex min-h-11 items-center'
+
 export function Navbar() {
+  // Mobile disclosure state (U1/R2). SSR renders the menu closed with a static
+  // Menu glyph; the mounted-guard swaps to the X glyph after hydration so the
+  // server markup never mismatches (same pattern as the ThemeToggle guard).
+  const [menuOpen, setMenuOpen] = React.useState(false)
+  const [mounted, setMounted] = React.useState(false)
+  React.useEffect(() => setMounted(true), [])
+
   return (
     <header>
-      <div className="mx-auto max-w-[1120px] px-7">
-        <div className="flex items-baseline gap-7 pt-6 pb-4">
+      <div className={CONTAINER_CLASS}>
+        <Collapsible
+          open={menuOpen}
+          onOpenChange={setMenuOpen}
+          className="md:hidden"
+        >
+          <div className="flex items-baseline gap-7 pt-6 pb-4">
+            <Link
+              href="/"
+              className="font-display text-[22px] font-bold tracking-[0.02em] text-ink no-underline"
+            >
+              Meta<span className="text-gold">Mage</span>
+            </Link>
+            <div className="ml-auto flex items-center gap-2 self-center">
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  aria-expanded={menuOpen}
+                  aria-controls="mobile-nav"
+                  aria-label="Toggle navigation menu"
+                  className="inline-grid size-11 place-items-center border border-line text-ink-2 transition-colors hover:border-line-strong hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+                >
+                  {mounted && menuOpen ? (
+                    <X className="size-5" aria-hidden />
+                  ) : (
+                    <Menu className="size-5" aria-hidden />
+                  )}
+                </button>
+              </CollapsibleTrigger>
+              <ThemeToggle />
+            </div>
+          </div>
+          <CollapsibleContent>
+            <nav
+              id="mobile-nav"
+              className="flex flex-col gap-1 pt-1 pb-4"
+              aria-label="Primary"
+            >
+              <React.Suspense
+                fallback={<NavLinksFallback linkClass={navLinkMobileClass} />}
+              >
+                <NavLinks linkClass={navLinkMobileClass} />
+              </React.Suspense>
+            </nav>
+          </CollapsibleContent>
+        </Collapsible>
+        {/* Desktop shell — unchanged below-md-hidden twin of the row above. */}
+        <div className="hidden items-baseline gap-7 pt-6 pb-4 md:flex">
           <Link
             href="/"
             className="font-display text-[22px] font-bold tracking-[0.02em] text-ink no-underline"

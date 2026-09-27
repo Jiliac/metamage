@@ -23,6 +23,27 @@ import type { MetaChangeDTO, TrendPointDTO } from '@/datasource/types'
 // `connectNulls={false}` — so the eye never invents data across an empty week.
 // ---------------------------------------------------------------------------
 
+// Chart keeps its fixed desktop height at ≥768px and shrinks below `md`.
+// SSR/first render assumes desktop (no desktop layout shift); mobile corrects
+// at hydration.
+const MD_QUERY = '(min-width: 768px)'
+const desktopMql = (): MediaQueryList =>
+  typeof window === 'undefined'
+    ? ({} as MediaQueryList)
+    : window.matchMedia(MD_QUERY)
+function onMdChange(onChange: () => void): () => void {
+  const mql = desktopMql()
+  mql.addEventListener?.('change', onChange)
+  return () => mql.removeEventListener?.('change', onChange)
+}
+function useIsDesktop(): boolean {
+  return React.useSyncExternalStore(
+    onMdChange,
+    () => desktopMql().matches,
+    () => true
+  )
+}
+
 type TrendDatum = {
   week: string
   presence: number // %, 0..100
@@ -83,6 +104,9 @@ export function TrendChart({ trends, changes, className }: TrendChartProps) {
     [changes, weeks]
   )
 
+  const isDesktop = useIsDesktop()
+  const chartHeight = isDesktop ? 340 : 260
+
   return (
     <div
       className={cn(
@@ -90,7 +114,7 @@ export function TrendChart({ trends, changes, className }: TrendChartProps) {
         className
       )}
     >
-      <ResponsiveContainer width="100%" height={340}>
+      <ResponsiveContainer width="100%" height={chartHeight}>
         <LineChart
           data={data}
           margin={{ top: 16, right: 12, bottom: 8, left: 4 }}
