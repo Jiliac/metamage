@@ -31,21 +31,29 @@ backend.
 
 ## Scripts
 
-| Script              | What it does                                                                          |
-| ------------------- | ------------------------------------------------------------------------------------- |
-| `pnpm dev`          | Next dev server (Turbopack).                                                          |
-| `pnpm build`        | Production build. Prebuilds the default-window pages per format.                      |
-| `pnpm start`        | Serve the production build.                                                           |
-| `pnpm lint`         | ESLint (next + prettier).                                                             |
-| `pnpm format`       | Prettier write. `pnpm format:check` to verify.                                        |
-| `pnpm test`         | Vitest — the `stats.ts` unit + fixture snapshot-parity suite.                         |
-| `pnpm gen:fixtures` | Regenerate `db.json` (seeded, deterministic; fetches Scryfall art crops at gen time). |
+| Script              | What it does                                                                                 |
+| ------------------- | -------------------------------------------------------------------------------------------- |
+| `pnpm dev`          | Next dev server (Turbopack).                                                                 |
+| `pnpm build`        | Production build. Prebuilds the default-window pages per format.                             |
+| `pnpm start`        | Serve the production build.                                                                  |
+| `pnpm lint`         | ESLint (next + prettier).                                                                    |
+| `pnpm format`       | Prettier write. `pnpm format:check` to verify.                                               |
+| `pnpm test`         | Vitest — the `stats.ts` unit + fixture snapshot-parity suite.                                |
+| `pnpm gen:fixtures` | Regenerate `db.json` (seeded, deterministic; fetches Scryfall art crops at gen time).        |
+| `pnpm gen:art`      | Regenerate `src/datasource/art-map.json` from the live DB (needs `TOURNAMENT_DATABASE_URL`). |
+| `pnpm gen:art:fill` | Same, but keeps every already-resolved art URL and only fetches the still-null cards.        |
 
 ## Environment
 
-See [`.env.example`](./.env.example). All vars are optional in dev.
+See [`.env.example`](./.env.example). All vars are optional in dev when
+`DATA_SOURCE` is left at its default.
 
-- `DATA_SOURCE` — `fixtures` (default) or `postgres` (deferred; falls back to fixtures).
+- `DATA_SOURCE` — `fixtures` (default) or `postgres` (the live Neon read path,
+  `PostgresDataSource` in `src/datasource/postgres.ts`). Any other value is a
+  hard error at boot; there is no silent fallback.
+- `TOURNAMENT_DATABASE_URL` — required when `DATA_SOURCE=postgres` (the app
+  fails loudly without it) and by `pnpm gen:art`. Use the SELECT-only
+  `metamage_ro` role.
 - `NEXT_PUBLIC_SITE_URL` — absolute origin; drives canonical URLs, OG image URLs, robots + sitemap. Defaults to `http://localhost:3000`.
 - `NEXT_PUBLIC_POSTHOG_KEY` / `NEXT_PUBLIC_POSTHOG_HOST` — analytics; no-op when the key is blank.
 
@@ -95,24 +103,27 @@ memoized by `unstable_cache` keyed on the method + serialized query (ISR-style
 memo for the long tail of windows/knobs).
 
 ```text
-page.tsx ─► getDataSource() ─► withCache() ─► FixtureDataSource ─► db.json
+page.tsx ─► getDataSource() ─► withCache() ─┬─► FixtureDataSource  ─► db.json        (DATA_SOURCE=fixtures, default)
+                                            └─► PostgresDataSource ─► Neon (metamage_ro) (DATA_SOURCE=postgres)
                                                     │
-                                                    └─ derives every stat via src/lib/stats.ts
+                                                    └─ both derive every stat via src/lib/stats.ts
 ```
 
 All derived math (both WR formulas, Wilson + cluster-robust CI, tier bands,
 matrix reliability/CI/lowN, presenceRank) lives in **one module**,
-`src/lib/stats.ts`, called by the fixtures backend now and the Postgres backend
-later — so the two can never disagree. A snapshot test guards it.
+`src/lib/stats.ts`, called by both backends — so the two can never disagree. A
+snapshot test guards it.
 
-### Swapping in Postgres (the deferred read-path)
+### The Postgres read path
 
-The whole point of the firewall: when Neon lands, you add **one file** —
-`src/datasource/postgres.ts` implementing `MetaDataSource`, reusing
-`src/lib/stats.ts` for post-query fields — wire it into the `postgres` case of
-`createRawDataSource()` in `src/datasource/index.ts`, and flip
-`DATA_SOURCE=postgres`. No page, component, cache wrapper, or URL changes.
-Fixtures remain the test / OG / dev backend.
+`src/datasource/postgres.ts` (`PostgresDataSource`) implements `MetaDataSource`
+against the live Neon tournament DB, reusing `src/lib/stats.ts` for post-query
+fields. It is selected by the `postgres` case of `createRawDataSource()` in
+`src/datasource/index.ts` when `DATA_SOURCE=postgres`; no page, component, cache
+wrapper, or URL knows which backend is behind the firewall. It requires
+`TOURNAMENT_DATABASE_URL` (the SELECT-only `metamage_ro` role) and fails loudly
+at startup without it — serving fixtures under `DATA_SOURCE=postgres` is never
+allowed. Fixtures remain the test / OG / default dev backend.
 
 ### Rendering & caching
 
@@ -142,6 +153,8 @@ src/
     index.ts                getDataSource() singleton + unstable_cache layer
     fixtures.ts             FixtureDataSource (selection pipeline in TS)
     fixtures/data/db.json   committed seeded fixture DB
+    postgres.ts             PostgresDataSource (live Neon read path, DATA_SOURCE=postgres)
+    art-map.json            archetype -> signature card art crops (pnpm gen:art / gen:art:fill)
   hooks/useMetaParams.ts    the single lens read/write choke point
   lib/
     params.ts               parseMetaQuery / buildHref (URL ⇄ state)
@@ -149,4 +162,5 @@ src/
     seo.ts                  buildPageMetadata (canonical + OG)
     analytics.ts            typed PostHog capture()
 scripts/gen-fixtures.ts     deterministic fixture generator
+scripts/gen-archetype-art.ts art-map.json generator (`--fill-gaps` re-fetches only null entries)
 ```

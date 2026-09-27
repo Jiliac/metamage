@@ -297,3 +297,19 @@
     );
   }
 }
+
+@keyframes ledger-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ledger-spin {
+  animation: ledger-spin 0.8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ledger-spin {
+    animation: none;
+  }
+}

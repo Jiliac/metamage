@@ -8,7 +8,12 @@ import type {
   ArchetypeRef,
   MatchupCellDTO,
 } from '@/datasource/types'
-import { buildHref, parseMetaQuery, asArchetypeSlug } from '@/lib/params'
+import {
+  buildHref,
+  parseMetaQuery,
+  asArchetypeSlug,
+  isArchetypeSlug,
+} from '@/lib/params'
 import { buildPageMetadata } from '@/lib/seo'
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -76,6 +81,8 @@ export async function generateMetadata({
   searchParams: Promise<SearchParams>
 }): Promise<Metadata> {
   const { format, slug } = await params
+  // Malformed route segments 404 before any data-source call (slug discipline).
+  if (!isArchetypeSlug(slug)) notFound()
   const sp = await searchParams
   const query = parseMetaQuery(format, sp)
   const tab = readTab(sp)
@@ -102,6 +109,8 @@ export default async function ArchetypeDetailPage({
   searchParams: Promise<SearchParams>
 }) {
   const { format, slug } = await params
+  // Malformed route segments 404 before any data-source call (slug discipline).
+  if (!isArchetypeSlug(slug)) notFound()
   const sp = await searchParams
 
   const query = parseMetaQuery(format, sp)
@@ -134,9 +143,11 @@ export default async function ArchetypeDetailPage({
   const tier = tierLabel(summary.tier)
   const record = `${summary.wins}-${summary.losses}-${summary.draws}`
 
+  // Order by match volume — the user asked for "matchups sorted by number of
+  // matches"; wr falls back as the tiebreak for equal-volume pairs.
   const nonMirror = detail.matchups
     .filter(m => !m.isMirror)
-    .sort((a, b) => b.wr - a.wr)
+    .sort((a, b) => b.games - a.games || b.wr - a.wr)
 
   const tabHref = (t: TabKey) =>
     buildHref(query.format, query, {

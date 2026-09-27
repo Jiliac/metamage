@@ -6,7 +6,9 @@ import { cn } from '@/lib/utils'
 // ManaPips — shared identity primitive (§9 rule 3: pips are identity, never a
 // chart hue). Printed-cardboard chip colors are THEME-CONSTANT: they resolve to
 // the `--chip-*` custom properties, which do not change between light and dark
-// (globals.css). Letters are WUBRG; anything else in the input is ignored.
+// (globals.css). Pure color chips — no letter glyphs (user's call: symbols
+// read as colors, not characters). Input letters are WUBRG; anything else in
+// the input is ignored.
 // ---------------------------------------------------------------------------
 
 export type ManaColor = 'W' | 'U' | 'B' | 'R' | 'G'
@@ -44,8 +46,6 @@ export type ManaPipsProps = {
   colors: string | readonly string[] | null | undefined
   /** Pip diameter in px (default 15, matching the spike's inline pip). */
   size?: number
-  /** Hide the WUBRG glyph when true (pure color dots). */
-  hideGlyph?: boolean
   className?: string
 }
 
@@ -53,12 +53,7 @@ export type ManaPipsProps = {
  * Row of printed mana chips. Server-renderable (no client hooks). Colors come
  * from theme-constant CSS variables so pips read identically in both themes.
  */
-export function ManaPips({
-  colors,
-  size = 15,
-  hideGlyph = false,
-  className,
-}: ManaPipsProps) {
+export function ManaPips({ colors, size = 15, className }: ManaPipsProps) {
   const pips = toManaColors(colors)
   if (pips.length === 0) return null
   return (
@@ -71,19 +66,15 @@ export function ManaPips({
         <span
           key={`${c}-${i}`}
           aria-hidden
-          className="inline-grid place-items-center rounded-full font-extrabold"
+          className="inline-grid place-items-center rounded-full"
           style={{
             width: size,
             height: size,
-            fontSize: Math.max(8, Math.round(size * 0.6)),
             background: CHIP_VAR[c],
-            color: 'var(--chip-ink)',
             boxShadow:
               'inset -1px -1.5px 0 rgba(0,0,0,.28), inset 0 0 0 .5px rgba(0,0,0,.18)',
           }}
-        >
-          {hideGlyph ? '' : c}
-        </span>
+        />
       ))}
     </span>
   )

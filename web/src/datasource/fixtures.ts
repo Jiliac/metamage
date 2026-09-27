@@ -21,30 +21,26 @@ import type {
 } from '@/datasource/types'
 import { parseSort, type SearchParamsInput } from '@/lib/params'
 import type { MetaSort } from '@/datasource/types'
+import { winrateCi, wr as wrOf, wrExclDraws, type WLD } from '@/lib/stats'
 import {
-  assignTiers,
-  ciCrosses50,
-  lowN,
-  presenceRank,
-  reliability,
-  wilsonCi,
-  winrateCi,
-  wr as wrOf,
-  wrExclDraws,
-  type Tier,
-  type WLD,
-} from '@/lib/stats'
+  DEFAULT_SORT,
+  buildCell,
+  presenceRankMap,
+  selectReportRows,
+  weightOf,
+  type IntrinsicRow,
+} from '@/datasource/derive'
 import rawDb from '@/datasource/fixtures/data/db.json'
 
 // ---------------------------------------------------------------------------
 // FixtureDataSource — the read-path firewall (blueprint §3, §5). It loads the
 // committed, seeded RAW-COUNTS fixture DB (per-player W/L/D for clustering; per
 // unordered-pair matchup W/L/D) and derives EVERY stat through `@/lib/stats`, so
-// the fixture backend and the future Postgres backend can never disagree on the
+// the fixture backend and the Postgres backend can never disagree on the
 // CI/tier math. All selection (topN / minMatches / includeArchetypes /
-// hideBuckets / weight / sort) happens here in TS, mirroring the SQL the
-// Postgres repo will run. Never imports a DB client; pages import only
-// `getDataSource()` (see index.ts).
+// hideBuckets / weight / sort) runs through `@/datasource/derive`, the same
+// pure pipeline the Postgres backend feeds its SQL aggregates into. Never
+// imports a DB client; pages import only `getDataSource()` (see index.ts).
 // ---------------------------------------------------------------------------
 
 // ---- Raw fixture schema (produced by scripts/gen-fixtures.ts) --------------
@@ -180,10 +176,6 @@ function clustersOf(players: RawPlayer[]): WLD[] {
 
 // ---- Row derivation (the one place stats.ts is applied to archetypes) ------
 
-/** Everything about a row that is intrinsic to the archetype (pre-population
- *  fields presenceRank + tier are filled in a later pass). */
-type IntrinsicRow = Omit<ArchetypeRowDTO, 'presenceRank' | 'tier'>
-
 function deriveIntrinsic(
   raw: RawArchetype,
   denomMatches: number
@@ -216,103 +208,25 @@ function deriveIntrinsic(
   }
 }
 
-/** Presence weight per the lens: match-weighted (games) or entry-weighted. */
-function weightOf(row: IntrinsicRow, weight: MetaQuery['weight']): number {
-  return weight === 'entry' ? row.decks : row.matches
-}
+// ---- Matchup lookup --------------------------------------------------------
 
-/**
- * Assign presence ranks (identity numbers, §9 rule 3) over the FULL window
- * population, non-buckets first (ranked 1..k by weight), then buckets after.
- * Returns a slug → rank map so every view can share the number.
- */
-function presenceRankMap(
-  rows: IntrinsicRow[],
-  weight: MetaQuery['weight']
-): Map<string, number> {
-  const nonBucket = rows.filter(r => !r.isBucket)
-  const buckets = rows.filter(r => r.isBucket)
-  const map = new Map<string, number>()
-  const nbRanks = presenceRank(nonBucket.map(r => weightOf(r, weight)))
-  nonBucket.forEach((r, i) => map.set(r.slug, nbRanks[i]))
-  const offset = nonBucket.length
-  const bRanks = presenceRank(buckets.map(r => weightOf(r, weight)))
-  buckets.forEach((r, i) => map.set(r.slug, offset + bRanks[i]))
-  return map
-}
-
-// ---- Sorting ---------------------------------------------------------------
-
-function sortRows(
-  rows: ArchetypeRowDTO[],
-  sort: MetaSort,
-  weight: MetaQuery['weight']
-): ArchetypeRowDTO[] {
-  const out = [...rows]
-  out.sort((a, b) => {
-    // Buckets always sink to the bottom regardless of the sort key.
-    if (a.isBucket !== b.isBucket) return a.isBucket ? 1 : -1
-    if (sort === 'wrlo') return b.wrLo - a.wrLo
-    if (sort === 'tier') {
-      const ta = a.tier ?? 99
-      const tb = b.tier ?? 99
-      if (ta !== tb) return ta - tb
-      return b.wrLo - a.wrLo
-    }
-    // presence (default): by weight desc, then rank asc for stability.
-    const wa = weight === 'entry' ? a.decks : a.matches
-    const wb = weight === 'entry' ? b.decks : b.matches
-    if (wb !== wa) return wb - wa
-    return a.presenceRank - b.presenceRank
-  })
-  return out
-}
-
-// ---- Matrix cell -----------------------------------------------------------
-
-function buildCell(
-  rowSlug: string,
-  colSlug: string,
-  rowName: string,
-  colName: string,
-  rec: { w: number; l: number; d: number }
-): MatchupCellDTO {
-  const isMirror = rowSlug === colSlug
-  const wins = rec.w
-  const losses = rec.l
-  const draws = rec.d
-  const games = wins + losses + draws
-  const ci = wilsonCi(wins + 0.5 * draws, games)
-  return {
-    rowSlug: asSlug(rowSlug),
-    colSlug: asSlug(colSlug),
-    rowName,
-    colName,
-    wins,
-    losses,
-    draws,
-    games,
-    wr: wrOf(wins, losses, draws),
-    ciLow: ci.lo,
-    ciHigh: ci.hi,
-    reliability: reliability(games),
-    lowN: lowN(games),
-    ciCrosses50: ciCrosses50(ci.lo, ci.hi),
-    isMirror,
-  }
-}
+const ZERO_REC: WLD = { wins: 0, losses: 0, draws: 0 }
 
 /** Look up a's record vs b from the unordered pair list (swap if reversed). */
 function lookupMatchup(
   matchups: RawMatchup[],
   aSlug: string,
   bSlug: string
-): { w: number; l: number; d: number } {
+): WLD {
   for (const m of matchups) {
-    if (m.a === aSlug && m.b === bSlug) return { w: m.w, l: m.l, d: m.d }
-    if (m.a === bSlug && m.b === aSlug) return { w: m.l, l: m.w, d: m.d }
+    if (m.a === aSlug && m.b === bSlug) {
+      return { wins: m.w, losses: m.l, draws: m.d }
+    }
+    if (m.a === bSlug && m.b === aSlug) {
+      return { wins: m.l, losses: m.w, draws: m.d }
+    }
   }
-  return { w: 0, l: 0, d: 0 }
+  return ZERO_REC
 }
 
 // ---- Trend + card mapping --------------------------------------------------
@@ -353,8 +267,8 @@ export class FixtureDataSource implements MetaDataSource {
     }))
   }
 
-  /** Shared core: derive every row, rank presence, then run the selection
-   *  pipeline exactly as the SQL will (topN / min / add / buckets / sort). */
+  /** Shared core: derive every row, then run the shared selection pipeline
+   *  (rank / topN / min / add / tiers / buckets / sort) from derive.ts. */
   private buildReport(
     win: RawWindow,
     q: MetaQuery,
@@ -362,60 +276,11 @@ export class FixtureDataSource implements MetaDataSource {
   ): MetaReportDTO {
     const denom = win.kpis.matches
     const intrinsics = win.archetypes.map(a => deriveIntrinsic(a, denom))
-    const rankMap = presenceRankMap(intrinsics, q.weight)
-
-    // Attach presenceRank; tier filled after we know the displayed field.
-    const rows: ArchetypeRowDTO[] = intrinsics.map(r => ({
-      ...r,
-      presenceRank: rankMap.get(r.slug) ?? 0,
-      tier: null,
-    }))
-
-    const include = new Set(q.includeArchetypes.map(s => String(s)))
-
-    // Selection: non-bucket rows that clear the match floor OR are force-added.
-    const qualified = rows.filter(
-      r => !r.isBucket && (r.matches >= q.minMatches || include.has(r.slug))
-    )
-    // topN by presence weight, then union in any force-added rows outside topN.
-    const byPresence = [...qualified].sort(
-      (a, b) => weightOf(b, q.weight) - weightOf(a, q.weight)
-    )
-    const chosen = new Map<string, ArchetypeRowDTO>()
-    byPresence.slice(0, q.topN).forEach(r => chosen.set(r.slug, r))
-    qualified
-      .filter(r => include.has(r.slug))
-      .forEach(r => chosen.set(r.slug, r))
-
-    let displayed = [...chosen.values()]
-
-    // Tier bands over the displayed non-bucket field (buckets never in tier math).
-    const tiers = assignTiers(
-      displayed.map(r => r.wrLo),
-      displayed.map(() => false)
-    )
-    displayed.forEach((r, i) => {
-      r.tier = tiers[i] as Tier
-    })
-
-    // Buckets appended only when the lens shows them (tier stays null).
-    if (!q.hideBuckets) {
-      displayed = displayed.concat(rows.filter(r => r.isBucket))
-    }
-
-    const sorted = sortRows(displayed, sort, q.weight)
-
-    const shownMatches = sorted.reduce((s, r) => s + r.matches, 0)
-    const otherMatches = Math.max(0, denom - shownMatches)
-    const other =
-      otherMatches > 0
-        ? { share: denom > 0 ? otherMatches / denom : 0, matches: otherMatches }
-        : null
-
+    const { rows, other } = selectReportRows(intrinsics, denom, q, sort)
     return {
       window: { start: asIso(win.start), end: asIso(win.end) },
       kpis: win.kpis,
-      rows: sorted,
+      rows,
       other,
       generatedAt: db.generatedAt,
     }
@@ -565,25 +430,12 @@ export class FixtureDataSource implements MetaDataSource {
     const cells: MatchupCellDTO[] = []
     for (const rowR of ordered) {
       for (const colR of ordered) {
-        if (rowR.slug === colR.slug) {
-          cells.push(
-            buildCell(rowR.slug, colR.slug, rowR.name, colR.name, {
-              w: 0,
-              l: 0,
-              d: 0,
-            })
-          )
-          continue
-        }
-        cells.push(
-          buildCell(
-            rowR.slug,
-            colR.slug,
-            rowR.name,
-            colR.name,
-            lookupMatchup(win.matchups, rowR.slug, colR.slug)
-          )
-        )
+        // Mirror cells are blanked in the UI; keep them zero-filled.
+        const rec =
+          rowR.slug === colR.slug
+            ? ZERO_REC
+            : lookupMatchup(win.matchups, rowR.slug, colR.slug)
+        cells.push(buildCell(rowR.slug, colR.slug, rowR.name, colR.name, rec))
       }
     }
 
@@ -684,5 +536,3 @@ export class FixtureDataSource implements MetaDataSource {
     return null
   }
 }
-
-const DEFAULT_SORT: MetaSort = 'presence'

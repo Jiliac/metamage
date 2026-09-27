@@ -19,19 +19,24 @@ import type {
   TrendPointDTO,
 } from '@/datasource/types'
 import { FixtureDataSource } from '@/datasource/fixtures'
+import { PostgresDataSource } from '@/datasource/postgres'
 
 // ---------------------------------------------------------------------------
 // getDataSource() — the single choke point every page/route imports (blueprint
-// §3). The backend is chosen once by the `DATA_SOURCE` env var and memoized as a
-// module singleton. Today only `fixtures` exists; when Postgres lands, its
-// `PostgresDataSource` is added here behind `DATA_SOURCE=postgres` and NOTHING
-// else changes. Pages must NEVER import a concrete source or a DB client.
+// §3). The backend is chosen once by the `DATA_SOURCE` env var (`fixtures`,
+// the default, serves the committed fixture DB; `postgres` is the live Neon
+// read path; any other value is a hard error) and memoized as a module
+// singleton. Pages must NEVER import a concrete source or a DB client.
+//
+// Both backends are imported statically so the switch below can pick one, so
+// neither module may do work at import time — the Postgres client is created
+// lazily inside `PostgresDataSource` (see postgres/client.ts).
 //
 // WP7: every read is wrapped in `unstable_cache`, keyed on the method name plus
 // the serialized `MetaQuery` (unstable_cache folds the call arguments into the
 // cache key automatically). This gives the combinatorial long-tail of windows +
 // knobs an ISR-style memo per §6/§8-risk-1 without any page-level change, and it
-// is where the future Postgres backend gets its query cache for free. Revalidate
+// is where the Postgres backend gets its query cache for free. Revalidate
 // horizons mirror the §2 route table: report/matrix/tournaments hourly, the
 // format-level metadata (formats list, bans/releases) daily.
 // ---------------------------------------------------------------------------
@@ -42,23 +47,20 @@ const HOUR = 3600
 const DAY = 86_400
 
 function createRawDataSource(): MetaDataSource {
-  const kind = (process.env.DATA_SOURCE ?? 'fixtures') as DataSourceKind
+  const kind = process.env.DATA_SOURCE ?? 'fixtures'
   switch (kind) {
     case 'postgres':
-      // Deferred (blueprint §8): the Postgres read-path lands as a single file
-      // add. Until then, fall back to fixtures rather than crash the app — but
-      // LOUDLY: serving fixture data under DATA_SOURCE=postgres would be a
-      // silent data-integrity failure in production. When PostgresDataSource
-      // exists, replace this fallback with the real source and make an unknown
-      // kind a hard error (tracked in the Postgres migration requirements doc).
-      console.warn(
-        '[datasource] DATA_SOURCE=postgres requested but PostgresDataSource ' +
-          'is not implemented yet — FALLING BACK TO FIXTURE DATA.'
-      )
-      return new FixtureDataSource()
+      // The live-data read path. The constructor throws if
+      // TOURNAMENT_DATABASE_URL is unset — a loud configuration failure is the
+      // designed behavior (serving fixtures under DATA_SOURCE=postgres would
+      // be a silent data-integrity failure).
+      return new PostgresDataSource()
     case 'fixtures':
-    default:
       return new FixtureDataSource()
+    default:
+      throw new Error(
+        `[datasource] Unknown DATA_SOURCE '${kind}' — expected 'fixtures' or 'postgres'.`
+      )
   }
 }
 

@@ -196,14 +196,23 @@ function intField(
   return Math.min(max, Math.max(min, n))
 }
 
+/** The canonical archetype slug discipline: lowercase alphanumerics joined by
+ *  single hyphens, no leading/trailing hyphen. Shared by the `?add` parser and
+ *  the `[slug]` route guard so malformed slugs never reach a data source. */
+export const ARCHETYPE_SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+
+/** True when `raw` is a well-formed archetype slug. */
+export function isArchetypeSlug(raw: string): boolean {
+  return ARCHETYPE_SLUG_RE.test(raw)
+}
+
 function parseAdd(raw: string | undefined): ArchetypeSlug[] {
   if (!raw) return []
-  const slugRe = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
   const seen = new Set<string>()
   const out: ArchetypeSlug[] = []
   for (const part of raw.split(',')) {
     const s = part.trim().toLowerCase()
-    if (s && slugRe.test(s) && !seen.has(s)) {
+    if (s && isArchetypeSlug(s) && !seen.has(s)) {
       seen.add(s)
       out.push(asArchetypeSlug(s))
       if (out.length >= CLAMP.add.max) break

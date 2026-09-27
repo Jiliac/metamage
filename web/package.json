@@ -11,7 +11,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "gen:fixtures": "tsx scripts/gen-fixtures.ts"
+    "gen:fixtures": "tsx scripts/gen-fixtures.ts",
+    "gen:art": "tsx scripts/gen-archetype-art.ts",
+    "gen:art:fill": "tsx scripts/gen-archetype-art.ts --fill-gaps"
   },
   "dependencies": {
     "@radix-ui/react-collapsible": "^1.1.12",
@@ -26,6 +28,7 @@
     "lucide-react": "^0.542.0",
     "next": "15.5.2",
     "next-themes": "^0.4.6",
+    "postgres": "^3.4.9",
     "posthog-js": "^1.260.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",

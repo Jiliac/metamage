@@ -31,7 +31,7 @@ import { MatchupMatrix } from '@/components/charts/MatchupMatrix'
 // Meta overview landing (WP5). All RSC: parse the lens once, resolve the data
 // source, compose per the SPIKE order —
 //   LensBar → editorial headline + KPI grid → 'Top of the field' DeckTile grid
-//   → MetaTable panel → scatter panel → matrix hero (notched gold frame)
+//   → matrix hero (notched gold frame) → MetaTable panel → scatter panel
 //   → footer.
 // Empty window → LensBar + EmptyState (§5).
 // ---------------------------------------------------------------------------
@@ -275,6 +275,28 @@ export default async function MetaOverviewPage({
         </div>
       </section>
 
+      {/* ---- MATCHUP MATRIX — hero inside the notched gold frame (§9 rule 4) ---- */}
+      <section className="mt-14">
+        <p className="eyebrow mb-1.5">The moat</p>
+        <h2 className="font-display text-[23px] font-bold">Matchup matrix</h2>
+        <p className="mt-0.5 text-[13.5px] text-ink-2">
+          Row beats column. Ink density is confidence — pale cells are small
+          samples; a dash means fewer than five matches. Nobody else publishes
+          this.
+        </p>
+        <div
+          className="clip-notch-lg mt-4 p-px"
+          style={{
+            background:
+              'linear-gradient(160deg, var(--gold-soft), var(--line-strong) 40%, var(--gold-soft))',
+          }}
+        >
+          <div className="clip-notch-lg bg-surface p-5">
+            <MatchupMatrixHero query={query} n={matrixTopN} />
+          </div>
+        </div>
+      </section>
+
       {/* ---- THE FIELD, RANKED — MetaTable ---- */}
       <section className="mt-14">
         <p className="eyebrow mb-1.5">Presence &amp; performance</p>
@@ -309,28 +331,6 @@ export default async function MetaOverviewPage({
         </p>
         <div className="mt-4 border border-line bg-surface shadow-ledger">
           <WrPresenceScatter rows={report.rows} />
-        </div>
-      </section>
-
-      {/* ---- MATCHUP MATRIX — hero inside the notched gold frame (§9 rule 4) ---- */}
-      <section className="mt-14">
-        <p className="eyebrow mb-1.5">The moat</p>
-        <h2 className="font-display text-[23px] font-bold">Matchup matrix</h2>
-        <p className="mt-0.5 text-[13.5px] text-ink-2">
-          Row beats column. Ink density is confidence — pale cells are small
-          samples; a dash means fewer than five matches. Nobody else publishes
-          this.
-        </p>
-        <div
-          className="clip-notch-lg mt-4 p-px"
-          style={{
-            background:
-              'linear-gradient(160deg, var(--gold-soft), var(--line-strong) 40%, var(--gold-soft))',
-          }}
-        >
-          <div className="clip-notch-lg bg-surface p-5">
-            <MatchupMatrixHero query={query} n={matrixTopN} />
-          </div>
         </div>
       </section>
 

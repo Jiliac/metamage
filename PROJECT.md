@@ -131,6 +131,10 @@ Core tables include:
 - **Ingestion Pipeline** populates database from tournament data sources
 - **All components** share the same SQLite database and data model
 
+## Documented Solutions
+
+`docs/solutions/` — documented solutions to past problems (bugs, best practices, workflow patterns), organized by category with YAML frontmatter (`module`, `tags`, `problem_type`). Relevant when implementing or debugging in documented areas. `CONCEPTS.md` at the repo root holds the shared domain vocabulary (entities, named processes, status concepts) — relevant when orienting to the codebase or discussing domain concepts.
+
 ## Configuration
 
 Key environment variables:
