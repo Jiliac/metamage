@@ -7,15 +7,20 @@ import {
 } from '@/components/ui/popover'
 import {
   asIsoDate,
+  DEFAULT_WINDOW_CHIP,
+  DEFAULT_WINDOW_LABEL,
+  defaultWindow,
   expandPreset,
   isValidIsoDate,
+  matchWindowChip,
   PRESETS,
   PRESET_LABELS,
+  type WindowChip,
 } from '@/lib/params'
 import { cn } from '@/lib/utils'
 import { useMetaParams } from '@/hooks/useMetaParams'
 
-import { knobClass } from './styles'
+import { chipActiveClass, knobClass } from './styles'
 
 // ---------------------------------------------------------------------------
 // WindowPicker — the "Window Jun 1 → Jun 30" knob (§9 spike). Opens a popover
@@ -51,12 +56,15 @@ function windowLabel(start: string, end: string): string {
   return `${formatDay(start)} → ${formatDay(end)}`
 }
 
+const chipClass = 'px-2.5 py-1 text-[12px]'
+
 const dateInputClass =
   'border border-line bg-bg text-ink px-2 py-1 text-[13px] font-mono w-full ' +
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold'
 
 export function WindowPicker() {
   const { query, setParams } = useMetaParams()
+  const activeChip: WindowChip | undefined = matchWindowChip(query)
 
   return (
     <Popover>
@@ -74,13 +82,41 @@ export function WindowPicker() {
       >
         <div className="grid gap-3">
           <div>
-            <p className="eyebrow mb-2">Presets</p>
+            <p className="eyebrow mb-2">
+              Presets{' '}
+              <span
+                className="text-ink-3"
+                title="Windows use UTC calendar days, so the end date can differ from your local date"
+              >
+                (UTC)
+              </span>
+            </p>
             <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                aria-pressed={activeChip === DEFAULT_WINDOW_CHIP}
+                className={cn(
+                  knobClass,
+                  chipClass,
+                  activeChip === DEFAULT_WINDOW_CHIP && chipActiveClass
+                )}
+                onClick={() => {
+                  const w = defaultWindow()
+                  setParams({ start: w.start, end: w.end })
+                }}
+              >
+                {DEFAULT_WINDOW_LABEL}
+              </button>
               {PRESETS.map(p => (
                 <button
                   key={p}
                   type="button"
-                  className={cn(knobClass, 'px-2.5 py-1 text-[12px]')}
+                  aria-pressed={activeChip === p}
+                  className={cn(
+                    knobClass,
+                    chipClass,
+                    activeChip === p && chipActiveClass
+                  )}
                   onClick={() => {
                     const w = expandPreset(p)
                     setParams({ start: w.start, end: w.end })

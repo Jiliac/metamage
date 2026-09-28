@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     template: '%s | MetaMage',
   },
   description:
-    'Self-serve Magic: The Gathering tournament metagame explorer — presence, win rates, matchup matrices, and tiers by format.',
+    'Self-serve Magic: The Gathering tournament metagame explorer — presence, win rates, and matchup matrices by format.',
   icons: {
     icon: [
       { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },

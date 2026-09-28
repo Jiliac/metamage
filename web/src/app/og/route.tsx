@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og'
 import { getDataSource } from '@/datasource'
+import { DEFAULT_FORMAT } from '@/datasource/format-order'
 import type { ArchetypeRowDTO, FormatDTO } from '@/datasource/types'
 import { asArchetypeSlug, parseMatrixTopN, parseMetaQuery } from '@/lib/params'
 import { toManaColors, type ManaColor } from '@/components/ManaPips'
@@ -424,7 +425,7 @@ export async function GET(req: Request): Promise<ImageResponse> {
     const { searchParams } = new URL(req.url)
     // Normalize the slug (casing variants arrive from hand-typed share URLs);
     // an unknown format falls through to the generic fallback card via catch.
-    const format = (searchParams.get('format') ?? 'standard')
+    const format = (searchParams.get('format') ?? DEFAULT_FORMAT)
       .trim()
       .toLowerCase()
     const view = searchParams.get('view') ?? 'meta'

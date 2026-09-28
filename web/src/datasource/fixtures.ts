@@ -22,6 +22,7 @@ import type {
 import { parseSort, type SearchParamsInput } from '@/lib/params'
 import type { MetaSort } from '@/datasource/types'
 import { winrateCi, wr as wrOf, wrExclDraws, type WLD } from '@/lib/stats'
+import { sortFormats } from '@/datasource/format-order'
 import {
   DEFAULT_SORT,
   buildCell,
@@ -260,11 +261,13 @@ function emptyKpis(): WindowKpisDTO {
 
 export class FixtureDataSource implements MetaDataSource {
   async listFormats(): Promise<FormatDTO[]> {
-    return db.formats.map(f => ({
-      slug: f.slug as FormatSlug,
-      name: f.name,
-      displayName: f.displayName,
-    }))
+    return sortFormats(
+      db.formats.map(f => ({
+        slug: f.slug as FormatSlug,
+        name: f.name,
+        displayName: f.displayName,
+      }))
+    )
   }
 
   /** Shared core: derive every row, then run the shared selection pipeline

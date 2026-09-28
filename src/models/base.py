@@ -122,6 +122,34 @@ def get_session_factory():
     return sessionmaker(bind=get_engine())
 
 
+def _build_write_url():
+    """TOURNAMENT_DATABASE_WRITE_URL, scheme-normalized; None when unset."""
+    write_url = os.getenv("TOURNAMENT_DATABASE_WRITE_URL")
+    if write_url and write_url.startswith("postgres://"):
+        write_url = "postgresql://" + write_url[len("postgres://") :]
+    return write_url or None
+
+
+def get_write_engine():
+    """
+    Create a write-enabled engine for loaders (e.g. reference data).
+
+    Uses TOURNAMENT_DATABASE_WRITE_URL when set, else the read URL. On
+    Postgres the read URL is a SELECT-only role, so that fallback warns.
+    """
+    write_url = _build_write_url()
+    if write_url:
+        return _create_engine(write_url)
+    fallback_url = _build_database_url()
+    if _is_postgres(fallback_url):
+        logger.warning(
+            "TOURNAMENT_DATABASE_WRITE_URL is not set while using Postgres; "
+            "writing through the read URL, which is SELECT-only and will fail "
+            "with 'permission denied'. Set a dedicated write URL."
+        )
+    return _create_engine(fallback_url)
+
+
 def get_alias_write_engine():
     """
     Create a write-enabled engine used ONLY for archetype_aliases operations.
@@ -130,10 +158,8 @@ def get_alias_write_engine():
     guard is applied separately at the MCP layer). On Postgres, wire this to a
     role that retains INSERT on archetype_aliases via a dedicated write URL.
     """
-    write_url = os.getenv("TOURNAMENT_DATABASE_WRITE_URL")
+    write_url = _build_write_url()
     if write_url:
-        if write_url.startswith("postgres://"):
-            write_url = "postgresql://" + write_url[len("postgres://") :]
         return _create_engine(write_url)
     fallback_url = _build_database_url()
     if _is_postgres(fallback_url):

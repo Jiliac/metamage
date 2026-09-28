@@ -68,8 +68,9 @@ export function formatDto(name: string): FormatDTO {
 /** The DTO's art payload for one archetype, or null when the map has no
  *  entry (buckets, brand-new archetypes → the UI's gradient fallback).
  *
- *  The map is generated offline by scripts/gen-archetype-art.ts (most-played
- *  non-land main-deck card per archetype + Scryfall art_crop), keyed format
+ *  The map is generated offline by scripts/gen-archetype-art.ts (most
+ *  distinctive card per archetype, see scripts/signature-card.ts, + Scryfall
+ *  art_crop), keyed format
  *  name → archetype slug → { cardName, artCropUrl|null }. It is a static
  *  import — no runtime Scryfall calls (§9 contract amendment: only the OG
  *  route stays asset-embedded). */
