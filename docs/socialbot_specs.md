@@ -38,9 +38,11 @@ Add a new table in the Ops DB:
   - **session_id** (uuid|null) — FK to chat_sessions.id for traceability
 
 Uniqueness:
+
 - UniqueConstraint(platform, post_uri, actor_id, reason)
 
 Useful indices:
+
 - (platform, status, indexed_at)
 
 ## Platform-agnostic Client Interface
@@ -79,9 +81,11 @@ Endpoints used:
       - `reply`: `{ "root": {"uri","cid"}, "parent": {"uri","cid"} }`
 
 Authentication:
+
 - Store `accessJwt`, `refreshJwt`, `did` from `createSession`.
 
 Self-check:
+
 - “Ignore if actor DID == your DID.” This means: skip notifications where `actor_id` (who mentioned you) equals your own account’s DID to avoid loops and self-replies.
 
 ## Server Loop
@@ -92,11 +96,11 @@ Self-check:
   - Optionally store `last_processed_time = latest indexedAt seen`.
 
 - Poll every N seconds (default 30):
-  1) `list_notifications(cursor)`
-  2) Upsert rows into `social_notifications`
+  1. `list_notifications(cursor)`
+  2. Upsert rows into `social_notifications`
      - If `actor_id == our DID`, set `status="skipped"` and `is_self=True`.
      - Otherwise `status="pending"`.
-  3) Update `cursor` in the pass record.
+  3. Update `cursor` in the pass record.
 
 - Processing:
   - Select oldest `pending` notification for platform "bluesky".

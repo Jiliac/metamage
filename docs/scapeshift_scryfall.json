@@ -2,9 +2,7 @@
   "object": "card",
   "id": "175e21a3-00f7-4c51-8a8e-fbfd7089efda",
   "oracle_id": "c235015e-a7a9-4f8d-bf4a-cf68b3847f83",
-  "multiverse_ids": [
-    447337
-  ],
+  "multiverse_ids": [447337],
   "mtgo_id": 68563,
   "arena_id": 68082,
   "tcgplayer_id": 168720,
@@ -29,12 +27,8 @@
   "cmc": 4.0,
   "type_line": "Sorcery",
   "oracle_text": "Sacrifice any number of lands. Search your library for up to that many land cards, put them onto the battlefield tapped, then shuffle.",
-  "colors": [
-    "G"
-  ],
-  "color_identity": [
-    "G"
-  ],
+  "colors": ["G"],
+  "color_identity": ["G"],
   "keywords": [],
   "legalities": {
     "standard": "not_legal",
@@ -59,19 +53,12 @@
     "premodern": "not_legal",
     "predh": "legal"
   },
-  "games": [
-    "arena",
-    "paper",
-    "mtgo"
-  ],
+  "games": ["arena", "paper", "mtgo"],
   "reserved": false,
   "game_changer": false,
   "foil": true,
   "nonfoil": true,
-  "finishes": [
-    "nonfoil",
-    "foil"
-  ],
+  "finishes": ["nonfoil", "foil"],
   "oversized": false,
   "promo": false,
   "reprint": true,
@@ -91,9 +78,7 @@
   "flavor_text": "\"Whether we like it or not, our arrival has altered the landscape.\"\n—Malcolm, navigator of the *Belligerent*",
   "card_back_id": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
   "artist": "Daniel Ljunggren",
-  "artist_ids": [
-    "0fbd4798-76eb-46d5-a5d4-1e3a25870e34"
-  ],
+  "artist_ids": ["0fbd4798-76eb-46d5-a5d4-1e3a25870e34"],
   "illustration_id": "7a2be6f1-008b-47e5-b3e7-61b846d77a76",
   "border_color": "black",
   "frame": "2015",

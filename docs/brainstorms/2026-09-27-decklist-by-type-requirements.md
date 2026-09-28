@@ -56,7 +56,7 @@ back the per-player decklist on the
 
 ## Scope notes
 
-- The archetype page shows an *aggregate* list (avg copies, % of decks). Decide
+- The archetype page shows an _aggregate_ list (avg copies, % of decks). Decide
   in planning whether the grouped view is (a) the aggregate table split into
   type sections, (b) a synthesized "average/representative decklist" (e.g.
   the cards in ≥50% of decks at their modal count), or both. (b) is what

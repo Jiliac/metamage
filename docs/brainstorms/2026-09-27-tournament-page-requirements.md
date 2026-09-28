@@ -42,14 +42,14 @@ answers "which events fed this window".
 
 Checked against `src/models/tournament.py` on 2026-09-27:
 
-| Need | Available? |
-|---|---|
-| Tournament name, date, source, link | ✅ `tournaments` |
-| Standings: rank, W/L/D, player, archetype | ✅ `tournament_entries` (`rank`, `wins`, `losses`, `draws`) |
-| Decklist per player | ✅ `deck_cards` (`entry_id`, `board`, `count`) |
-| Per-player matches + opponent | ✅ `matches` (`entry_id`, `opponent_entry_id`, `result`, `pair_id`) |
-| **Round number / match order** | ❌ not stored — `matches` has no round column. The raw source has rounds (see `docs/tournament_rounds_sample.json`); ingest drops them. |
-| Top-8 bracket vs. Swiss split | ❌ same gap as above |
+| Need                                      | Available?                                                                                                                              |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Tournament name, date, source, link       | ✅ `tournaments`                                                                                                                        |
+| Standings: rank, W/L/D, player, archetype | ✅ `tournament_entries` (`rank`, `wins`, `losses`, `draws`)                                                                             |
+| Decklist per player                       | ✅ `deck_cards` (`entry_id`, `board`, `count`)                                                                                          |
+| Per-player matches + opponent             | ✅ `matches` (`entry_id`, `opponent_entry_id`, `result`, `pair_id`)                                                                     |
+| **Round number / match order**            | ❌ not stored — `matches` has no round column. The raw source has rounds (see `docs/tournament_rounds_sample.json`); ingest drops them. |
+| Top-8 bracket vs. Swiss split             | ❌ same gap as above                                                                                                                    |
 
 **Open question for planning:** do we show matches unordered (cheap, works
 today), or add a `round` column to `matches` + backfill so we can show

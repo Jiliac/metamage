@@ -15,7 +15,17 @@ resolution_type: code_fix
 framework_version: "next.js 15.5.2"
 related_components:
   - database
-tags: [postgres, window-function, correlated-subquery, query-performance, nextjs, datasource, neon, archetype]
+tags:
+  [
+    postgres,
+    window-function,
+    correlated-subquery,
+    query-performance,
+    nextjs,
+    datasource,
+    neon,
+    archetype,
+  ]
 ---
 
 # Archetype detail pages 5x slow — correlated per-row subquery in PLAYER_RECORDS_SQL
@@ -32,9 +42,9 @@ Archetype detail pages on the metamage web explorer (Next.js App Router backed b
 
 ## What Didn't Work
 
-- **Index tweaks** — `tournament_entries` already carries the right indexes (`player_id`, `(tournament_id, player_id)`, `archetype_id`); the problem is *how many times* the probe runs, not how fast one probe runs.
+- **Index tweaks** — `tournament_entries` already carries the right indexes (`player_id`, `(tournament_id, player_id)`, `archetype_id`); the problem is _how many times_ the probe runs, not how fast one probe runs.
 - **Caching / `revalidate`** — `revalidate = 3600` on the page (`web/src/app/meta/[format]/archetype/[slug]/page.tsx:51`) masks repeat visits only; every cold regeneration still pays the full query cost. (Session history note: this fix explicitly rejected "add a spinner and move on" — the spinner shipped too, but the real fix is at the SQL level.)
-- **A CTE rewrite without the window function** — a plain `count(*)` CTE grouped by `(player_id, archetype_id)` re-scanned the CTE per row and measured *slower* (~8.4 s once) than the original; only the `count(*) OVER (PARTITION BY ...)` window form eliminates the per-row work.
+- **A CTE rewrite without the window function** — a plain `count(*)` CTE grouped by `(player_id, archetype_id)` re-scanned the CTE per row and measured _slower_ (~8.4 s once) than the original; only the `count(*) OVER (PARTITION BY ...)` window form eliminates the per-row work.
 
 ## Solution
 
@@ -63,7 +73,7 @@ const PLAYER_RECORDS_SQL = (formatId, start, end) => sql`
   from counted c
   join matches m on m.entry_id = c.id
   group by c.archetype_id, c.player_id
-`
+`;
 ```
 
 Before (correlated form, same semantics):
