@@ -11,6 +11,7 @@ import type {
   MetaReportDTO,
 } from '@/datasource/types'
 import {
+  buildArchetypeHrefs,
   buildHref,
   defaultWindow,
   parseMetaQuery,
@@ -104,7 +105,7 @@ export async function generateMetadata({
     query,
     sort,
     title: `${name} Metagame`,
-    description: `Presence, win rates, tiers and the matchup matrix for the ${name} metagame.`,
+    description: `Presence, win rates and the matchup matrix for the ${name} metagame.`,
   })
 }
 
@@ -338,7 +339,10 @@ export default async function MetaOverviewPage({
           supports.
         </p>
         <div className="mt-4 border border-line bg-surface shadow-ledger">
-          <WrPresenceScatter rows={report.rows} />
+          <WrPresenceScatter
+            rows={report.rows}
+            rowHref={buildArchetypeHrefs(query.format, query, report.rows)}
+          />
         </div>
       </section>
 

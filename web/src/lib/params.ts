@@ -48,7 +48,8 @@ const CLAMP = {
 // ---- zod schemas for the enumerated knobs (invalid input → default) ----
 const weightSchema = z.enum(['match', 'entry']).catch(DEFAULTS.weight)
 const bucketsSchema = z.enum(['hide', 'show']).catch('hide')
-const sortSchema = z.enum(['presence', 'wrlo', 'tier']).catch(DEFAULTS.sort)
+// Legacy `?sort=tier` (tier column removed) falls through `.catch` → default.
+const sortSchema = z.enum(['presence', 'wrlo']).catch(DEFAULTS.sort)
 
 // ---------------------------------------------------------------------------
 // searchParams reader — accepts either a URLSearchParams (client) or the plain
@@ -116,29 +117,40 @@ export function defaultWindow(now: Date = new Date()): {
 }
 
 // ---- Preset expansion (UI sugar → start/end; never stored in the URL) ----
+//
+// Presets are rolling windows that END TODAY (inclusive; "today" is the UTC
+// calendar day of `now`):
+//   - `last-Nd` → the N calendar days ending today: start = today − (N − 1).
+//                 "Last 7 days" on Sep 27 is Sep 21 → Sep 27.
+//   - `last-Nm` → start = (same day-of-month N months back) + 1 day, so the
+//                 window spans exactly N months without double-counting the
+//                 anniversary day. If that day doesn't exist in the target
+//                 month it is clamped to the month's last day before the +1
+//                 (May 31 − 3 months → "Feb 31" → Feb 28 → +1 = Mar 1).
+//                 "Last 3 months" on Sep 27 is Jun 28 → Sep 27.
 export const PRESETS = [
-  'this-month',
-  'last-month',
-  'last-3-months',
-  'last-6-months',
-  'ytd',
-  'q1',
-  'q2',
-  'q3',
-  'q4',
+  'last-7d',
+  'last-14d',
+  'last-30d',
+  'last-3m',
+  'last-6m',
 ] as const
 export type Preset = (typeof PRESETS)[number]
 
 export const PRESET_LABELS: Record<Preset, string> = {
-  'this-month': 'This month',
-  'last-month': 'Last month',
-  'last-3-months': 'Last 3 months',
-  'last-6-months': 'Last 6 months',
-  ytd: 'Year to date',
-  q1: 'Q1',
-  q2: 'Q2',
-  q3: 'Q3',
-  q4: 'Q4',
+  'last-7d': 'Last 7 days',
+  'last-14d': 'Last 14 days',
+  'last-30d': 'Last 30 days',
+  'last-3m': 'Last 3 months',
+  'last-6m': 'Last 6 months',
+}
+
+const PRESET_SPANS: Record<Preset, { days: number } | { months: number }> = {
+  'last-7d': { days: 7 },
+  'last-14d': { days: 14 },
+  'last-30d': { days: 30 },
+  'last-3m': { months: 3 },
+  'last-6m': { months: 6 },
 }
 
 /** Expand a preset chip into an explicit inclusive `{ start, end }` window. */
@@ -148,36 +160,54 @@ export function expandPreset(
 ): { start: IsoDate; end: IsoDate } {
   const y = now.getUTCFullYear()
   const m = now.getUTCMonth()
-  const monthWindow = (year: number, month: number) => ({
-    start: toIso(new Date(Date.UTC(year, month, 1))),
-    end: toIso(new Date(Date.UTC(year, month + 1, 0))),
-  })
-  switch (preset) {
-    case 'this-month':
-      return monthWindow(y, m)
-    case 'last-month':
-      return monthWindow(y, m - 1)
-    case 'last-3-months':
-      return {
-        start: toIso(new Date(Date.UTC(y, m - 2, 1))),
-        end: toIso(new Date(Date.UTC(y, m + 1, 0))),
-      }
-    case 'last-6-months':
-      return {
-        start: toIso(new Date(Date.UTC(y, m - 5, 1))),
-        end: toIso(new Date(Date.UTC(y, m + 1, 0))),
-      }
-    case 'ytd':
-      return { start: toIso(new Date(Date.UTC(y, 0, 1))), end: toIso(now) }
-    case 'q1':
-      return { start: toIso(new Date(Date.UTC(y, 0, 1))), end: toIso(new Date(Date.UTC(y, 3, 0))) } // prettier-ignore
-    case 'q2':
-      return { start: toIso(new Date(Date.UTC(y, 3, 1))), end: toIso(new Date(Date.UTC(y, 6, 0))) } // prettier-ignore
-    case 'q3':
-      return { start: toIso(new Date(Date.UTC(y, 6, 1))), end: toIso(new Date(Date.UTC(y, 9, 0))) } // prettier-ignore
-    case 'q4':
-      return { start: toIso(new Date(Date.UTC(y, 9, 1))), end: toIso(new Date(Date.UTC(y, 12, 0))) } // prettier-ignore
+  const d = now.getUTCDate()
+  const span = PRESET_SPANS[preset]
+  let start: Date
+  if ('days' in span) {
+    start = new Date(Date.UTC(y, m, d - (span.days - 1)))
+  } else {
+    // Clamp the day-of-month into the target month, then step one day forward.
+    const targetMonthLastDay = new Date(
+      Date.UTC(y, m - span.months + 1, 0)
+    ).getUTCDate()
+    start = new Date(
+      Date.UTC(y, m - span.months, Math.min(d, targetMonthLastDay) + 1)
+    )
   }
+  return { start: toIso(start), end: toIso(new Date(Date.UTC(y, m, d))) }
+}
+
+/** The preset whose expansion equals `{ start, end }` as of `now`, if any. */
+export function matchPreset(
+  window: { start: string; end: string },
+  now: Date = requestNow()
+): Preset | undefined {
+  return PRESETS.find(p => {
+    const w = expandPreset(p, now)
+    return w.start === window.start && w.end === window.end
+  })
+}
+
+// ---- Default-window chip ("This month") ----
+//
+// Returns the picker to `defaultWindow` (the current UTC calendar month). On
+// the last day of a 30-day month "Last 30 days" expands to the same window, so
+// `matchWindowChip` checks the default first: that window is the canonical
+// landing (omitted from the URL), and highlighting both chips would be noise.
+export const DEFAULT_WINDOW_CHIP = 'this-month'
+export const DEFAULT_WINDOW_LABEL = 'This month'
+export type WindowChip = typeof DEFAULT_WINDOW_CHIP | Preset
+
+/** The chip to highlight for `{ start, end }` as of `now` (default first). */
+export function matchWindowChip(
+  window: { start: string; end: string },
+  now: Date = requestNow()
+): WindowChip | undefined {
+  const def = defaultWindow(now)
+  if (window.start === def.start && window.end === def.end) {
+    return DEFAULT_WINDOW_CHIP
+  }
+  return matchPreset(window, now)
 }
 
 // ---- Numeric field: coerce → clamp → default on garbage ----
@@ -369,4 +399,28 @@ export function buildHref(
   const qs = params.toString()
   const base = `/meta/${format}${opts.path ?? ''}`
   return qs ? `${base}?${qs}` : base
+}
+
+/**
+ * slug → archetype-detail href for every linkable row, preserving the lens.
+ * Buckets ("unknown"/"conflict") have no detail page — the archetype route's
+ * `generateStaticParams` and `MetaTable` never link them — so they get no entry.
+ */
+export function buildArchetypeHrefs(
+  format: FormatSlug | string,
+  query: MetaQuery,
+  rows: ReadonlyArray<{ slug: string; isBucket: boolean }>,
+  opts: Pick<BuildHrefOpts, 'now'> = {}
+): Record<string, string> {
+  return Object.fromEntries(
+    rows
+      .filter(r => !r.isBucket)
+      .map(r => [
+        String(r.slug),
+        buildHref(format, query, {
+          path: `/archetype/${r.slug}`,
+          now: opts.now,
+        }),
+      ])
+  )
 }

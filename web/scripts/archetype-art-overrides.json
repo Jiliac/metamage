@@ -1,0 +1,24 @@
+{
+  "_comment": "Manual signature-card overrides for gen-archetype-art.ts, applied after the distinctiveness heuristic. Keyed format name -> lowercase DB archetype name -> card name (as stored in the cards table). Use only where the heuristic picks a technically-distinctive but unrecognisable card.",
+  "modern": {
+    "prowess": "monastery swiftspear"
+  },
+  "legacy": {
+    "dimir tempo": "tamiyo, inquisitive student // tamiyo, seasoned scholar",
+    "grixis reanimator": "reanimate",
+    "eldrazi": "thought-knot seer"
+  },
+  "pauper": {
+    "red madness": "fiery temper",
+    "gruul ponza": "mwonvuli acid-moss",
+    "mono blue faeries": "spellstutter sprite"
+  },
+  "standard": {
+    "selesnya landfall": "sazh's chocobo"
+  },
+  "vintage": {
+    "countervine": "vengevine",
+    "lurrus po": "paradoxical outcome",
+    "other lurrus": "lurrus of the dream-den"
+  }
+}

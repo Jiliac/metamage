@@ -29,6 +29,7 @@ import {
   type IntrinsicRow,
 } from '@/datasource/derive'
 import { db } from '@/datasource/postgres/client'
+import { sortFormats } from '@/datasource/format-order'
 import {
   loadArchetypes,
   loadFormatId,
@@ -199,7 +200,7 @@ export class PostgresDataSource implements MetaDataSource {
 
   async listFormats(): Promise<FormatDTO[]> {
     const rows = await FORMATS_SQL()
-    return rows.map(r => formatDto(r.name))
+    return sortFormats(rows.map(r => formatDto(r.name)))
   }
 
   /** The latest populated calendar month (see LATEST_WINDOW_SQL), or null

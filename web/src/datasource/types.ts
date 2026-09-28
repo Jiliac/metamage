@@ -4,9 +4,10 @@ export type ArchetypeSlug = string & { readonly __brand: 'ArchetypeSlug' }
 export type IsoDate = string & { readonly __brand: 'IsoDate' } // 'YYYY-MM-DD'
 
 // ---- Table sort key (the sortable column on the MetaTable) ----
-// `presence` → presenceRank/share, `wrlo` → clustered wrLo (canonical moat),
-// `tier` → std-dev tier band. Default is `presence`.
-export type MetaSort = 'presence' | 'wrlo' | 'tier'
+// `presence` → presenceRank/share, `wrlo` → clustered wrLo (canonical moat).
+// Default is `presence`. (`tier` was dropped with the table's Tier column; old
+// `?sort=tier` URLs fall back to the default in parseSort.)
+export type MetaSort = 'presence' | 'wrlo'
 
 // ---- The lens: single source of truth, parsed from searchParams ----
 export type MetaQuery = {

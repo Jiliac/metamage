@@ -25,21 +25,20 @@ import type {
 // ---------------------------------------------------------------------------
 // MetaTable — the ledger, ranked (§6, §9). A tanstack table over
 // ArchetypeRowDTO[] wearing the spike's `.ledger` treatment: uppercase tracked
-// headers, a numbered rank index, a 58×36 art thumb, mana pips + name link
-// (buildHref preserves the lens), a tier chip, a gold sharebar with a gold cap,
-// a CI-toned win rate, the interval, the record, and match count. Server-
+// headers, a numbered rank index, a 60×40 signature-card art thumb (sm+), mana
+// pips + name link (buildHref preserves the lens), a gold sharebar with a gold
+// cap, a CI-toned win rate, the interval, the record, and match count. Server-
 // renderable shell; sorting is client-side. A footer strip surfaces the hidden
 // buckets and the below-floor reveal.
 // ---------------------------------------------------------------------------
 
 const pct1 = (x: number) => `${(x * 100).toFixed(1)}%`
 const RIGHT = new Set(['wrlo', 'ci', 'record', 'matches'])
-const SORTABLE = new Set(['rank', 'tier', 'share', 'wrlo', 'matches'])
-// Columns collapsed away below `md` (R12): tier and share are luxuries; the
-// standalone CI column folds into the wrlo cell as a second line so the
-// interval renders exactly once at every width (KTD6).
+const SORTABLE = new Set(['rank', 'share', 'wrlo', 'matches'])
+// Columns collapsed away below `md` (R12): share is a luxury; the standalone
+// CI column folds into the wrlo cell as a second line so the interval renders
+// exactly once at every width (KTD6).
 const HIDE_BELOW_MD: Record<string, true> = {
-  tier: true,
   share: true,
   ci: true,
 }
@@ -57,7 +56,6 @@ const STICKY_NAME =
 // invariant), instead of intermixing on a client-seeded wrlo/desc re-sort.
 const SORT_ACCESSOR: Record<string, (r: ArchetypeRowDTO) => number> = {
   rank: r => r.presenceRank,
-  tier: r => r.tier ?? Number.POSITIVE_INFINITY,
   share: r => r.share,
   wrlo: r => r.wrLo,
   matches: r => r.matches,
@@ -80,31 +78,9 @@ function initialSorting(sort: MetaSort | undefined): SortingState {
   switch (sort) {
     case 'wrlo':
       return [{ id: 'wrlo', desc: true }]
-    case 'tier':
-      return [{ id: 'tier', desc: false }]
     default:
       return [{ id: 'rank', desc: false }]
   }
-}
-
-function TierChip({ tier }: { tier: ArchetypeRowDTO['tier'] }) {
-  if (tier === null) return <span className="text-ink-3">—</span>
-  const filled = tier <= 1
-  const outline = tier === 1.5
-  return (
-    <span
-      className={cn(
-        'inline-block border px-2 py-0.5 text-[10.5px] font-bold tracking-[0.08em] whitespace-nowrap',
-        filled && 'bg-gold border-gold text-bg',
-        outline && 'border-gold-soft text-gold',
-        !filled && !outline && 'border-line-strong text-ink-3'
-      )}
-    >
-      {/* Display bands 1-based (best = T1) to match the spike + MTG convention;
-          the stored band stays 0-based for the tier math (§9, no "T0"). */}
-      T{tier + 1}
-    </span>
-  )
 }
 
 function ShareBar({ share, max }: { share: number; max: number }) {
@@ -138,8 +114,10 @@ function NameCell({
   })
   return (
     <div className="flex items-center gap-2.5">
+      {/* Signature-card thumb (same art + mana-gradient fallback as DeckTile).
+          Hidden below `sm` so the table doesn't get wider on phones. */}
       <span
-        className="border-line-strong bg-raised relative block h-9 w-[58px] flex-none overflow-hidden rounded-[4px] border"
+        className="border-line-strong bg-raised relative hidden h-10 w-[60px] flex-none overflow-hidden rounded-[4px] border sm:block"
         aria-hidden
       >
         <ArtCrop
@@ -147,7 +125,7 @@ function NameCell({
           colors={row.color}
           cardName={row.art?.cardName}
           radius={4}
-          sizes="58px"
+          sizes="60px"
         />
       </span>
       <ManaPips colors={row.color} />
@@ -244,12 +222,6 @@ export function MetaTable({
         cell: ({ row }) => (
           <NameCell row={row.original} query={query} format={fmt} />
         ),
-      },
-      {
-        id: 'tier',
-        header: 'Tier',
-        accessorFn: r => r.tier ?? Number.POSITIVE_INFINITY,
-        cell: ({ row }) => <TierChip tier={row.original.tier} />,
       },
       {
         id: 'share',
@@ -463,9 +435,6 @@ export function MetaTable({
                   )}
                 >
                   Other (collapsed tail)
-                </td>
-                <td className="border-line border-b px-3.5 py-[7px] hidden md:table-cell">
-                  —
                 </td>
                 <td className="border-line border-b px-3.5 py-[7px] hidden md:table-cell">
                   <ShareBar share={other.share} max={maxShare} />

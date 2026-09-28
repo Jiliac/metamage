@@ -5,36 +5,85 @@ Populate reference data script.
 This script populates the formats and meta_changes tables using data from:
 - data/bans.csv: Ban and unban information
 - data/sets.csv: Set release information
+
+Idempotent: rows already in meta_changes are skipped. Writes through
+TOURNAMENT_DATABASE_WRITE_URL when set (the read URL is a SELECT-only role on
+Postgres). `--dry-run` reports what would be added, then rolls back.
 """
 
-import sys
+import argparse
 import csv
-from pathlib import Path
+import sys
+from collections.abc import Mapping
 from datetime import datetime
-from typing import Set
+from pathlib import Path
+
+from dotenv import load_dotenv
+from sqlalchemy import inspect
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
 # Add the src directory to the path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models import Base, get_engine, get_session_factory, Format, MetaChange, ChangeType
+from models import Base, Format, MetaChange, ChangeType
+from models.base import get_write_engine
+
+
+# Formats that receive every set release (all sets are legal on release).
+ETERNAL_FORMATS = ["modern", "legacy", "vintage", "pauper", "duel-commander"]
+# Formats that additionally receive Standard-legal (non-eternal) sets.
+ROTATING_FORMATS = ["standard", "pioneer"]
+
+DATA_DIR = Path(__file__).parent.parent.parent / "data"
+DEFAULT_BANS_FILE = DATA_DIR / "bans.csv"
+DEFAULT_SETS_FILE = DATA_DIR / "sets.csv"
 
 
 def parse_date(date_str: str) -> datetime:
     """Parse date string in YYYY-MM-DD format."""
-    return datetime.strptime(date_str, "%Y-%m-%d")
+    return datetime.strptime(date_str.strip(), "%Y-%m-%d")
 
 
-def extract_formats_from_bans(bans_file: Path) -> Set[str]:
-    """Extract unique format names from bans CSV."""
+def format_slug(name: str) -> str:
+    """CSV format label -> DB format name ("Duel Commander" -> "duel-commander")."""
+    return "-".join(name.strip().lower().split())
+
+
+def formats_for_set(row: Mapping[str, str]) -> list[str]:
+    """Format slugs a sets.csv row applies to.
+
+    An optional `formats` column (semicolon-separated labels) scopes a set to
+    specific formats, e.g. a product that only changes Pauper legality.
+    Otherwise eternal sets hit the eternal formats and Standard-legal sets hit
+    every format.
+    """
+    scoped = (row.get("formats") or "").strip()
+    if scoped:
+        return [format_slug(f) for f in scoped.split(";") if f.strip()]
+    if row["eternal_set"].strip().upper() == "TRUE":
+        return list(ETERNAL_FORMATS)
+    return ETERNAL_FORMATS + ROTATING_FORMATS
+
+
+def describe_target(engine: Engine) -> str:
+    """Dialect + host/database of an engine, never its credentials."""
+    url = engine.url
+    location = f"{url.host}/{url.database}" if url.host else url.database
+    return f"{url.get_backend_name()} {location}"
+
+
+def extract_formats_from_bans(bans_file: Path) -> set[str]:
+    """Extract unique format slugs from bans CSV."""
     formats = set()
-    with open(bans_file, "r", encoding="utf-8") as f:
+    with open(bans_file, "r", encoding="utf-8-sig", newline="") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            formats.add(row["format"])
+            formats.add(format_slug(row["format"]))
     return formats
 
 
-def populate_formats(session, formats: Set[str]) -> dict:
+def populate_formats(session: Session, formats: set[str]) -> dict[str, Format]:
     """Populate the formats table and return a mapping of name -> format object."""
     print("📋 Populating formats table...")
 
@@ -56,15 +105,17 @@ def populate_formats(session, formats: Set[str]) -> dict:
     return format_mapping
 
 
-def populate_ban_changes(session, bans_file: Path, format_mapping: dict):
+def populate_ban_changes(
+    session: Session, bans_file: Path, format_mapping: dict[str, Format]
+) -> None:
     """Populate meta changes from bans CSV."""
     print("🚫 Populating ban/unban changes...")
 
-    with open(bans_file, "r", encoding="utf-8") as f:
+    with open(bans_file, "r", encoding="utf-8-sig", newline="") as f:
         reader = csv.DictReader(f)
         for row in reader:
             date = parse_date(row["date"])
-            format_obj = format_mapping[row["format"]]
+            format_obj = format_mapping[format_slug(row["format"])]
             description = row["notes"]
 
             # Check if this exact change already exists
@@ -94,40 +145,34 @@ def populate_ban_changes(session, bans_file: Path, format_mapping: dict):
                 print(f"  ➕ Added ban change: {row['format']} on {row['date']}")
 
 
-def populate_set_changes(session, sets_file: Path, format_mapping: dict):
+def populate_set_changes(
+    session: Session, sets_file: Path, format_mapping: dict[str, Format]
+) -> None:
     """Populate meta changes from sets CSV."""
     print("📦 Populating set release changes...")
 
-    # We'll add set releases for formats where they're relevant
-    # Standard format gets all sets, eternal formats get eternal sets
-    with open(sets_file, "r", encoding="utf-8") as f:
+    with open(sets_file, "r", encoding="utf-8-sig", newline="") as f:
         reader = csv.DictReader(f)
         for row in reader:
             date = parse_date(row["release_date"])
             set_name = row["set_name"]
             set_code = row["set_code"]
-            is_eternal = row["eternal_set"].upper() == "TRUE"
-            causes_rotation = row["standard_rotation"].upper() == "TRUE"
+            causes_rotation = row["standard_rotation"].strip().upper() == "TRUE"
 
-            # Determine which formats this set affects
-            # Start with eternal formats - they get all sets
-            affected_formats = []
-            for format_name in ["Modern", "Legacy", "Vintage", "Pauper"]:
-                if format_name in format_mapping:
-                    affected_formats.append(format_name)
-
-            # If not an eternal set, also add Standard and Pioneer
-            if not is_eternal:
-                if "Standard" in format_mapping:
-                    affected_formats.append("Standard")
-                if "Pioneer" in format_mapping:
-                    affected_formats.append("Pioneer")
+            affected_formats = formats_for_set(row)
+            # A typo in the `formats` column must fail loudly, not load 0 rows.
+            unknown = [slug for slug in affected_formats if slug not in format_mapping]
+            if unknown:
+                raise ValueError(
+                    f"sets.csv row {set_name} ({set_code}): unknown format(s) "
+                    f"{', '.join(unknown)} in `formats`"
+                )
 
             for format_name in affected_formats:
                 format_obj = format_mapping[format_name]
 
                 # Create description based on whether it causes rotation
-                if causes_rotation and format_name == "Standard":
+                if causes_rotation and format_name == "standard":
                     description = f"{set_name} released (Standard rotation)"
                 else:
                     description = f"{set_name} released"
@@ -162,36 +207,69 @@ def populate_set_changes(session, sets_file: Path, format_mapping: dict):
                     )
 
 
-def main():
+def parse_args() -> argparse.Namespace:
+    """CLI flags; the CSV paths are overridable (tests point them at fixtures)."""
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="flush new rows to report them, then roll back; creates no tables",
+    )
+    parser.add_argument("--bans-file", type=Path, default=DEFAULT_BANS_FILE)
+    parser.add_argument("--sets-file", type=Path, default=DEFAULT_SETS_FILE)
+    return parser.parse_args()
+
+
+def main() -> None:
     """Main function to populate reference data."""
+    args = parse_args()
+    dry_run = args.dry_run
+    bans_file = args.bans_file
+    sets_file = args.sets_file
+
+    # .env is found by walking up from this file, so worktrees reuse the main
+    # checkout's. Done here, not at import, so importing (tests) never
+    # repoints the process at the live DB. Already-set env vars win.
+    load_dotenv()
+
     print("🎯 Magic Tournament Database - Reference Data Population")
     print("=" * 60)
-
-    # File paths
-    project_root = Path(__file__).parent.parent.parent
-    bans_file = project_root / "data" / "bans.csv"
-    sets_file = project_root / "data" / "sets.csv"
 
     # Check files exist
     if not bans_file.exists():
         print(f"❌ Bans file not found: {bans_file}")
-        return
+        sys.exit(1)
     if not sets_file.exists():
         print(f"❌ Sets file not found: {sets_file}")
-        return
+        sys.exit(1)
 
-    # Initialize database
-    engine = get_engine()
-    Base.metadata.create_all(engine)
-    print("✅ Database initialized")
+    # Initialize database. TOURNAMENT_DATABASE_WRITE_URL wins over the read
+    # URL; get_write_engine() warns if Postgres falls back to the read URL.
+    engine = get_write_engine()
+    print(f"🔌 Target database: {describe_target(engine)}")
+    if dry_run:
+        # DDL autocommits, so a dry run must not create tables.
+        missing = [
+            table
+            for table in (Format.__tablename__, MetaChange.__tablename__)
+            if not inspect(engine).has_table(table)
+        ]
+        if missing:
+            print(f"❌ Dry run needs existing tables, missing: {', '.join(missing)}")
+            engine.dispose()
+            sys.exit(1)
+    else:
+        Base.metadata.create_all(engine)
+        print("✅ Database initialized")
 
     # Create session
-    SessionFactory = get_session_factory()
-    session = SessionFactory()
+    session = Session(bind=engine)
 
     try:
         # Extract formats from bans CSV
-        formats = extract_formats_from_bans(bans_file)
+        formats = extract_formats_from_bans(bans_file) | set(
+            ETERNAL_FORMATS + ROTATING_FORMATS
+        )
         print(f"📋 Found {len(formats)} formats: {', '.join(sorted(formats))}")
 
         # Populate formats
@@ -202,6 +280,12 @@ def main():
 
         # Populate set changes
         populate_set_changes(session, sets_file, format_mapping)
+
+        if dry_run:
+            session.flush()  # surface constraint errors before rolling back
+            session.rollback()
+            print("\n🧪 Dry run: rolled back, nothing written.")
+            return
 
         # Commit all changes
         session.commit()
@@ -220,6 +304,7 @@ def main():
         raise
     finally:
         session.close()
+        engine.dispose()
 
 
 if __name__ == "__main__":

@@ -1,6 +1,8 @@
 'use client'
 
 import * as React from 'react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   CartesianGrid,
   ReferenceLine,
@@ -63,17 +65,20 @@ type ScatterDatum = {
   wrLo: number
   wrHi: number
   pol: WrPolarity
+  href?: string
 }
 
 type DotShapeProps = {
   cx?: number
   cy?: number
   payload?: ScatterDatum
+  onNavigate?: (href: string) => void
 }
 
-function NumberedDot({ cx, cy, payload }: DotShapeProps) {
+function NumberedDot({ cx, cy, payload, onNavigate }: DotShapeProps) {
   if (cx == null || cy == null || !payload) return null
-  return (
+  const href = payload.href
+  const dot = (
     <g className="mm-scatter-dot">
       <circle
         cx={cx}
@@ -95,6 +100,27 @@ function NumberedDot({ cx, cy, payload }: DotShapeProps) {
         {payload.rank}
       </text>
     </g>
+  )
+  // Buckets (and rows without a detail page) carry no href: plain, inert dot.
+  if (!href) return dot
+  // A real SVG <a href> gives native focus, Enter activation, modifier-click
+  // new tab and copy-link; plain left-clicks stay client-side navigations.
+  return (
+    <a
+      href={href}
+      className="mm-scatter-link"
+      aria-label={`${payload.rank}. ${payload.name}`}
+      style={{ cursor: 'pointer' }}
+      onClick={e => {
+        if (!onNavigate) return
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+        if (e.button !== 0) return
+        e.preventDefault()
+        onNavigate(href)
+      }}
+    >
+      {dot}
+    </a>
   )
 }
 
@@ -126,14 +152,18 @@ export type WrPresenceScatterProps = {
   rows: ArchetypeRowDTO[]
   /** Only plot rows at or above this many matches (spike: 30). */
   minMatches?: number
+  /** Precomputed slug → archetype detail href; dots + legend link when set. */
+  rowHref?: Record<string, string>
   className?: string
 }
 
 export function WrPresenceScatter({
   rows,
   minMatches = 30,
+  rowHref,
   className,
 }: WrPresenceScatterProps) {
+  const router = useRouter()
   const points = React.useMemo<ScatterDatum[]>(
     () =>
       rows
@@ -149,8 +179,9 @@ export function WrPresenceScatter({
           wrLo: r.wrLo,
           wrHi: r.wrHi,
           pol: wrPolarity(r.wrLo, r.wrHi),
+          href: rowHref?.[String(r.slug)],
         })),
-    [rows, minMatches]
+    [rows, minMatches, rowHref]
   )
 
   const legend = React.useMemo(
@@ -183,7 +214,7 @@ export function WrPresenceScatter({
     >
       <style>
         {
-          '@media (prefers-reduced-motion: no-preference){.mm-scatter-dot{animation:mm-pop .45s cubic-bezier(.2,.9,.3,1.4) backwards}@keyframes mm-pop{from{opacity:0;transform:scale(.4)}}}'
+          '.mm-scatter-link:focus{outline:none}.mm-scatter-link:focus-visible circle{stroke:var(--gold);stroke-width:3}@media (prefers-reduced-motion: no-preference){.mm-scatter-dot{animation:mm-pop .45s cubic-bezier(.2,.9,.3,1.4) backwards}@keyframes mm-pop{from{opacity:0;transform:scale(.4)}}}'
         }
       </style>
       <div className="border-b border-line px-4 py-3 md:border-b-0 md:border-r md:py-4">
@@ -199,7 +230,17 @@ export function WrPresenceScatter({
               >
                 {d.rank}
               </span>
-              <span>{d.name}</span>
+              {d.href ? (
+                <Link
+                  href={d.href}
+                  className="text-ink-2 no-underline hover:text-gold hover:underline"
+                  style={{ textUnderlineOffset: 3 }}
+                >
+                  {d.name}
+                </Link>
+              ) : (
+                <span>{d.name}</span>
+              )}
               <ManaPips colors={d.color} size={13} />
             </li>
           ))}
@@ -250,7 +291,7 @@ export function WrPresenceScatter({
             />
             <Scatter
               data={points}
-              shape={<NumberedDot />}
+              shape={<NumberedDot onNavigate={href => router.push(href)} />}
               isAnimationActive={false}
             />
           </ScatterChart>

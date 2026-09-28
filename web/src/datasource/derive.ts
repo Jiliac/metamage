@@ -79,12 +79,6 @@ export function sortRows(
     // Buckets always sink to the bottom regardless of the sort key.
     if (a.isBucket !== b.isBucket) return a.isBucket ? 1 : -1
     if (sort === 'wrlo') return b.wrLo - a.wrLo
-    if (sort === 'tier') {
-      const ta = a.tier ?? 99
-      const tb = b.tier ?? 99
-      if (ta !== tb) return ta - tb
-      return b.wrLo - a.wrLo
-    }
     // presence (default): by weight desc, then rank asc for stability.
     const wa = weight === 'entry' ? a.decks : a.matches
     const wb = weight === 'entry' ? b.decks : b.matches

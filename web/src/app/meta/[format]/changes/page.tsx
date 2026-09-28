@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 
 import { getDataSource } from '@/datasource'
+import { DUEL_COMMANDER_FORMAT } from '@/datasource/format-order'
 import type { ArchetypeRef, FormatDTO, MetaChangeDTO } from '@/datasource/types'
 import { parseMetaQuery } from '@/lib/params'
 import { buildPageMetadata } from '@/lib/seo'
@@ -129,7 +130,9 @@ export default async function ChangesPage({
 
       <footer className="mt-[72px] flex flex-wrap items-center gap-[18px] border-t border-line pt-[18px] text-[12.5px] text-ink-3">
         <span>
-          Source: Wizards of the Coast banned &amp; restricted announcements
+          {query.format === DUEL_COMMANDER_FORMAT
+            ? 'Source: Duel Commander committee banlist announcements (duelcommander.org)'
+            : 'Source: Wizards of the Coast banned & restricted announcements'}
         </span>
       </footer>
     </>

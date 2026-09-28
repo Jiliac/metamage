@@ -108,7 +108,7 @@ export function CardAdoptionTable({
                       </div>
                     </div>
                     <span className="num text-ink-2 w-11 text-right text-[12px]">
-                      {c.presencePct.toFixed(0)}%
+                      {(c.presencePct * 100).toFixed(0)}%
                     </span>
                   </div>
                 </td>
