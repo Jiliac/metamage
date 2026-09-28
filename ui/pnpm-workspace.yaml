@@ -1,11 +1,7 @@
 allowBuilds:
-  '@prisma/client': true
-  '@prisma/engines': true
+  '@prisma/client': false
+  '@prisma/engines': false
   '@tailwindcss/oxide': true
-  prisma: true
+  prisma: false
   sharp: true
   unrs-resolver: true
-ignoredBuiltDependencies:
-  - '@prisma/client'
-  - '@prisma/engines'
-  - prisma

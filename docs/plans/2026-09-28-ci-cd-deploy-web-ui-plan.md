@@ -50,14 +50,14 @@ Three path-filtered GitHub Actions workflows give every PR a fast, correct verdi
 - R2. Python job: `uv sync --frozen`, `uv run ruff check src tests scripts`, `uv run pytest -q`. Passes in ≲1 min.
 - R3. web job: `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm format:check`, `tsc --noEmit`, `pnpm test`, `pnpm build` (fixtures mode — no DB in CI). Passes in ≲3 min.
 - R4. ui job: `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm format:check`, `tsc --noEmit`, `pnpm build` **with a `DATABASE_URL` reachable from CI** (KTD5) — required because Prisma runs at build time.
-- R5. All workflows use frozen lockfiles and pinned action versions; failures name the failing gate in the check name.
+- R5. All workflows use frozen lockfiles and pinned action versions. Check names are `workflow / job` (GitHub never surfaces step names as checks); the failing step is identified by the run-summary annotation, and each step carries an explicit `name:` so the annotation reads as the gate (`lint`, `typecheck`, `build`). (KTD10)
 
 **Deployment (Vercel)**
 
 - R6. Two Vercel projects: `metamage-web` (rootDirectory `web/`, production domain `metamages.com`) and `metamage-ui` (rootDirectory `ui/`, production domain `ai.metamages.com`). The legacy project `metamage` (rootDirectory `ui/`) is either repointed or retired so `metamage.vercel.app` does not fight the new split. (KTD6)
 - R7. `web/` production env: `DATA_SOURCE=postgres`, `TOURNAMENT_DATABASE_URL` (SELECT-only `metamage_ro`), `NEXT_PUBLIC_SITE_URL=https://metamages.com`, PostHog key/host if desired. Preview env: same but staging-safe values. (KTD7)
 - R8. `ui/` production env: `DATABASE_URL` (ops DB, read-only role), `NEXT_PUBLIC_SITE_URL=https://ai.metamages.com`.
-- R9. PRs get Vercel preview deployments for both apps when their slice changed (Git integration default per project).
+- R9. PRs get Vercel preview deployments only for the apps whose slice changed. This is NOT the Git-integration default — Vercel builds every connected project on every push — so each project sets an **Ignored Build Step** that skips when its root directory is untouched (KTD6).
 - R10. `metamage_ro` gains SELECT on the ops DB tables so ui serves real sessions with least privilege. (One-time, out-of-repo; owner creds exist locally.)
 
 **Repo hygiene**
@@ -72,7 +72,7 @@ Three path-filtered GitHub Actions workflows give every PR a fast, correct verdi
 - Push to `main` with a `web/` change: `metamages.com` serves the new content within the build's duration; PR previews appear for the two apps on the next PR.
 - A fresh clone + the three workflow files: `act`-free local verification exists (the commands R2–R4 each run green locally today — verified during exploration).
 - `metamage.vercel.app` no longer receives production traffic (redirect or retired project).
-- CI on PR 10's head commit (already merged) would have been green: the failing check was Vercel-only and its root causes are fixed by R11 + R8.
+- The failing check PR 10 reported was Vercel-only (not a test failure); both of its root causes (R11 placeholder text, R8 missing `DATABASE_URL`) are closed by this plan, and the legacy project that produced it is retired (R6).
 
 ### Scope Boundaries
 
@@ -81,12 +81,13 @@ Three path-filtered GitHub Actions workflows give every PR a fast, correct verdi
 - No custom domains beyond the two named; no CDN config beyond Vercel defaults.
 - No migration of the R visualization or blog to CI.
 - Ops-DB grants are one-time shell commands, not code.
+- `ui/public/prisma/schema.prisma` is served as a static file in production (anything under `public/` is). Not fixed here — moving it changes the `postinstall` and Prisma client paths. Phase 5 leaves a follow-up note in `ui/README.md`; a later PR moves it to `ui/prisma/`.
 
 ---
 
 ## Known Technical Decisions
 
-### KTD1: One reusable core workflow + three thin path-filtered entry workflows
+### KTD1: Three small path-filtered workflows, no reusable-workflow indirection
 
 **Decision:** `.github/workflows/ci-python.yml`, `ci-web.yml`, `ci-ui.yml`, each with `on: pull_request` + `push: branches: [main]` and path filters; shared steps live per-file (they are small) rather than in a reusable-workflow indirection.
 
@@ -112,12 +113,14 @@ Anti-pattern guard: do not use `pip install -r requirements.txt` (no such file);
 ### KTD3: Node jobs share a setup pattern; pnpm store cache is automatic
 
 ```yaml
-- uses: pnpm/action-setup@v6 (with version: 11)
+- uses: pnpm/action-setup@v6 (no `version:` — reads `packageManager` from the app's package.json)
 - uses: actions/setup-node@v7 (with node-version: 26, cache: pnpm, cache-dependency-path: web/pnpm-lock.yaml)
 - run: pnpm install --frozen-lockfile (working-directory: web)
 ```
 
 Why: pnpm 11.9.0 locally; pnpm ≥22.13 node requirement → node 26 runner-side. `setup-node`'s `cache: pnpm` keys off the lockfile. `--frozen-lockfile` catches lockfile drift (the placeholder-text workspace file is the cautionary tale). Working-directory keeps the two apps' jobs copy-paste simple; no workspace merge (each app has its own `pnpm-workspace.yaml` by design).
+
+Note: `pnpm/action-setup` needs `package_json_file: web/package.json` (resp. `ui/`) since neither app is at the repo root.
 
 Anti-pattern guard: do NOT run `pnpm i` without `--frozen-lockfile` in CI; do not add `approve-builds` interactivity (the fixed `allowBuilds` in each app's `pnpm-workspace.yaml` whitelists build scripts explicitly — `web/` already has the correct form).
 
@@ -131,6 +134,8 @@ Why not build postgres-mode per PR: it would require the tournament DB secret in
 
 **Decision:** set `DATABASE_URL` as a GitHub secret (and Vercel env var) pointing at the ops DB via `metamage_ro` **after** granting it SELECT (R10). Build-time `generateStaticParams` then prerenders the 100 most recent sessions (verified: works, 4,326 sessions available). Sessions newer than the build get served through ISR (`revalidate = 30/60`).
 
+Fork PRs: the repo is public, and `pull_request` runs from forks receive no secrets, so `DATABASE_URL` is empty there. The ui workflow gates the `build` step on `github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository`; on a fork PR lint/format/typecheck still run and the build step is skipped with a visible notice (`::notice::build skipped: fork PR has no DATABASE_URL`). Maintainers re-run on a branch in-repo before merge.
+
 Fallback if CI↔Neon proves flaky (region egress blocked, Neon pooler limits): add `export const dynamic = 'force-dynamic'` to `/sessions` + `/sessions/[id]` (drop `generateStaticParams`) so builds need no DB; Vercel runtime uses `DATABASE_URL` per request. This trades build-time prerender for runtime queries — acceptable for a low-traffic viewer, and documented in the workflow file if used.
 
 Anti-pattern guard: never put the owner-role (`neondb_owner`) URL in CI or Vercel for ui; the ops DB is written by the agents via `POSTGRES_URL`, the viewer must stay read-only.
@@ -141,6 +146,8 @@ Anti-pattern guard: never put the owner-role (`neondb_owner`) URL in CI or Verce
 - Create `metamage-ui`: rootDirectory `ui/`, git-connected, domains `ai.metamages.com`.
 - Existing project `metamage` (rootDirectory `ui/`): after `metamage-ui` is live and verified, remove its Git connection (or delete the project). This kills the failing red check at the source — the same root cause PR 10 reported.
 - Domains: `metamages.com` + `ai.metamages.com` added to their projects; DNS `A`/`CNAME` records per Vercel's dashboard instructions (the user owns the domain; exact record values come from the Vercel UI at link time).
+
+- Ignored Build Step (per project, Settings → Git): `git diff HEAD^ HEAD --quiet -- .` (runs inside the project's root directory; exit 0 = skip). Without it, a `web/`-only commit rebuilds `ui/` too, re-running the Neon prerender for nothing.
 
 Why two projects rather than one with a rootDirectory switch: the two apps have different env surfaces (tournament DB vs ops DB), different revalidate profiles, and independent preview deployments — one project per app keeps env vars and deployments scoped correctly.
 
@@ -158,9 +165,9 @@ The Vercel Git integration already gives: per-PR preview URLs, automatic product
 
 Tradeoff accepted: production deploys are gated on CI only informally — Vercel builds on `main` push regardless of the check runs. With green-per-slice PRs and `main` as the only fast-forward path, this is acceptable; if a deploy gate is ever needed, Vercel Deployment Checks can select the GitHub workflows (config, not code).
 
-### KTD10: Gate names a failing step via `name:` on each step
+### KTD10: One job per workflow; steps carry explicit `name:`
 
-Checks on a PR read like `web / lint`, `web / build` etc. (job+step labels), so a red check needs no log-diving to identify the gate. Cheap, high-value.
+GitHub check names are `<workflow name> / <job name>` — step names never appear as separate checks. Splitting each gate into its own job would give `web / lint`, `web / build` checks but costs a full install per job (3–5 extra installs per PR) for a repo this small. Decision: one job per workflow (`python`, `web`, `ui`), with every step named after its gate. The failing step's name shows in the run-summary annotation on the PR (one click, no log-diving), which is good enough. Revisit if PR volume ever makes per-gate checks worth the extra minutes.
 
 ---
 
@@ -170,7 +177,8 @@ Checks on a PR read like `web / lint`, `web / build` etc. (job+step labels), so 
 
 **What to implement**
 
-- Commit the already-verified `ui/pnpm-workspace.yaml` fix: replace placeholder strings with `true` for all six `allowBuilds` entries (current working-tree diff is exactly this).
+- Commit the `ui/pnpm-workspace.yaml` fix as a single `allowBuilds` map: `@tailwindcss/oxide`, `sharp`, `unrs-resolver` → `true`; `prisma`, `@prisma/client`, `@prisma/engines` → `false` (their own install scripts are not needed — the project's `postinstall` runs `prisma generate` explicitly, which fetches engines on demand). Delete the `ignoredBuiltDependencies` block: the first draft of this fix had the prisma packages both allowed and ignored, which is contradictory. One block, one source of truth.
+- Add `"packageManager": "pnpm@11.9.0"` to both `web/package.json` and `ui/package.json`. Local, CI (`pnpm/action-setup` reads it when `version` is omitted) and Vercel (honours `packageManager` for pnpm selection; the `9.0` lockfile version alone is ambiguous between pnpm 9/10/11) then all agree on one pnpm.
 - Read `ui/.env.example`: it already documents `DATABASE_URL` only; nothing to add there beyond a comment noting it must be a Postgres URL (schema.prisma provider is `postgresql`).
 
 **Doc references** — `ui/pnpm-workspace.yaml` (the file itself); working-tree diff from this session's exploration.
@@ -181,7 +189,7 @@ Checks on a PR read like `web / lint`, `web / build` etc. (job+step labels), so 
 - `DATABASE_URL=<neon ops ro url> pnpm build` → build succeeds, 100 session params prerendered.
 - Without `DATABASE_URL`, build fails with the Prisma env error (expected behavior — documented, not fixed).
 
-**Anti-pattern guard** — don't "fix" by removing `ignoredBuiltDependencies`; keep both blocks consistent (allows + ignores).
+**Anti-pattern guard** — never list a package in both `allowBuilds` and `ignoredBuiltDependencies`; use `allowBuilds: {pkg: false}` for the deny case (as `web/` does with `core-js`). Don't pin pnpm in three places with three values — `packageManager` is the pin, `pnpm/action-setup` reads it.
 
 ### Phase 2 — Ops DB grants (one-time shell, before Phase 3 deploy)
 
@@ -189,7 +197,7 @@ Checks on a PR read like `web / lint`, `web / build` etc. (job+step labels), so 
 
 - As `neondb_owner` on the ops DB (`POSTGRES_URL` in root `.env`): `GRANT USAGE ON SCHEMA public TO metamage_ro; GRANT SELECT ON ALL TABLES IN SCHEMA public TO metamage_ro; ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO metamage_ro;`
 - Verify: `SET ROLE metamage_ro; SELECT count(*) FROM chat_sessions;` → 4,326.
-- (Write a `scripts/setup_ops_pg_roles.sql` sibling of `scripts/setup_pg_roles.sql` so the grant is reproducible, not tribal knowledge.)
+- (Write a `scripts/setup_ops_pg_roles.sql` sibling of `scripts/setup_pg_roles.sql` so the grant is reproducible, not tribal knowledge.) Header comment must say: run as `neondb_owner`. `ALTER DEFAULT PRIVILEGES` only covers tables later created by the role that runs it; the socialbot creates ops tables as `neondb_owner` via `Base.metadata.create_all`, so it works only if executed as that role.
 
 **Verification checklist** — the SET ROLE probe above returns a count as `metamage_ro`; `metamage_ro` cannot `INSERT`/`UPDATE`/`DELETE` (test one: `INSERT` must fail).
 
@@ -199,11 +207,13 @@ Checks on a PR read like `web / lint`, `web / build` etc. (job+step labels), so 
 
 **What to implement** — three new files under `.github/workflows/`:
 
-1. `ci-python.yml` — paths `src/**`, `tests/**`, `scripts/**`, `visualize/**`, `alembic/**`, `pyproject.toml`, `uv.lock`, `alembic.ini`, self. Steps per KTD2. Also `concurrency: group: ci-python-${{ github.ref }}, cancel-in-progress: true`.
-2. `ci-web.yml` — paths `web/**`, self. Steps per KTD3 + KTD4.
-3. `ci-ui.yml` — paths `ui/**`, self. Steps per KTD3 + KTD4, with `DATABASE_URL` from a GitHub secret (KTD5).
+1. `ci-python.yml` — paths `src/**`, `tests/**`, `scripts/**`, `visualize/**`, `alembic/**`, `pyproject.toml`, `uv.lock`, `alembic.ini`, `.python-version`, self. Steps per KTD2.
+2. `ci-web.yml` — paths `web/**` (which covers `web/pnpm-workspace.yaml`, `web/pnpm-lock.yaml`, `web/package.json`), self. Steps per KTD3 + KTD4.
+3. `ci-ui.yml` — paths `ui/**` (same coverage), self. Steps per KTD3 + KTD4, with `DATABASE_URL` from a GitHub secret and the fork-PR build gate (KTD5).
 
-**Doc references** — actions verified current via registry: `actions/checkout@v7.0.1`, `actions/setup-node@v7.0.0`, `actions/setup-python@v7.0.0`, `pnpm/action-setup@v6.1.0`, `astral-sh/setup-uv@v10.2.0`.
+All three set `concurrency: group: <workflow>-${{ github.ref }}, cancel-in-progress: true` so a force-push cancels the stale run.
+
+**Doc references** — actions verified current via registry: `actions/checkout@v7.0.1`, `actions/setup-node@v7.0.0`, `pnpm/action-setup@v6.1.0`, `astral-sh/setup-uv@v10.2.0`. (No `actions/setup-python`: `setup-uv` with `python-version: '3.13'` provisions the interpreter — KTD2.)
 
 **Verification checklist**
 
@@ -224,8 +234,9 @@ Checks on a PR read like `web / lint`, `web / build` etc. (job+step labels), so 
 4. Create project `metamage-ui` (rootDirectory `ui/`, framework Next.js, pnpm).
 5. Env (Production + Preview): `DATABASE_URL=<ops ro url>`, `NEXT_PUBLIC_SITE_URL=https://ai.metamages.com`.
 6. Domain: add `ai.metamages.com` (CNAME → `cname.vercel-dns.com`, or apex A record per dashboard).
-7. Retire legacy `metamage` project: remove Git connection so it stops red-checking PRs (keep it around until both new projects are verified live, then delete).
-8. Verify build logs show `pnpm` + `next build` completing; web is NOT in fixtures mode (check `x-nextjs-cache`/a route renders live data — e.g., a window containing the 2026-09-21 tournament).
+7. Ignored Build Step on both projects: `git diff HEAD^ HEAD --quiet -- .` — verify by pushing a `web/`-only commit and confirming the `metamage-ui` deployment is marked skipped.
+8. Retire legacy `metamage` project: remove Git connection so it stops red-checking PRs (keep it around until both new projects are verified live, then delete).
+9. Verify build logs show `pnpm` + `next build` completing; web is NOT in fixtures mode (check `x-nextjs-cache`/a route renders live data — e.g., a window containing the 2026-09-21 tournament).
 
 **Verification checklist**
 
@@ -241,7 +252,7 @@ Checks on a PR read like `web / lint`, `web / build` etc. (job+step labels), so 
 **What to implement**
 
 - Root `README.md`: add "Continuous integration & deployment" section (three workflows, two projects/domains, what triggers what).
-- `ui/README.md`: correct the `DATABASE_URL` example to a Postgres URL; document `NEXT_PUBLIC_SITE_URL=https://ai.metamages.com` for prod.
+- `ui/README.md`: correct the `DATABASE_URL` example to a Postgres URL; document `NEXT_PUBLIC_SITE_URL=https://ai.metamages.com` for prod; add a one-line note that `public/prisma/schema.prisma` is publicly served and slated to move.
 - Land as one PR (workflows + ui fix + docs), get green checks, merge, observe the first `main` push deploy both apps.
 
 **Verification checklist** — PR shows exactly the expected three checks; after merge, both domains serve updated content; Vercel dashboard shows the deployments tied to the merge commit.
@@ -265,5 +276,5 @@ Checks on a PR read like `web / lint`, `web / build` etc. (job+step labels), so 
 | Hobby plan limits (2 projects, preview count) | Low | One project must be deleted | Verified: Hobby supports multiple projects; legacy `metamage` project is retired in the same pass |
 | Path filter misses a file type (e.g., `CONCEPTS.md` moved into `src/`) | Low | Green PR with skipped relevant job | Filters include shared files (`pyproject.toml`, lockfiles, `pnpm-workspace.yaml` of each app, workflow self) |
 | `NEXT_PUBLIC_SITE_URL` forgotten → sitemap advertises localhost | Medium | SEO regression | KTD7 makes it an explicit env var step with a verification probe |
-| Legacy project keeps red-checking PRs | Medium (if Phase 4.7 skipped) | Confusing CI state | Retire the project in the same PR; verify PR checks clean afterwards |
-| pnpm major bump (11 → 12) breaks CI pinning | Low | CI failures on toolchain drift | Pin `version: 11` in `pnpm/action-setup`; bump deliberately later |
+| Legacy project keeps red-checking PRs | Medium (if Phase 4.8 skipped) | Confusing CI state | Retire the project in the same PR; verify PR checks clean afterwards |
+| pnpm major bump (11 → 12) breaks CI pinning | Low | CI failures on toolchain drift | `packageManager: pnpm@11.9.0` in both package.json files is the single pin; bump deliberately later |
