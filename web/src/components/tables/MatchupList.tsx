@@ -51,18 +51,17 @@ export function selectRowCells(
 }
 
 /** Pure ordering for the list. `games`: volume desc, then wr desc. `wrAsc`:
- *  worst supported matchups first; pairs with no data sink to the end. Never
- *  mutates its input. */
+ *  worst supported matchups first; low-sample cells (rendered `–`) sink below
+ *  them and no-data pairs to the very end. Never mutates its input. */
 export function sortCells(
   cells: readonly MatchupCellDTO[],
   sort: MatchupListSort
 ): MatchupCellDTO[] {
   if (sort === 'wrAsc') {
+    // Tier: 0 = reliable estimate, 1 = low-N (renders `–`), 2 = no data.
+    const tier = (c: MatchupCellDTO) => (c.games === 0 ? 2 : c.lowN ? 1 : 0)
     return [...cells].sort(
-      (a, b) =>
-        (a.games === 0 ? 1 : 0) - (b.games === 0 ? 1 : 0) ||
-        a.wr - b.wr ||
-        b.games - a.games
+      (a, b) => tier(a) - tier(b) || a.wr - b.wr || b.games - a.games
     )
   }
   return [...cells].sort((a, b) => b.games - a.games || b.wr - a.wr)

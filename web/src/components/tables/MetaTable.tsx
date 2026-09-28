@@ -348,7 +348,6 @@ export function MetaTable({
                       className={cn(
                         'border-line-strong text-ink-2 border-b px-3.5 pt-3 pb-[9px] text-[11px] font-semibold tracking-[0.13em] whitespace-nowrap uppercase select-none',
                         RIGHT.has(id) ? 'text-right' : 'text-left',
-                        id === 'rank' && 'w-[30px]',
                         id === 'name' && 'min-w-[240px]',
                         HIDE_BELOW_MD[id] && 'hidden md:table-cell',
                         id === 'rank' && STICKY_COL_1_STRONG,

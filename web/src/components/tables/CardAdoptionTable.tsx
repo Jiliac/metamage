@@ -52,7 +52,7 @@ export function CardAdoptionTable({
         <table className="w-full border-collapse text-[13.5px]">
           <thead>
             <tr>
-              <Th className={cn('w-[30px]', STICKY_COL_1)}>#</Th>
+              <Th className={STICKY_COL_1}>#</Th>
               <Th className={STICKY_COL_2}>Card</Th>
               <Th align="right" className="hidden md:table-cell">
                 Copies

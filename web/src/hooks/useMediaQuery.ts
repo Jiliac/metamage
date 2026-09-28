@@ -17,8 +17,13 @@ export function useMediaQuery(query: string, serverValue: boolean): boolean {
     onChange => {
       if (typeof window === 'undefined') return noopUnsubscribe
       const mql = window.matchMedia(query)
-      mql.addEventListener('change', onChange)
-      return () => mql.removeEventListener('change', onChange)
+      // Older Safari/WebKit (pre-14) lacks MediaQueryList.addEventListener.
+      if (typeof mql.addEventListener === 'function') {
+        mql.addEventListener('change', onChange)
+        return () => mql.removeEventListener('change', onChange)
+      }
+      mql.addListener(onChange)
+      return () => mql.removeListener(onChange)
     },
     () => window.matchMedia(query).matches,
     () => serverValue
