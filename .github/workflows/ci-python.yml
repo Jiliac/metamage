@@ -27,13 +27,16 @@ on:
       - '.python-version'
       - '.github/workflows/ci-python.yml'
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-python-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   python:
-    name: python / lint + test
+    name: python
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -51,9 +54,9 @@ jobs:
       - name: Ruff lint
         run: uv run ruff check src tests scripts
 
-      # tests/ only: scripts/ holds executable probes (e.g.
-      # scripts/test_social_post.py posts to real social APIs) that pytest
-      # would otherwise collect and fail on — they are not unit tests.
+      # Collection is scoped to tests/ via [tool.pytest.ini_options] testpaths
+      # in pyproject.toml (scripts/ holds executable probes, not unit tests),
+      # so local and CI collect the same set.
       - name: Pytest
-        run: uv run pytest tests -q
+        run: uv run pytest -q
 

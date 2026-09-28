@@ -11,6 +11,9 @@ on:
       - 'ui/**'
       - '.github/workflows/ci-ui.yml'
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-ui-${{ github.ref }}
   cancel-in-progress: true
@@ -21,7 +24,7 @@ defaults:
 
 jobs:
   ui:
-    name: ui / lint + typecheck + build
+    name: ui
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -34,7 +37,9 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v6.1.0
         with:
-          version: 11
+          # Version comes from "packageManager" in ui/package.json — one pin
+          # shared by local, CI and Vercel.
+          package_json_file: ui/package.json
 
       - name: Setup Node
         uses: actions/setup-node@v7.0.0
@@ -56,5 +61,13 @@ jobs:
         run: pnpm exec tsc --noEmit
 
       # No test script exists in ui (no vitest); adding one is out of scope.
+      # Fork PRs receive no secrets, so DATABASE_URL is empty there and the
+      # Prisma prerender would fail: skip the build with a visible notice and
+      # let lint/format/typecheck stand as the fork verdict.
       - name: Build
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
         run: pnpm build
+
+      - name: Build skipped (fork PR)
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+        run: echo "::notice::build skipped — fork PR has no DATABASE_URL secret; a maintainer re-runs on an in-repo branch before merge"

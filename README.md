@@ -175,7 +175,7 @@ Docs-only changes run no workflows. Builds use frozen lockfiles; Node 26 + pnpm 
 | `metamage-web` | `web/`         | `metamages.com`    | Tournament DB (`tournament`), SELECT-only `metamage_ro` |
 | `metamage-ui`  | `ui/`          | `ai.metamages.com` | Ops DB (`neondb`), SELECT-only `metamage_ro`            |
 
-PRs get preview deployments for each app whose slice changed. Production env vars per project: `web/` needs `DATA_SOURCE=postgres`, `TOURNAMENT_DATABASE_URL`, `NEXT_PUBLIC_SITE_URL=https://metamages.com`; `ui/` needs `DATABASE_URL` and `NEXT_PUBLIC_SITE_URL=https://ai.metamages.com`. Ops-DB grants: `psql "$POSTGRES_URL" -f scripts/setup_ops_pg_roles.sql`.
+PRs get preview deployments for each app whose slice changed — this is not Vercel's default (it builds every project on every push); each project sets an **Ignored Build Step** of `git diff HEAD^ HEAD --quiet -- .` in its Git settings. Production env vars per project: `web/` needs `DATA_SOURCE=postgres`, `TOURNAMENT_DATABASE_URL`, `NEXT_PUBLIC_SITE_URL=https://metamages.com`; `ui/` needs `DATABASE_URL` and `NEXT_PUBLIC_SITE_URL=https://ai.metamages.com`. Ops-DB grants: `psql "$POSTGRES_URL" -f scripts/setup_ops_pg_roles.sql`.
 
 ---
 
