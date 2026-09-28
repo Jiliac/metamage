@@ -147,7 +147,14 @@ Anti-pattern guard: never put the owner-role (`neondb_owner`) URL in CI or Verce
 - Existing project `metamage` (rootDirectory `ui/`): after `metamage-ui` is live and verified, remove its Git connection (or delete the project). This kills the failing red check at the source — the same root cause PR 10 reported.
 - Domains: `metamages.com` + `ai.metamages.com` added to their projects; DNS `A`/`CNAME` records per Vercel's dashboard instructions (the user owns the domain; exact record values come from the Vercel UI at link time).
 
-- Ignored Build Step (per project, Settings → Git): `git diff HEAD^ HEAD --quiet -- .` (runs inside the project's root directory; exit 0 = skip). Without it, a `web/`-only commit rebuilds `ui/` too, re-running the Neon prerender for nothing.
+- Ignored Build Step (per project, Settings → Git). The command runs inside the project's root directory; exit 0 = skip, exit 1 = build. It diffs the app directory against `VERCEL_GIT_PREVIOUS_SHA` (the commit of the last successful deployment), so every commit since then counts, not just the latest one. A missing previous SHA (first deployment) or one not reachable in Vercel's shallow clone builds:
+
+  ```sh
+  if [ -z "${VERCEL_GIT_PREVIOUS_SHA:-}" ] || ! git cat-file -e "${VERCEL_GIT_PREVIOUS_SHA}^{commit}" 2>/dev/null; then exit 1; fi
+  git diff --quiet "$VERCEL_GIT_PREVIOUS_SHA" HEAD -- .
+  ```
+
+  Without it, a `web/`-only commit rebuilds `ui/` too, re-running the Neon prerender for nothing. Do not use `git diff HEAD^ HEAD --quiet -- .`: it checks only the last commit, so an app change followed by a docs-only commit skips that app's preview.
 
 Why two projects rather than one with a rootDirectory switch: the two apps have different env surfaces (tournament DB vs ops DB), different revalidate profiles, and independent preview deployments — one project per app keeps env vars and deployments scoped correctly.
 
@@ -234,7 +241,7 @@ All three set `concurrency: group: <workflow>-${{ github.ref }}, cancel-in-progr
 4. Create project `metamage-ui` (rootDirectory `ui/`, framework Next.js, pnpm).
 5. Env (Production + Preview): `DATABASE_URL=<ops ro url>`, `NEXT_PUBLIC_SITE_URL=https://ai.metamages.com`.
 6. Domain: add `ai.metamages.com` (CNAME → `cname.vercel-dns.com`, or apex A record per dashboard).
-7. Ignored Build Step on both projects: `git diff HEAD^ HEAD --quiet -- .` — verify by pushing a `web/`-only commit and confirming the `metamage-ui` deployment is marked skipped.
+7. Ignored Build Step on both projects: the `VERCEL_GIT_PREVIOUS_SHA` script from KTD6. Verify both directions: a docs-only commit pushed after an app change still creates that app's first preview, while a later commit with no changes in the app since its previous deployment (e.g. a `web/`-only commit for `metamage-ui`) is marked skipped.
 8. Retire legacy `metamage` project: remove Git connection so it stops red-checking PRs (keep it around until both new projects are verified live, then delete).
 9. Verify build logs show `pnpm` + `next build` completing; web is NOT in fixtures mode (check `x-nextjs-cache`/a route renders live data — e.g., a window containing the 2026-09-21 tournament).
 
@@ -269,12 +276,12 @@ All three set `concurrency: group: <workflow>-${{ github.ref }}, cancel-in-progr
 
 ## Risks & Mitigations
 
-| Risk | Likelihood | Impact | Mitigation |
-| --- | --- | --- | --- |
-| ui build in CI can't reach Neon (egress/Allowlist) | Low | Blocks ui CI | KTD5 fallback: force-dynamic pages, no build-time DB; still set env for runtime |
-| `metamage_ro` grant not yet applied → ui prerender 500s | Medium (if Phase 2 skipped) | ui pages error | Phase 2 is a hard prerequisite for Phase 4; verify with `SET ROLE` probe |
-| Hobby plan limits (2 projects, preview count) | Low | One project must be deleted | Verified: Hobby supports multiple projects; legacy `metamage` project is retired in the same pass |
-| Path filter misses a file type (e.g., `CONCEPTS.md` moved into `src/`) | Low | Green PR with skipped relevant job | Filters include shared files (`pyproject.toml`, lockfiles, `pnpm-workspace.yaml` of each app, workflow self) |
-| `NEXT_PUBLIC_SITE_URL` forgotten → sitemap advertises localhost | Medium | SEO regression | KTD7 makes it an explicit env var step with a verification probe |
-| Legacy project keeps red-checking PRs | Medium (if Phase 4.8 skipped) | Confusing CI state | Retire the project in the same PR; verify PR checks clean afterwards |
-| pnpm major bump (11 → 12) breaks CI pinning | Low | CI failures on toolchain drift | `packageManager: pnpm@11.9.0` in both package.json files is the single pin; bump deliberately later |
+| Risk                                                                   | Likelihood                    | Impact                             | Mitigation                                                                                                   |
+| ---------------------------------------------------------------------- | ----------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| ui build in CI can't reach Neon (egress/Allowlist)                     | Low                           | Blocks ui CI                       | KTD5 fallback: force-dynamic pages, no build-time DB; still set env for runtime                              |
+| `metamage_ro` grant not yet applied → ui prerender 500s                | Medium (if Phase 2 skipped)   | ui pages error                     | Phase 2 is a hard prerequisite for Phase 4; verify with `SET ROLE` probe                                     |
+| Hobby plan limits (2 projects, preview count)                          | Low                           | One project must be deleted        | Verified: Hobby supports multiple projects; legacy `metamage` project is retired in the same pass            |
+| Path filter misses a file type (e.g., `CONCEPTS.md` moved into `src/`) | Low                           | Green PR with skipped relevant job | Filters include shared files (`pyproject.toml`, lockfiles, `pnpm-workspace.yaml` of each app, workflow self) |
+| `NEXT_PUBLIC_SITE_URL` forgotten → sitemap advertises localhost        | Medium                        | SEO regression                     | KTD7 makes it an explicit env var step with a verification probe                                             |
+| Legacy project keeps red-checking PRs                                  | Medium (if Phase 4.8 skipped) | Confusing CI state                 | Retire the project in the same PR; verify PR checks clean afterwards                                         |
+| pnpm major bump (11 → 12) breaks CI pinning                            | Low                           | CI failures on toolchain drift     | `packageManager: pnpm@11.9.0` in both package.json files is the single pin; bump deliberately later          |
