@@ -51,5 +51,9 @@ jobs:
       - name: Ruff lint
         run: uv run ruff check src tests scripts
 
+      # tests/ only: scripts/ holds executable probes (e.g.
+      # scripts/test_social_post.py posts to real social APIs) that pytest
+      # would otherwise collect and fail on — they are not unit tests.
       - name: Pytest
-        run: uv run pytest -q
+        run: uv run pytest tests -q
+
