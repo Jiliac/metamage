@@ -1,0 +1,60 @@
+name: CI (ui)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ui/**'
+      - '.github/workflows/ci-ui.yml'
+  pull_request:
+    paths:
+      - 'ui/**'
+      - '.github/workflows/ci-ui.yml'
+
+concurrency:
+  group: ci-ui-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: ui
+
+jobs:
+  ui:
+    name: ui / lint + typecheck + build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Prisma runs real queries in generateStaticParams during next build,
+      # so the build needs a reachable ops DB. Read-only role only.
+      DATABASE_URL: ${{ secrets.OPS_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6.1.0
+        with:
+          version: 11
+
+      - name: Setup Node
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 26
+          cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: ESLint
+        run: pnpm lint
+
+      - name: Prettier check
+        run: pnpm format:check
+
+      - name: Typecheck
+        run: pnpm exec tsc --noEmit
+
+      # No test script exists in ui (no vitest); adding one is out of scope.
+      - name: Build
+        run: pnpm build
