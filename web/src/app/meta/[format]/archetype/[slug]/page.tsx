@@ -3,11 +3,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 
 import { getDataSource } from '@/datasource'
-import type {
-  ArchetypeDetailDTO,
-  ArchetypeRef,
-  MatchupCellDTO,
-} from '@/datasource/types'
+import type { ArchetypeDetailDTO, ArchetypeRef } from '@/datasource/types'
 import {
   buildHref,
   parseMetaQuery,
@@ -19,6 +15,7 @@ import { buildPageMetadata } from '@/lib/seo'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ManaPips } from '@/components/ManaPips'
 import { CardAdoptionTable } from '@/components/tables/CardAdoptionTable'
+import { MatchupList } from '@/components/tables/MatchupList'
 import { TrendChart } from '@/components/charts/TrendChart'
 import { WrCiChart } from '@/components/charts/WrCiChart'
 
@@ -197,18 +194,18 @@ export default async function ArchetypeDetailPage({
         {/* DECKLISTS */}
         <TabsContent value="decklists" className="mt-4">
           <div className="grid gap-6 md:grid-cols-2">
-            <div>
+            <div className="min-w-0">
               <h3 className="eyebrow mb-2">Maindeck</h3>
               <CardAdoptionTable cards={detail.mainCards} board="MAIN" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h3 className="eyebrow mb-2">Sideboard</h3>
               <CardAdoptionTable cards={detail.sideCards} board="SIDE" />
             </div>
           </div>
         </TabsContent>
 
-        {/* MATCHUPS — this row vs all (single-row + list) */}
+        {/* MATCHUPS — this row vs all (shared MatchupList, games-ordered) */}
         <TabsContent value="matchups" className="mt-4">
           <MatchupList cells={nonMirror} />
         </TabsContent>
@@ -236,71 +233,5 @@ export default async function ArchetypeDetailPage({
         </span>
       </footer>
     </>
-  )
-}
-
-// Simple server-rendered matchup list (skeleton fallback for the single-row
-// matrix; WP7/WP2 may swap in a MatchupMatrix single-row variant).
-function MatchupList({ cells }: { cells: MatchupCellDTO[] }) {
-  if (cells.length === 0) {
-    return (
-      <p className="py-8 text-center text-[13.5px] text-ink-3">
-        No recorded matchups for this archetype in the window.
-      </p>
-    )
-  }
-  const cls = (c: MatchupCellDTO) =>
-    c.ciLow > 0.5 ? 'text-good' : c.ciHigh < 0.5 ? 'text-bad' : 'text-ink'
-  return (
-    <div className="overflow-x-auto border border-line bg-surface shadow-ledger">
-      <table className="w-full border-collapse text-[13.5px]">
-        <thead>
-          <tr>
-            <th className="border-b border-line-strong px-3.5 py-2.5 text-left text-[11px] font-semibold tracking-[0.13em] text-ink-3 uppercase">
-              Opponent
-            </th>
-            <th className="border-b border-line-strong px-3.5 py-2.5 text-right text-[11px] font-semibold tracking-[0.13em] text-ink-3 uppercase">
-              Win rate
-            </th>
-            <th className="border-b border-line-strong px-3.5 py-2.5 text-right text-[11px] font-semibold tracking-[0.13em] text-ink-3 uppercase">
-              Record
-            </th>
-            <th className="border-b border-line-strong px-3.5 py-2.5 text-right text-[11px] font-semibold tracking-[0.13em] text-ink-3 uppercase">
-              Matches
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {cells.map(c => (
-            <tr
-              key={`${c.rowSlug}-${c.colSlug}`}
-              className="hover:bg-[var(--gold-wash)]"
-            >
-              <td className="border-b border-line px-3.5 py-2 text-ink">
-                {c.colName}
-              </td>
-              <td className="border-b border-line px-3.5 py-2 text-right">
-                {c.lowN ? (
-                  <span className="data text-ink-3">–</span>
-                ) : (
-                  <span className={`data font-bold ${cls(c)}`}>
-                    {(c.wr * 100).toFixed(0)}%
-                  </span>
-                )}
-              </td>
-              <td className="border-b border-line px-3.5 py-2 text-right">
-                <span className="data">
-                  {c.wins}-{c.losses}
-                  {c.draws ? `-${c.draws}` : ''}
-                </span>
-              </td>
-              <td className="border-b border-line px-3.5 py-2 text-right">
-                <span className="data">{c.games}</span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
   )
 }

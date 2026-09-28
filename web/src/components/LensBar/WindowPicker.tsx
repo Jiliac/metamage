@@ -59,7 +59,8 @@ function windowLabel(start: string, end: string): string {
 const chipClass = 'px-2.5 py-1 text-[12px]'
 
 const dateInputClass =
-  'border border-line bg-bg text-ink px-2 py-1 text-[13px] font-mono w-full ' +
+  // R9: ≥16px so iOS Safari does not auto-zoom on focus.
+  'border border-line bg-bg text-ink px-2 py-1 text-[16px] font-mono w-full ' +
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold'
 
 export function WindowPicker() {

@@ -21,7 +21,7 @@ export function FormatPicker({ formats }: FormatPickerProps) {
   const { format, setParams } = useMetaParams()
 
   return (
-    <div className="flex gap-0.5" role="group" aria-label="Format">
+    <div className="flex flex-wrap gap-0.5" role="group" aria-label="Format">
       {formats.map(f => {
         const active = f.slug === format
         return (

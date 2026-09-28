@@ -4,6 +4,7 @@ import type {
   ArchetypeSlug,
   FormatSlug,
   IsoDate,
+  MatrixOrderEntryDTO,
   MetaQuery,
   MetaSort,
 } from '@/datasource/types'
@@ -312,6 +313,27 @@ export function parseMatrixTopN(sp: SearchParamsInput): number {
   )
 }
 
+/**
+ * The mobile matchup list's selected archetype (`?row`), matrix surfaces only
+ * (KTD4). Requires the slug discipline; resolves against the caller-supplied
+ * `MatrixDTO.order` and falls back to presence rank 1 when absent or unknown.
+ * Pure — `order` is passed in, never fetched. Without an `order` (a surface
+ * that only round-trips the value, e.g. the LensBar's knob writes) a
+ * well-formed `?row` is returned as-is so it survives re-serialization.
+ */
+export function parseRow(
+  sp: SearchParamsInput,
+  order?: readonly MatrixOrderEntryDTO[]
+): ArchetypeSlug | undefined {
+  const raw = readParam(sp, 'row')
+  if (!raw || !isArchetypeSlug(raw)) return order?.[0]?.slug
+  const slug = asArchetypeSlug(raw.toLowerCase())
+  if (order) {
+    return order.some(o => o.slug === slug) ? slug : order[0]?.slug
+  }
+  return slug
+}
+
 export type BuildHrefOpts = {
   /** Appended after `/meta/{format}`, e.g. `/matrix` or `/archetype/{slug}`. */
   path?: string
@@ -319,6 +341,12 @@ export type BuildHrefOpts = {
   sort?: MetaSort
   /** Matrix top-N (`?n`), omitted when equal to the default. */
   matrixTopN?: number
+  /** Mobile list's selected archetype (`?row`). Omitted when it equals the
+   *  rank-1 slug of `matrixOrder` — the presence-rank-1 default (KTD4). */
+  row?: ArchetypeSlug
+  /** The matrix's `MatrixDTO.order`, so `row` can be checked against the
+   *  rank-1 default. Pure; never fetched. */
+  matrixOrder?: readonly MatrixOrderEntryDTO[]
   /** Archetype-detail tab (`?tab`). */
   tab?: string
   /** Injected clock so the window-omission check is testable. */
@@ -360,6 +388,11 @@ export function buildHref(
     opts.matrixTopN !== DEFAULTS.matrixTopN
   ) {
     params.set('n', String(opts.matrixTopN))
+  }
+  // `?row` is the mobile matchup list's selected archetype: omitted at the
+  // rank-1 default so the canonical landing stays clean (KTD4).
+  if (opts.row !== undefined && opts.row !== opts.matrixOrder?.[0]?.slug) {
+    params.set('row', opts.row)
   }
   if (opts.tab) params.set('tab', opts.tab)
 

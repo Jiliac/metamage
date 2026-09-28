@@ -73,7 +73,8 @@ export function ArchetypeAdder({ archetypes }: ArchetypeAdderProps) {
             value={q}
             onChange={e => setQ(e.target.value)}
             placeholder="Search archetypes…"
-            className="border border-line bg-bg px-2 py-1.5 text-[13px] text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
+            // R9: ≥16px so iOS Safari does not auto-zoom on focus.
+            className="border border-line bg-bg px-2 py-1.5 text-[16px] text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
           />
 
           {added.length > 0 && (
@@ -84,7 +85,7 @@ export function ArchetypeAdder({ archetypes }: ArchetypeAdderProps) {
                   type="button"
                   onClick={() => remove(slug)}
                   aria-label={`Remove ${nameBySlug.get(slug) ?? slug}`}
-                  className="inline-flex items-center gap-1 border border-gold-soft px-2 py-0.5 text-[12px] text-gold hover:bg-[var(--gold-wash)]"
+                  className="inline-flex items-center gap-1 border border-gold-soft px-2 py-0.5 text-[12px] text-gold hover:bg-[var(--gold-wash)] max-md:min-h-[44px] max-md:px-3"
                 >
                   {nameBySlug.get(slug) ?? slug}
                   <X className="size-3" aria-hidden />
@@ -106,7 +107,7 @@ export function ArchetypeAdder({ archetypes }: ArchetypeAdderProps) {
                   key={a.slug}
                   type="button"
                   onClick={() => add(a.slug)}
-                  className="px-2 py-1 text-left text-[13px] text-ink hover:bg-[var(--gold-wash)] hover:text-gold"
+                  className="px-2 py-1 text-left text-[13px] text-ink hover:bg-[var(--gold-wash)] hover:text-gold max-md:min-h-[44px] max-md:flex max-md:items-center"
                 >
                   {a.name}
                 </button>

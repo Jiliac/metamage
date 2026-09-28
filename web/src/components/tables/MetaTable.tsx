@@ -11,6 +11,7 @@ import {
 } from '@tanstack/react-table'
 
 import { cn } from '@/lib/utils'
+import { STICKY_COL_1_STRONG, STICKY_COL_2_STRONG } from './sticky'
 import { buildHref } from '@/lib/params'
 import { ArtCrop } from '@/components/ArtCrop'
 import { ManaPips } from '@/components/ManaPips'
@@ -35,6 +36,13 @@ import type {
 const pct1 = (x: number) => `${(x * 100).toFixed(1)}%`
 const RIGHT = new Set(['wrlo', 'ci', 'record', 'matches'])
 const SORTABLE = new Set(['rank', 'share', 'wrlo', 'matches'])
+// Columns collapsed away below `md` (R12): share is a luxury; the standalone
+// CI column folds into the wrlo cell as a second line so the interval renders
+// exactly once at every width (KTD6).
+const HIDE_BELOW_MD: Record<string, true> = {
+  share: true,
+  ci: true,
+}
 
 // Numeric sort accessors per sortable column — mirror the column accessorFns.
 // Sorting is applied manually (below) over non-bucket rows only, so buckets
@@ -123,7 +131,7 @@ function NameCell({
       ) : (
         <Link
           href={href}
-          className="text-ink hover:text-gold font-semibold hover:underline hover:underline-offset-[3px]"
+          className="text-ink hover:text-gold font-semibold hover:underline hover:underline-offset-[3px] max-md:inline-flex max-md:min-h-[44px] max-md:items-center"
         >
           {row.name}
         </Link>
@@ -227,8 +235,15 @@ export function MetaTable({
           const r = row.original
           const tone = wrTone(r.wrLo, r.wrHi)
           return (
-            <span className={cn('num font-bold', TONE_CLASS[tone])}>
-              {pct1(r.wr)}
+            <span className="block">
+              <span className={cn('num font-bold', TONE_CLASS[tone])}>
+                {pct1(r.wr)}
+              </span>
+              {/* Folded-in interval — replaces the standalone `ci` column
+                  below `md`, where that column is hidden. */}
+              <span className="num text-ink-2 md:hidden block text-[11.5px]">
+                {(r.wrLo * 100).toFixed(1)}–{(r.wrHi * 100).toFixed(1)}
+              </span>
             </span>
           )
         },
@@ -291,7 +306,9 @@ export function MetaTable({
     <div
       className={cn('bg-surface border-line shadow-ledger border', className)}
     >
-      <div className="overflow-x-auto">
+      {/* Scroll affordance: right-edge fade below `md` only — desktop keeps
+          its hard edge (R14(f)). */}
+      <div className="overflow-x-auto max-md:[mask-image:linear-gradient(to_right,#000_calc(100%_-_24px),transparent)] max-md:[-webkit-mask-image:linear-gradient(to_right,#000_calc(100%_-_24px),transparent)]">
         <table className="w-full border-collapse text-[13.5px]">
           <thead>
             {table.getHeaderGroups().map(hg => (
@@ -331,8 +348,10 @@ export function MetaTable({
                       className={cn(
                         'border-line-strong text-ink-2 border-b px-3.5 pt-3 pb-[9px] text-[11px] font-semibold tracking-[0.13em] whitespace-nowrap uppercase select-none',
                         RIGHT.has(id) ? 'text-right' : 'text-left',
-                        id === 'rank' && 'w-[30px]',
                         id === 'name' && 'min-w-[240px]',
+                        HIDE_BELOW_MD[id] && 'hidden md:table-cell',
+                        id === 'rank' && STICKY_COL_1_STRONG,
+                        id === 'name' && STICKY_COL_2_STRONG,
                         sortable &&
                           'hover:text-ink focus-visible:text-ink cursor-pointer'
                       )}
@@ -368,36 +387,55 @@ export function MetaTable({
               <tr
                 key={row.id}
                 className={cn(
-                  'hover:bg-gold-wash',
+                  'group hover:bg-gold-wash',
                   row.original.isBucket && 'opacity-70'
                 )}
               >
-                {row.getVisibleCells().map(cell => (
-                  <td
-                    key={cell.id}
-                    className={cn(
-                      'border-line border-b px-3.5 py-[7px] align-middle',
-                      RIGHT.has(cell.column.id) && 'text-right'
-                    )}
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
+                {row.getVisibleCells().map(cell => {
+                  const cid = cell.column.id
+                  return (
+                    <td
+                      key={cell.id}
+                      className={cn(
+                        'border-line border-b px-3.5 py-[7px] align-middle',
+                        RIGHT.has(cid) && 'text-right',
+                        HIDE_BELOW_MD[cid] && 'hidden md:table-cell',
+                        cid === 'rank' && STICKY_COL_1_STRONG,
+                        cid === 'name' && STICKY_COL_2_STRONG
+                      )}
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </td>
+                  )
+                })}
               </tr>
             ))}
             {other && (
               <tr className="text-ink-3">
-                <td className="border-line border-b px-3.5 py-[7px]" />
-                <td className="border-line border-b px-3.5 py-[7px] font-semibold italic">
+                <td
+                  className={cn(
+                    'border-line border-b px-3.5 py-[7px]',
+                    STICKY_COL_1_STRONG
+                  )}
+                />
+                <td
+                  className={cn(
+                    'border-line border-b px-3.5 py-[7px] font-semibold italic',
+                    STICKY_COL_2_STRONG
+                  )}
+                >
                   Other (collapsed tail)
                 </td>
-                <td className="border-line border-b px-3.5 py-[7px]">
+                <td className="border-line border-b px-3.5 py-[7px] hidden md:table-cell">
                   <ShareBar share={other.share} max={maxShare} />
                 </td>
                 <td className="border-line border-b px-3.5 py-[7px] text-right">
                   —
                 </td>
-                <td className="border-line border-b px-3.5 py-[7px] text-right">
+                <td className="border-line border-b px-3.5 py-[7px] text-right hidden md:table-cell">
                   —
                 </td>
                 <td className="border-line border-b px-3.5 py-[7px] text-right">

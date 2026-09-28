@@ -25,7 +25,7 @@ import { ArchetypeAdder } from './ArchetypeAdder'
 export type LensBarProps = {
   formats: FormatDTO[]
   archetypes: ArchetypeRef[]
-  variant?: 'meta' | 'matrix'
+  variant?: 'meta' | 'matrix' | 'changes' | 'tournaments'
 }
 
 export function LensBar({
@@ -33,6 +33,19 @@ export function LensBar({
   archetypes,
   variant = 'meta',
 }: LensBarProps) {
+  // R7 — per-route scoping: a control renders only where it can affect the
+  // view. Knobs (topN / minMatches / weight / buckets) and the archetype adder
+  // are meta+matrix concerns; the window knob also applies on tournaments
+  // (its table is window-scoped); changes is format + share only.
+  const showWindow =
+    variant === 'meta' || variant === 'matrix' || variant === 'tournaments'
+  // Knobs (topN / minMatches / weight / buckets) and the archetype adder are
+  // meta+matrix concerns (R7); the type narrowing below is what KnobsPopover
+  // relies on, so it never has to gate itself.
+  const knobsVariant =
+    variant === 'meta' || variant === 'matrix' ? variant : null
+  const showDivider = showWindow || knobsVariant !== null
+
   return (
     <div
       role="toolbar"
@@ -40,10 +53,14 @@ export function LensBar({
       className="clip-notch mt-5 flex flex-wrap items-center gap-2.5 border border-line bg-surface px-3.5 py-3"
     >
       <FormatPicker formats={formats} />
-      <div role="none" className="mx-1 w-px self-stretch bg-line" />
-      <WindowPicker />
-      <KnobsPopover variant={variant} />
-      <ArchetypeAdder archetypes={archetypes} />
+      {showDivider && (
+        <div role="none" className="mx-1 w-px self-stretch bg-line" />
+      )}
+      {showWindow && <WindowPicker />}
+      {knobsVariant && <KnobsPopover variant={knobsVariant} />}
+      {knobsVariant && <ArchetypeAdder archetypes={archetypes} />}
+      {/* Share rides inside the first wrapped row (ml-auto within the flex
+          flow), never banished to a lone row of its own. */}
       <ShareButton />
     </div>
   )

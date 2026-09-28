@@ -12,6 +12,7 @@ import {
   YAxis,
 } from 'recharts'
 
+import { useIsDesktop } from '@/hooks/useMediaQuery'
 import { cn } from '@/lib/utils'
 import type { MetaChangeDTO, TrendPointDTO } from '@/datasource/types'
 
@@ -83,6 +84,9 @@ export function TrendChart({ trends, changes, className }: TrendChartProps) {
     [changes, weeks]
   )
 
+  // Fixed desktop height at ≥md, shorter below; SSR assumes desktop.
+  const chartHeight = useIsDesktop() ? 340 : 260
+
   return (
     <div
       className={cn(
@@ -90,7 +94,7 @@ export function TrendChart({ trends, changes, className }: TrendChartProps) {
         className
       )}
     >
-      <ResponsiveContainer width="100%" height={340}>
+      <ResponsiveContainer width="100%" height={chartHeight}>
         <LineChart
           data={data}
           margin={{ top: 16, right: 12, bottom: 8, left: 4 }}

@@ -1,14 +1,21 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useTransition } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
-import type { FormatSlug, MetaQuery, MetaSort } from '@/datasource/types'
+import type {
+  ArchetypeSlug,
+  FormatSlug,
+  MatrixOrderEntryDTO,
+  MetaQuery,
+  MetaSort,
+} from '@/datasource/types'
 import {
   asFormatSlug,
   buildHref,
   parseMatrixTopN,
   parseMetaQuery,
+  parseRow,
   parseSort,
 } from '@/lib/params'
 import { capture } from '@/lib/analytics'
@@ -49,6 +56,8 @@ export type MetaParamsPatch = Partial<
   format?: FormatSlug | string
   sort?: MetaSort
   matrixTopN?: number
+  /** Mobile matchup-list archetype (`?row`), matrix surfaces only (KTD4). */
+  row?: ArchetypeSlug
 }
 
 /** Extract the `{format}` path segment from `/meta/{format}/...`. */
@@ -71,25 +80,40 @@ export type UseMetaParams = {
   query: MetaQuery
   sort: MetaSort
   matrixTopN: number
+  /** Resolved `?row` (matrix surfaces that pass `order`); undefined elsewhere. */
+  row?: ArchetypeSlug
+  /** True while a `setParams` navigation is in flight (useTransition). */
+  isPending: boolean
   setParams: (patch: MetaParamsPatch) => void
 }
 
-export function useMetaParams(): UseMetaParams {
+/**
+ * @param order the matrix surface's `MatrixDTO.order`, so `?row` resolves
+ *   against it and re-serializes with the rank-1 default omitted (KTD4).
+ *   Omit on surfaces that don't own a matrix; a well-formed `?row` is still
+ *   round-tripped verbatim so lens knobs never drop it.
+ */
+export function useMetaParams(
+  order?: readonly MatrixOrderEntryDTO[]
+): UseMetaParams {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const [isPending, startTransition] = useTransition()
 
   const format = formatFromPathname(pathname)
   const subPath = subPathFromPathname(pathname)
   const query = parseMetaQuery(format, searchParams)
   const sort = parseSort(searchParams)
   const matrixTopN = parseMatrixTopN(searchParams)
+  const row = parseRow(searchParams, order)
 
   const setParams = useCallback(
     (patch: MetaParamsPatch) => {
       const current = parseMetaQuery(format, searchParams)
       const curSort = parseSort(searchParams)
       const curMatrixTopN = parseMatrixTopN(searchParams)
+      const curRow = parseRow(searchParams, order)
 
       const nextFormat = patch.format ?? format
       const nextQuery: MetaQuery = {
@@ -107,15 +131,23 @@ export function useMetaParams(): UseMetaParams {
         path: subPath,
         sort: patch.sort ?? curSort,
         matrixTopN: patch.matrixTopN ?? curMatrixTopN,
+        row: patch.row ?? curRow,
+        matrixOrder: order,
       })
 
-      router.push(href)
-      capture('reparameterize', {
-        format: String(nextFormat),
-        changedKeys: Object.keys(patch),
+      // Same-path patches hold the scroll position so a knob/selector change
+      // never teleports a mid-page user; a format change moves the path and
+      // keeps the browser's default scroll-to-top.
+      const pathChanged = patch.format !== undefined && patch.format !== format
+      startTransition(() => {
+        router.push(href, pathChanged ? undefined : { scroll: false })
+        capture('reparameterize', {
+          format: String(nextFormat),
+          changedKeys: Object.keys(patch),
+        })
       })
     },
-    [router, searchParams, format, subPath]
+    [router, searchParams, format, subPath, order]
   )
 
   return {
@@ -124,6 +156,8 @@ export function useMetaParams(): UseMetaParams {
     query,
     sort,
     matrixTopN,
+    row,
+    isPending,
     setParams,
   }
 }

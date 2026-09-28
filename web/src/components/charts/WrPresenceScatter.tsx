@@ -15,6 +15,7 @@ import {
 } from 'recharts'
 
 import { ManaPips } from '@/components/ManaPips'
+import { useIsDesktop } from '@/hooks/useMediaQuery'
 import { cn } from '@/lib/utils'
 import { wrPolarity, type WrPolarity } from '@/lib/stats'
 import type { ArchetypeRowDTO } from '@/datasource/types'
@@ -181,6 +182,9 @@ export function WrPresenceScatter({
 
   const xTicks = [1, 5, 10, 15, 20, 25, 30].filter(t => t <= xMax)
 
+  // Fixed desktop height at ≥md, shorter below; SSR assumes desktop.
+  const chartHeight = useIsDesktop() ? 430 : 300
+
   return (
     <div
       className={cn(
@@ -193,12 +197,12 @@ export function WrPresenceScatter({
           '.mm-scatter-link:focus{outline:none}.mm-scatter-link:focus-visible circle{stroke:var(--gold);stroke-width:3}@media (prefers-reduced-motion: no-preference){.mm-scatter-dot{animation:mm-pop .45s cubic-bezier(.2,.9,.3,1.4) backwards}@keyframes mm-pop{from{opacity:0;transform:scale(.4)}}}'
         }
       </style>
-      <div className="border-b border-line p-4 md:border-b-0 md:border-r">
+      <div className="border-b border-line px-4 py-3 md:border-b-0 md:border-r md:py-4">
         <ol className="m-0 list-none p-0 text-[12.5px]">
           {legend.map(d => (
             <li
               key={d.slug}
-              className="flex items-center gap-2 py-[3.5px] text-ink-2"
+              className="flex items-center gap-2 py-2 md:py-[3.5px]"
             >
               <span
                 className="data grid size-[17px] flex-none place-items-center rounded-full text-[9.5px] font-bold text-bg"
@@ -223,7 +227,7 @@ export function WrPresenceScatter({
         </ol>
       </div>
       <div className="p-3">
-        <ResponsiveContainer width="100%" height={430}>
+        <ResponsiveContainer width="100%" height={chartHeight}>
           <ScatterChart margin={{ top: 16, right: 18, bottom: 24, left: 4 }}>
             <CartesianGrid stroke="var(--line)" />
             <XAxis

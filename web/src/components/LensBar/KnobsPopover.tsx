@@ -64,7 +64,7 @@ function NumberField({ label, value, min, max, onCommit }: NumberFieldProps) {
             commit()
           }
         }}
-        className="w-full border border-line bg-bg px-2 py-1 font-mono text-[13px] text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
+        className="w-full border border-line bg-bg px-2 py-1 font-mono text-[16px] text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold"
       />
     </label>
   )

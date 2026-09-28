@@ -100,7 +100,7 @@ export default async function ChangesPage({
   return (
     <>
       <Suspense fallback={null}>
-        <LensBar formats={formats} archetypes={archetypes} />
+        <LensBar formats={formats} archetypes={archetypes} variant="changes" />
       </Suspense>
 
       <section className="mt-10">

@@ -16,6 +16,7 @@ import {
   defaultWindow,
   parseMetaQuery,
   parseMatrixTopN,
+  parseRow,
   parseSort,
 } from '@/lib/params'
 import { buildPageMetadata } from '@/lib/seo'
@@ -27,6 +28,9 @@ import { EmptyState } from '@/components/EmptyState'
 import { MetaTable } from '@/components/tables/MetaTable'
 import { WrPresenceScatter } from '@/components/charts/WrPresenceScatter'
 import { MatchupMatrix } from '@/components/charts/MatchupMatrix'
+import { MatrixRowPicker } from '@/components/charts/MatrixRowPicker'
+import { MatrixSkeleton } from '@/components/charts/MatrixSkeleton'
+import { MatchupList, selectRowCells } from '@/components/tables/MatchupList'
 
 // ---------------------------------------------------------------------------
 // Meta overview landing (WP5). All RSC: parse the lens once, resolve the data
@@ -261,7 +265,7 @@ export default async function MetaOverviewPage({
           The six most-played archetypes of the window. Art follows each
           deck&rsquo;s signature card.
         </p>
-        <div className="mt-[18px] grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(320px,1fr))]">
+        <div className="mt-[18px] grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr))]">
           {top6.map((row, i) => (
             <DeckTile
               key={row.slug}
@@ -293,7 +297,11 @@ export default async function MetaOverviewPage({
           }}
         >
           <div className="clip-notch-lg bg-surface p-5">
-            <MatchupMatrixHero query={query} n={matrixTopN} />
+            {/* Same `matrix:` seam inside the streamed boundary; the skeleton
+                mirrors it so the resolve shifts nothing (R6). */}
+            <Suspense fallback={<MatrixSkeleton n={matrixTopN} />}>
+              <MatchupMatrixHero query={query} n={matrixTopN} sp={sp} />
+            </Suspense>
           </div>
         </div>
       </section>
@@ -347,13 +355,17 @@ export default async function MetaOverviewPage({
 }
 
 // The matrix hero fetches its own grid; kept a server component (no client
-// boundary), so the landing streams the rest before the grid resolves.
+// boundary), so the landing streams the rest before the grid resolves. Both
+// variants (grid/list) render from the one MatrixDTO in this single server
+// pass; the `matrix:` media variant picks per viewport (KTD3, R3, R6).
 async function MatchupMatrixHero({
   query,
   n,
+  sp,
 }: {
   query: MetaQuery
   n: number
+  sp: Record<string, string | string[] | undefined>
 }) {
   const ds = getDataSource()
   const matrix: MatrixDTO = await ds.getMatchupMatrix({
@@ -367,13 +379,27 @@ async function MatchupMatrixHero({
       </p>
     )
   }
+  const picked = selectRowCells(matrix, parseRow(sp, matrix.order))
   const rowHref: Record<string, string> = Object.fromEntries(
     matrix.order.map(o => [
       String(o.slug),
       buildHref(query.format, query, { path: `/archetype/${o.slug}` }),
     ])
   )
-  return <MatchupMatrix data={matrix} rowHref={rowHref} />
+  return (
+    <>
+      {/* grid — desktop seam (KTD3) */}
+      <div className="hidden matrix:block">
+        <MatchupMatrix data={matrix} rowHref={rowHref} />
+      </div>
+      {/* list — everywhere else; `?row` selection, rank-1 default (R4) */}
+      <div className="matrix:hidden">
+        <MatrixRowPicker order={matrix.order}>
+          <MatchupList cells={picked.cells} sort="wrAsc" ranks={picked.ranks} />
+        </MatrixRowPicker>
+      </div>
+    </>
+  )
 }
 
 function LedgerFooter({

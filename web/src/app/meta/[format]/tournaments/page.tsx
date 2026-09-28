@@ -10,6 +10,8 @@ import type {
 } from '@/datasource/types'
 import { parseMetaQuery } from '@/lib/params'
 import { buildPageMetadata } from '@/lib/seo'
+import { cn } from '@/lib/utils'
+import { STICKY_COL_1 } from '@/components/tables/sticky'
 
 import { LensBar } from '@/components/LensBar/LensBar'
 import { EmptyState } from '@/components/EmptyState'
@@ -115,7 +117,11 @@ export default async function TournamentsPage({
   return (
     <>
       <Suspense fallback={null}>
-        <LensBar formats={formats} archetypes={archetypes} />
+        <LensBar
+          formats={formats}
+          archetypes={archetypes}
+          variant="tournaments"
+        />
       </Suspense>
 
       <section className="mt-10">
@@ -144,11 +150,11 @@ export default async function TournamentsPage({
             </div>
 
             {/* TOURNAMENT TABLE */}
-            <div className="mt-6 overflow-x-auto border border-line bg-surface shadow-ledger">
+            <div className="mt-6 overflow-x-auto border border-line bg-surface shadow-ledger max-md:[mask-image:linear-gradient(to_right,#000_calc(100%_-_24px),transparent)] max-md:[-webkit-mask-image:linear-gradient(to_right,#000_calc(100%_-_24px),transparent)]">
               <table className="w-full border-collapse text-[13.5px]">
                 <thead>
                   <tr>
-                    <Th>Date</Th>
+                    <Th className={STICKY_COL_1}>Date</Th>
                     <Th>Tournament</Th>
                     <Th>Source</Th>
                     <Th className="text-right">Entries</Th>
@@ -156,8 +162,16 @@ export default async function TournamentsPage({
                 </thead>
                 <tbody>
                   {tournaments.map(t => (
-                    <tr key={t.id} className="hover:bg-[var(--gold-wash)]">
-                      <td className="border-b border-line px-3.5 py-2">
+                    <tr
+                      key={t.id}
+                      className="group hover:bg-[var(--gold-wash)]"
+                    >
+                      <td
+                        className={cn(
+                          'border-b border-line px-3.5 py-2',
+                          STICKY_COL_1
+                        )}
+                      >
                         <span className="data text-ink-2">
                           {shortDate(t.date)}
                         </span>

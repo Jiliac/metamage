@@ -26,11 +26,16 @@ export function KpiStat({ label, value, format, className }: KpiStatProps) {
       ? (format ?? ((n: number) => n.toLocaleString('en-US')))(value)
       : value
   return (
-    <div className={cn('bg-surface px-[18px] pt-3.5 pb-3', className)}>
+    <div
+      className={cn(
+        'bg-surface px-[18px] pt-3.5 pb-3 max-[420px]:px-3',
+        className
+      )}
+    >
       <div className="num text-ink text-[26px] leading-none font-semibold tracking-[-0.01em]">
         {display}
       </div>
-      <div className="text-ink-3 mt-1.5 text-[11.5px] tracking-[0.14em] uppercase">
+      <div className="text-ink-3 mt-1.5 text-[11.5px] tracking-[0.14em] uppercase max-[420px]:text-[10px] max-[420px]:tracking-[0.08em]">
         {label}
       </div>
     </div>
