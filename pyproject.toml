@@ -30,5 +30,10 @@ dev = [
     "ruff>=0.12.8",
 ]
 
+[tool.pytest.ini_options]
+# scripts/ holds executable probes (e.g. scripts/test_social_post.py hits real
+# social APIs); they are not unit tests and must not be collected.
+testpaths = ["tests"]
+
 [tool.ruff]
 exclude = ["alembic"]
