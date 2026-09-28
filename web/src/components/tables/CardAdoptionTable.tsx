@@ -1,6 +1,7 @@
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'
+import { STICKY_COL_1, STICKY_COL_2 } from './sticky'
 import type { CardAdoptionDTO } from '@/datasource/types'
 
 // ---------------------------------------------------------------------------
@@ -14,13 +15,6 @@ import type { CardAdoptionDTO } from '@/datasource/types'
 function titleCase(name: string): string {
   return name.replace(/(^|\s)([a-z])/g, (_m, p, c) => p + c.toUpperCase())
 }
-
-/** Sticky pinned columns: `#` stays put and the card name pins just past it
-    (30px index + 2 × 14px cell padding), surface-backed with a right hairline. */
-const STICKY_INDEX =
-  'sticky left-0 z-20 bg-surface group-hover:bg-gold-wash after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-line'
-const STICKY_CARD =
-  'sticky left-[58px] z-20 bg-surface group-hover:bg-gold-wash after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-line'
 
 export type CardAdoptionTableProps = {
   cards: CardAdoptionDTO[]
@@ -58,8 +52,8 @@ export function CardAdoptionTable({
         <table className="w-full border-collapse text-[13.5px]">
           <thead>
             <tr>
-              <Th className={cn('w-[30px]', STICKY_INDEX)}>#</Th>
-              <Th className={cn(STICKY_CARD)}>Card</Th>
+              <Th className={cn('w-[30px]', STICKY_COL_1)}>#</Th>
+              <Th className={STICKY_COL_2}>Card</Th>
               <Th align="right" className="hidden md:table-cell">
                 Copies
               </Th>
@@ -76,7 +70,7 @@ export function CardAdoptionTable({
                 <td
                   className={cn(
                     'text-ink-3 px-3.5 py-[7px] text-[12px]',
-                    STICKY_INDEX
+                    STICKY_COL_1
                   )}
                 >
                   {i + 1}
@@ -84,7 +78,7 @@ export function CardAdoptionTable({
                 <td
                   className={cn(
                     'text-ink px-3.5 py-[7px] font-semibold',
-                    STICKY_CARD
+                    STICKY_COL_2
                   )}
                 >
                   {titleCase(c.name)}

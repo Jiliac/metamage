@@ -92,17 +92,19 @@ export function MatchupMatrix({
           {order.map(col => (
             <div
               key={`h-${col.slug}`}
-              role="columnheader"
-              aria-label={col.name}
               title={col.name}
               className="grid place-items-center py-1.5 text-[11px] text-ink-3"
             >
+              {/* Numbered head; the name is read out (and shown on hover) since
+                  a flat CSS grid has no row/grid roles to host `columnheader`. */}
               <span
+                aria-hidden
                 className="data grid size-[19px] place-items-center rounded-full text-[10px] font-bold text-bg"
                 style={{ background: 'var(--ink-3)' }}
               >
                 {rankBySlug.get(col.slug)}
               </span>
+              <span className="sr-only">{col.name}</span>
             </div>
           ))}
 

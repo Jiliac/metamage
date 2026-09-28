@@ -113,15 +113,11 @@ function ToggleRow<T extends string>({
 }
 
 export type KnobsPopoverProps = {
-  variant?: 'meta' | 'matrix' | 'changes' | 'tournaments'
+  variant?: 'meta' | 'matrix'
 }
 
 export function KnobsPopover({ variant = 'meta' }: KnobsPopoverProps) {
   const { query, matrixTopN, setParams } = useMetaParams()
-  // Generalized gating (R7): the knobs are meta/matrix concerns only — hidden
-  // where the route makes them no-ops. Callers decide the variant; no route
-  // sniffing here. Hooks run unconditionally; the null return is after.
-  if (variant === 'changes' || variant === 'tournaments') return null
   const summary = `Top ${query.topN} · min ${query.minMatches}`
 
   return (

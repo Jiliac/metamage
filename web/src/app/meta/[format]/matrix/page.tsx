@@ -99,10 +99,10 @@ export default async function MatrixPage({
   // Selected mobile-list archetype: `?row` resolved against the matrix order,
   // defaulting to presence rank 1 (KTD4, R4). Only computed for a non-empty
   // matrix — an empty order has no row to select (see empty guard below).
-  let picked: SelectedRowCells | null = null
-  if (matrix.order.length > 0) {
-    picked = selectRowCells(matrix, parseRow(sp, matrix.order))
-  }
+  const picked: SelectedRowCells | null =
+    matrix.order.length > 0
+      ? selectRowCells(matrix, parseRow(sp, matrix.order))
+      : null
 
   return (
     <>

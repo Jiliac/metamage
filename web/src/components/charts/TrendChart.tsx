@@ -12,6 +12,7 @@ import {
   YAxis,
 } from 'recharts'
 
+import { useIsDesktop } from '@/hooks/useMediaQuery'
 import { cn } from '@/lib/utils'
 import type { MetaChangeDTO, TrendPointDTO } from '@/datasource/types'
 
@@ -22,27 +23,6 @@ import type { MetaChangeDTO, TrendPointDTO } from '@/datasource/types'
 // changes (bans / set releases). Win-rate gaps (zero-game weeks) stay broken —
 // `connectNulls={false}` — so the eye never invents data across an empty week.
 // ---------------------------------------------------------------------------
-
-// Chart keeps its fixed desktop height at ≥768px and shrinks below `md`.
-// SSR/first render assumes desktop (no desktop layout shift); mobile corrects
-// at hydration.
-const MD_QUERY = '(min-width: 768px)'
-const desktopMql = (): MediaQueryList =>
-  typeof window === 'undefined'
-    ? ({} as MediaQueryList)
-    : window.matchMedia(MD_QUERY)
-function onMdChange(onChange: () => void): () => void {
-  const mql = desktopMql()
-  mql.addEventListener?.('change', onChange)
-  return () => mql.removeEventListener?.('change', onChange)
-}
-function useIsDesktop(): boolean {
-  return React.useSyncExternalStore(
-    onMdChange,
-    () => desktopMql().matches,
-    () => true
-  )
-}
 
 type TrendDatum = {
   week: string
@@ -104,8 +84,8 @@ export function TrendChart({ trends, changes, className }: TrendChartProps) {
     [changes, weeks]
   )
 
-  const isDesktop = useIsDesktop()
-  const chartHeight = isDesktop ? 340 : 260
+  // Fixed desktop height at ≥md, shorter below; SSR assumes desktop.
+  const chartHeight = useIsDesktop() ? 340 : 260
 
   return (
     <div

@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 
-import type { MatrixOrderEntryDTO } from '@/datasource/types'
+import type { ArchetypeSlug, MatrixOrderEntryDTO } from '@/datasource/types'
 import { cn } from '@/lib/utils'
 import { useMetaParams } from '@/hooks/useMetaParams'
 
@@ -29,6 +29,53 @@ export type MatrixRowPickerProps = {
   children: React.ReactNode
 }
 
+function RowSelect({
+  order,
+  selected,
+  onChange,
+}: {
+  order: MatrixOrderEntryDTO[]
+  selected: ArchetypeSlug | undefined
+  onChange: (slug: ArchetypeSlug) => void
+}) {
+  return (
+    <div className="mb-3 flex items-center gap-2">
+      <label
+        className="text-[11px] font-semibold tracking-[0.13em] text-ink-3 uppercase"
+        id="matrix-row-label"
+      >
+        Archetype
+      </label>
+      <Select
+        value={selected}
+        onValueChange={v => onChange(v as ArchetypeSlug)}
+      >
+        <SelectTrigger
+          aria-labelledby="matrix-row-label"
+          className="w-[260px] max-w-full"
+        >
+          {/* Children, not resolved-item text: Radix resolves SelectValue
+              client-side only, and the trigger must show the archetype in
+              the SSR markup too. */}
+          <SelectValue>
+            {order.find(o => o.slug === selected)?.name ?? 'Archetype'}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {order.map(o => (
+            <SelectItem key={o.slug} value={String(o.slug)}>
+              <span className="num mr-2 text-[11px] text-ink-3">
+                #{o.presenceRank}
+              </span>
+              {o.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  )
+}
+
 export function MatrixRowPicker({ order, children }: MatrixRowPickerProps) {
   const { row, isPending, setParams } = useMetaParams(order)
   const selected = row ?? order[0]?.slug
@@ -38,42 +85,11 @@ export function MatrixRowPicker({ order, children }: MatrixRowPickerProps) {
 
   return (
     <>
-      <div className="mb-3 flex items-center gap-2">
-        <label
-          className="text-[11px] font-semibold tracking-[0.13em] text-ink-3 uppercase"
-          id="matrix-row-label"
-        >
-          Archetype
-        </label>
-        <Select
-          value={selected}
-          onValueChange={v =>
-            setParams({ row: v as MatrixOrderEntryDTO['slug'] })
-          }
-        >
-          <SelectTrigger
-            aria-labelledby="matrix-row-label"
-            className="w-[260px] max-w-full"
-          >
-            {/* Children, not resolved-item text: Radix resolves SelectValue
-                client-side only, and the trigger must show the archetype in
-                the SSR markup too. */}
-            <SelectValue>
-              {order.find(o => o.slug === selected)?.name ?? 'Archetype'}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {order.map(o => (
-              <SelectItem key={o.slug} value={String(o.slug)}>
-                <span className="num mr-2 text-[11px] text-ink-3">
-                  #{o.presenceRank}
-                </span>
-                {o.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <RowSelect
+        order={order}
+        selected={selected}
+        onChange={slug => setParams({ row: slug })}
+      />
       <div
         aria-busy={isPending || undefined}
         className={cn(

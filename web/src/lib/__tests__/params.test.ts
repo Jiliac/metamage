@@ -82,6 +82,11 @@ describe('parseRow', () => {
     expect(parseRow(SP('row=grixis-affinity'), ORDER)).toBe('mono-blue-faeries')
   })
 
+  it('returns undefined for an empty order instead of throwing', () => {
+    expect(parseRow(SP('row=boros-dwarves'), [])).toBeUndefined()
+    expect(parseRow(SP(''), [])).toBeUndefined()
+  })
+
   it('returns undefined (no value) without an order', () => {
     expect(parseRow(SP(''))).toBeUndefined()
     // A well-formed raw slug round-trips verbatim so lens knobs keep it.

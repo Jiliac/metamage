@@ -15,6 +15,7 @@ import {
 } from 'recharts'
 
 import { ManaPips } from '@/components/ManaPips'
+import { useIsDesktop } from '@/hooks/useMediaQuery'
 import { cn } from '@/lib/utils'
 import { wrPolarity, type WrPolarity } from '@/lib/stats'
 import type { ArchetypeRowDTO } from '@/datasource/types'
@@ -26,27 +27,6 @@ import type { ArchetypeRowDTO } from '@/datasource/types'
 // CI sits relative to 50% (--good above / --bad below / --mid straddling — never
 // raw red/green). A plain <ol> side legend carries rank dot + name + ManaPips.
 // ---------------------------------------------------------------------------
-
-// Desktop-height guard: charts keep their fixed desktop height at ≥768px and
-// shrink below `md`. SSR/first render assumes desktop (no layout shift on the
-// common viewport); mobile corrects at hydration.
-const MD_QUERY = '(min-width: 768px)'
-const desktopMql = (): MediaQueryList =>
-  typeof window === 'undefined'
-    ? ({} as MediaQueryList)
-    : window.matchMedia(MD_QUERY)
-function useIsDesktop(): boolean {
-  return React.useSyncExternalStore(
-    onMdChange,
-    () => desktopMql().matches,
-    () => true
-  )
-}
-function onMdChange(onChange: () => void): () => void {
-  const mql = desktopMql()
-  mql.addEventListener?.('change', onChange)
-  return () => mql.removeEventListener?.('change', onChange)
-}
 
 const POLE_VAR: Record<WrPolarity, string> = {
   good: 'var(--good)',
@@ -202,8 +182,8 @@ export function WrPresenceScatter({
 
   const xTicks = [1, 5, 10, 15, 20, 25, 30].filter(t => t <= xMax)
 
-  const isDesktop = useIsDesktop()
-  const chartHeight = isDesktop ? 430 : 300
+  // Fixed desktop height at ≥md, shorter below; SSR assumes desktop.
+  const chartHeight = useIsDesktop() ? 430 : 300
 
   return (
     <div

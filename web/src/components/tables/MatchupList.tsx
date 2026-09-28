@@ -1,6 +1,7 @@
 import type { MatchupCellDTO, MatrixDTO } from '@/datasource/types'
 import { LowSampleNotice } from '@/components/LowSampleNotice'
 import { ciText, inkFill, pctI, rec } from '@/lib/ink'
+import { cn } from '@/lib/utils'
 
 // ---------------------------------------------------------------------------
 // MatchupList — the single per-archetype matchup list (KTD2). Extracted from
@@ -32,7 +33,8 @@ export type SelectedRowCells = {
 
 /** Slice the selected archetype's row out of the full zero-filled matrix grid
  *  (`MatrixDTO.cells`); rank/name come from `MatrixDTO.order` — there is no
- *  `rows` field. Falls back to presence rank 1 when `row` is null/unknown. */
+ *  `rows` field. Falls back to presence rank 1 when `row` is null/unknown.
+ *  Requires a non-empty `order`; callers guard the empty matrix. */
 export function selectRowCells(
   matrix: Pick<MatrixDTO, 'order' | 'cells'>,
   row: string | null | undefined
@@ -48,26 +50,97 @@ export function selectRowCells(
   return { slug: entry.slug, name: entry.name, cells, ranks }
 }
 
+/** Pure ordering for the list. `games`: volume desc, then wr desc. `wrAsc`:
+ *  worst supported matchups first; pairs with no data sink to the end. Never
+ *  mutates its input. */
+export function sortCells(
+  cells: readonly MatchupCellDTO[],
+  sort: MatchupListSort
+): MatchupCellDTO[] {
+  if (sort === 'wrAsc') {
+    return [...cells].sort(
+      (a, b) =>
+        (a.games === 0 ? 1 : 0) - (b.games === 0 ? 1 : 0) ||
+        a.wr - b.wr ||
+        b.games - a.games
+    )
+  }
+  return [...cells].sort((a, b) => b.games - a.games || b.wr - a.wr)
+}
+
 /** Win-rate tone: the interval, not the point estimate, decides the color —
  *  shared with the grid's tooltip semantics (§9 rule 5). */
 const wrTone = (c: MatchupCellDTO): string =>
   c.ciLow > 0.5 ? 'text-good' : c.ciHigh < 0.5 ? 'text-bad' : 'text-ink'
+
+const thClass =
+  'border-b border-line-strong px-3.5 py-2.5 text-[11px] font-semibold tracking-[0.13em] text-ink-3 uppercase'
+const tdClass = 'border-b border-line px-3.5 py-2'
+
+function MatchupRow({
+  cell: c,
+  rank,
+}: {
+  cell: MatchupCellDTO
+  rank?: number | string
+}) {
+  return (
+    <tr className="hover:bg-[var(--gold-wash)]">
+      <td className={cn(tdClass, 'text-ink')}>
+        {rank !== undefined && (
+          <span className="num mr-2 text-[11px] text-ink-3">#{rank}</span>
+        )}
+        {c.colName}
+      </td>
+      <td className={cn(tdClass, 'text-right')}>
+        {c.lowN ? (
+          <span className="data text-ink-3">–</span>
+        ) : (
+          <span className={`data font-bold ${wrTone(c)}`}>{pctI(c.wr)}</span>
+        )}
+        {/* Inline 95% CI (R5) — the grid tooltip's interval, readable
+            without hover. */}
+        {c.games > 0 && (
+          <span className="num block text-[11px] text-ink-2">
+            {ciText(c.ciLow, c.ciHigh)}
+          </span>
+        )}
+        {/* Confidence-as-ink bar (§9 rule 5) from the shared helper. */}
+        {!c.lowN && c.games > 0 && (
+          <span
+            aria-hidden
+            className="mt-1 ml-auto block h-[3px] w-16 overflow-hidden rounded-full"
+            style={{ background: 'var(--raised)' }}
+          >
+            <span
+              className="block h-full"
+              style={{
+                width: pctI(c.wr),
+                background: inkFill(c.wr, c.reliability),
+              }}
+            />
+          </span>
+        )}
+      </td>
+      <td className={cn(tdClass, 'text-right')}>
+        <span className="data">
+          {rec(c.wins, c.losses)}
+          {c.draws ? `–${c.draws}` : ''}
+        </span>
+      </td>
+      <td className={cn(tdClass, 'text-right')}>
+        <span className="data">{c.games}</span>
+      </td>
+    </tr>
+  )
+}
 
 export function MatchupList({
   cells: raw,
   sort = 'games',
   ranks,
 }: MatchupListProps) {
-  const cells =
-    sort === 'wrAsc'
-      ? // Worst supported matchups first; pairs with no data sink to the end.
-        [...raw].sort(
-          (a, b) =>
-            (a.games === 0 ? 1 : 0) - (b.games === 0 ? 1 : 0) ||
-            a.wr - b.wr ||
-            b.games - a.games
-        )
-      : [...raw].sort((a, b) => b.games - a.games || b.wr - a.wr)
+  const cells = sortCells(raw, sort)
 
   if (cells.length === 0) {
     return (
@@ -96,76 +169,19 @@ export function MatchupList({
         <table className="w-full border-collapse text-[13.5px]">
           <thead>
             <tr>
-              <th className="border-b border-line-strong px-3.5 py-2.5 text-left text-[11px] font-semibold tracking-[0.13em] text-ink-3 uppercase">
-                Opponent
-              </th>
-              <th className="border-b border-line-strong px-3.5 py-2.5 text-right text-[11px] font-semibold tracking-[0.13em] text-ink-3 uppercase">
-                Win rate
-              </th>
-              <th className="border-b border-line-strong px-3.5 py-2.5 text-right text-[11px] font-semibold tracking-[0.13em] text-ink-3 uppercase">
-                Record
-              </th>
-              <th className="border-b border-line-strong px-3.5 py-2.5 text-right text-[11px] font-semibold tracking-[0.13em] text-ink-3 uppercase">
-                Matches
-              </th>
+              <th className={cn(thClass, 'text-left')}>Opponent</th>
+              <th className={cn(thClass, 'text-right')}>Win rate</th>
+              <th className={cn(thClass, 'text-right')}>Record</th>
+              <th className={cn(thClass, 'text-right')}>Matches</th>
             </tr>
           </thead>
           <tbody>
             {cells.map(c => (
-              <tr
+              <MatchupRow
                 key={`${c.rowSlug}-${c.colSlug}`}
-                className="hover:bg-[var(--gold-wash)]"
-              >
-                <td className="border-b border-line px-3.5 py-2 text-ink">
-                  {ranks && (
-                    <span className="num mr-2 text-[11px] text-ink-3">
-                      #{ranks[String(c.colSlug)] ?? '—'}
-                    </span>
-                  )}
-                  {c.colName}
-                </td>
-                <td className="border-b border-line px-3.5 py-2 text-right">
-                  {c.lowN ? (
-                    <span className="data text-ink-3">–</span>
-                  ) : (
-                    <span className={`data font-bold ${wrTone(c)}`}>
-                      {pctI(c.wr)}
-                    </span>
-                  )}
-                  {/* Inline 95% CI (R5) — the grid tooltip's interval, readable
-                      without hover. */}
-                  {c.games > 0 && (
-                    <span className="num block text-[11px] text-ink-2">
-                      {ciText(c.ciLow, c.ciHigh)}
-                    </span>
-                  )}
-                  {/* Confidence-as-ink bar (§9 rule 5) from the shared helper. */}
-                  {!c.lowN && c.games > 0 && (
-                    <span
-                      aria-hidden
-                      className="mt-1 ml-auto block h-[3px] w-16 overflow-hidden rounded-full"
-                      style={{ background: 'var(--raised)' }}
-                    >
-                      <span
-                        className="block h-full"
-                        style={{
-                          width: pctI(c.wr),
-                          background: inkFill(c.wr, c.reliability),
-                        }}
-                      />
-                    </span>
-                  )}
-                </td>
-                <td className="border-b border-line px-3.5 py-2 text-right">
-                  <span className="data">
-                    {rec(c.wins, c.losses)}
-                    {c.draws ? `–${c.draws}` : ''}
-                  </span>
-                </td>
-                <td className="border-b border-line px-3.5 py-2 text-right">
-                  <span className="data">{c.games}</span>
-                </td>
-              </tr>
+                cell={c}
+                rank={ranks ? (ranks[String(c.colSlug)] ?? '—') : undefined}
+              />
             ))}
           </tbody>
         </table>

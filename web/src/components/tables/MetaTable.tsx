@@ -11,6 +11,7 @@ import {
 } from '@tanstack/react-table'
 
 import { cn } from '@/lib/utils'
+import { STICKY_COL_1_STRONG, STICKY_COL_2_STRONG } from './sticky'
 import { buildHref } from '@/lib/params'
 import { ArtCrop } from '@/components/ArtCrop'
 import { ManaPips } from '@/components/ManaPips'
@@ -42,13 +43,6 @@ const HIDE_BELOW_MD: Record<string, true> = {
   share: true,
   ci: true,
 }
-// Sticky pinned columns: rank stays put and the name pins just past it
-// (30px rank + 2 × 14px cell padding). Both get a surface-token background,
-// a right hairline, and a z-index above the scrolling cells.
-const STICKY_RANK =
-  'sticky left-0 z-20 bg-surface group-hover:bg-gold-wash after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-line-strong'
-const STICKY_NAME =
-  'sticky left-[58px] z-20 bg-surface group-hover:bg-gold-wash after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-line-strong'
 
 // Numeric sort accessors per sortable column — mirror the column accessorFns.
 // Sorting is applied manually (below) over non-bucket rows only, so buckets
@@ -357,8 +351,8 @@ export function MetaTable({
                         id === 'rank' && 'w-[30px]',
                         id === 'name' && 'min-w-[240px]',
                         HIDE_BELOW_MD[id] && 'hidden md:table-cell',
-                        id === 'rank' && STICKY_RANK,
-                        id === 'name' && STICKY_NAME,
+                        id === 'rank' && STICKY_COL_1_STRONG,
+                        id === 'name' && STICKY_COL_2_STRONG,
                         sortable &&
                           'hover:text-ink focus-visible:text-ink cursor-pointer'
                       )}
@@ -407,8 +401,8 @@ export function MetaTable({
                         'border-line border-b px-3.5 py-[7px] align-middle',
                         RIGHT.has(cid) && 'text-right',
                         HIDE_BELOW_MD[cid] && 'hidden md:table-cell',
-                        cid === 'rank' && STICKY_RANK,
-                        cid === 'name' && STICKY_NAME
+                        cid === 'rank' && STICKY_COL_1_STRONG,
+                        cid === 'name' && STICKY_COL_2_STRONG
                       )}
                     >
                       {flexRender(
@@ -425,13 +419,13 @@ export function MetaTable({
                 <td
                   className={cn(
                     'border-line border-b px-3.5 py-[7px]',
-                    STICKY_RANK
+                    STICKY_COL_1_STRONG
                   )}
                 />
                 <td
                   className={cn(
                     'border-line border-b px-3.5 py-[7px] font-semibold italic',
-                    STICKY_NAME
+                    STICKY_COL_2_STRONG
                   )}
                 >
                   Other (collapsed tail)

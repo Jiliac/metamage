@@ -10,6 +10,8 @@ import type {
 } from '@/datasource/types'
 import { parseMetaQuery } from '@/lib/params'
 import { buildPageMetadata } from '@/lib/seo'
+import { cn } from '@/lib/utils'
+import { STICKY_COL_1 } from '@/components/tables/sticky'
 
 import { LensBar } from '@/components/LensBar/LensBar'
 import { EmptyState } from '@/components/EmptyState'
@@ -152,9 +154,7 @@ export default async function TournamentsPage({
               <table className="w-full border-collapse text-[13.5px]">
                 <thead>
                   <tr>
-                    <Th className="sticky left-0 z-20 bg-surface after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-line">
-                      Date
-                    </Th>
+                    <Th className={STICKY_COL_1}>Date</Th>
                     <Th>Tournament</Th>
                     <Th>Source</Th>
                     <Th className="text-right">Entries</Th>
@@ -166,7 +166,12 @@ export default async function TournamentsPage({
                       key={t.id}
                       className="group hover:bg-[var(--gold-wash)]"
                     >
-                      <td className="group-hover:bg-[var(--gold-wash)] sticky left-0 z-20 bg-surface border-b border-line px-3.5 py-2 after:absolute after:inset-y-0 after:right-0 after:w-px after:bg-line">
+                      <td
+                        className={cn(
+                          'border-b border-line px-3.5 py-2',
+                          STICKY_COL_1
+                        )}
+                      >
                         <span className="data text-ink-2">
                           {shortDate(t.date)}
                         </span>

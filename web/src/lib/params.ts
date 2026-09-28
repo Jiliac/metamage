@@ -329,7 +329,7 @@ export function parseRow(
   if (!raw || !isArchetypeSlug(raw)) return order?.[0]?.slug
   const slug = asArchetypeSlug(raw.toLowerCase())
   if (order) {
-    return order.some(o => o.slug === slug) ? slug : order[0].slug
+    return order.some(o => o.slug === slug) ? slug : order[0]?.slug
   }
   return slug
 }

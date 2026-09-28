@@ -39,9 +39,12 @@ export function LensBar({
   // (its table is window-scoped); changes is format + share only.
   const showWindow =
     variant === 'meta' || variant === 'matrix' || variant === 'tournaments'
-  const showKnobs = variant === 'meta' || variant === 'matrix'
-  const showAdder = variant === 'meta' || variant === 'matrix'
-  const showDivider = showWindow || showKnobs || showAdder
+  // Knobs (topN / minMatches / weight / buckets) and the archetype adder are
+  // meta+matrix concerns (R7); the type narrowing below is what KnobsPopover
+  // relies on, so it never has to gate itself.
+  const knobsVariant =
+    variant === 'meta' || variant === 'matrix' ? variant : null
+  const showDivider = showWindow || knobsVariant !== null
 
   return (
     <div
@@ -54,8 +57,8 @@ export function LensBar({
         <div role="none" className="mx-1 w-px self-stretch bg-line" />
       )}
       {showWindow && <WindowPicker />}
-      {showKnobs && <KnobsPopover variant={variant} />}
-      {showAdder && <ArchetypeAdder archetypes={archetypes} />}
+      {knobsVariant && <KnobsPopover variant={knobsVariant} />}
+      {knobsVariant && <ArchetypeAdder archetypes={archetypes} />}
       {/* Share rides inside the first wrapped row (ml-auto within the flex
           flow), never banished to a lone row of its own. */}
       <ShareButton />
