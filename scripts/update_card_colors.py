@@ -136,7 +136,7 @@ def iter_cards(path: str | None):
     else:
         fh = open(path, encoding="utf-8")
     with fh:
-        first = fh.read(1)
+        first = fh.read(64).lstrip()[:1]
         fh.seek(0)
         if first == "[":
             yield from json.load(fh)
@@ -164,11 +164,11 @@ def build(oracle_path: str | None) -> tuple[dict, dict, dict]:
     for card in iter_cards(oracle_path):
         if not wanted(card):
             continue
-        l, n = derive(card)
-        for name, color in l.items():
+        card_lands, card_nonlands = derive(card)
+        for name, color in card_lands.items():
             lands.setdefault(name, color)
             released.setdefault(name, card.get("released_at", "9999"))
-        for name, color in n.items():
+        for name, color in card_nonlands.items():
             nonlands.setdefault(name, color)
             released.setdefault(name, card.get("released_at", "9999"))
     return lands, nonlands, released

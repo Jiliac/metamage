@@ -33,6 +33,8 @@ jobs:
       DATABASE_URL: ${{ secrets.OPS_DATABASE_URL }}
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Install pnpm
         uses: pnpm/action-setup@v6.1.0

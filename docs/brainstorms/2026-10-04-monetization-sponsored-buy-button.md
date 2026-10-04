@@ -25,8 +25,10 @@ is not data the audience would pay for directly.
   only changes who is behind it and how we get paid.
 - **One partner per surface.** Exclusivity is the product. A vendor pays to keep
   the other vendor off the Modern page, not for impressions.
-- **Data stays untouched and the slot is labelled.** A sponsor who asks for a
-  nicer meta share is a sponsor we drop.
+- **Data stays untouched and the slot is labelled.** Every buy link carries a
+  disclosure beside it saying the site may earn a commission, and the sponsor
+  name when the slot is sold. A sponsor who asks for a nicer meta share is a
+  sponsor we drop.
 - **Rejected:** freemium Pro tier gated on matchups, API/data licensing, paid
   weekly report, tournament-organizer tooling, donations. Reason: audience will
   not pay for the data itself.
@@ -63,9 +65,11 @@ browse, league grinders rent.
 
 ## Sequencing
 
-1. **Now — affiliate.** Ship the buy button with affiliate links. Cardmarket,
-   TCGplayer and Cardhoarder each run an affiliate program you apply to. Track
-   clicks per vendor, format and page in PostHog. No sponsor needed.
+1. **Now — affiliate.** Ship the buy button with affiliate links. TCGplayer and
+   Cardhoarder each run an affiliate program you apply to. Cardmarket is
+   unconfirmed: verify publisher eligibility and whether decklist purchase links
+   get attributed before counting on it. Track clicks per vendor, format and
+   page in PostHog. No sponsor needed.
 2. **Traffic threshold — media kit.** One page built from PostHog: monthly
    uniques, country split, format split, and affiliate click counts as proof of
    purchase intent. Vendors buy on those four numbers.
