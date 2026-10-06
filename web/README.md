@@ -31,17 +31,17 @@ backend.
 
 ## Scripts
 
-| Script              | What it does                                                                                 |
-| ------------------- | -------------------------------------------------------------------------------------------- |
-| `pnpm dev`          | Next dev server (Turbopack).                                                                 |
-| `pnpm build`        | Production build. Prebuilds the default-window pages per format.                             |
-| `pnpm start`        | Serve the production build.                                                                  |
-| `pnpm lint`         | ESLint (next + prettier).                                                                    |
-| `pnpm format`       | Prettier write. `pnpm format:check` to verify.                                               |
-| `pnpm test`         | Vitest — the `stats.ts` unit + fixture snapshot-parity suite.                                |
-| `pnpm gen:fixtures` | Regenerate `db.json` (seeded, deterministic; fetches Scryfall art crops at gen time).        |
-| `pnpm gen:art`      | Regenerate `src/datasource/art-map.json` from the live DB (needs `TOURNAMENT_DATABASE_URL`). |
-| `pnpm gen:art:fill` | Same, but keeps every already-resolved art URL and only fetches the still-null cards.        |
+| Script              | What it does                                                                                                                                                                                   |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`          | Next dev server (Turbopack).                                                                                                                                                                   |
+| `pnpm build`        | Production build. Prebuilds the default-window pages per format. Drops `.next/cache/webpack` first: a restored webpack cache produced mismatched module IDs and failed prerendering on Vercel. |
+| `pnpm start`        | Serve the production build.                                                                                                                                                                    |
+| `pnpm lint`         | ESLint (next + prettier).                                                                                                                                                                      |
+| `pnpm format`       | Prettier write. `pnpm format:check` to verify.                                                                                                                                                 |
+| `pnpm test`         | Vitest — the `stats.ts` unit + fixture snapshot-parity suite.                                                                                                                                  |
+| `pnpm gen:fixtures` | Regenerate `db.json` (seeded, deterministic; fetches Scryfall art crops at gen time).                                                                                                          |
+| `pnpm gen:art`      | Regenerate `src/datasource/art-map.json` from the live DB (needs `TOURNAMENT_DATABASE_URL`).                                                                                                   |
+| `pnpm gen:art:fill` | Same, but keeps every already-resolved art URL and only fetches the still-null cards.                                                                                                          |
 
 ## Environment
 

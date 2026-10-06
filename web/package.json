@@ -3,9 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "rm -rf .next/cache/webpack && next build",
     "start": "next start",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
