@@ -30,7 +30,7 @@ execution: code
 - **Tournament DB** (Neon `tournament`, separate database, same provider): used by web/ when `DATA_SOURCE=postgres` via the SELECT-only `metamage_ro` role; data fresh through 2026-09-21.
 - **Local pins**: pnpm 11.9.0 (requires node ≥22.13), Node v26.4.0, Python 3.13, uv 0.11.24, gh 2.99.0. Neither `package.json` declares `engines` or `packageManager`.
 - **Env surface for web/** (`web/.env.example`): `DATA_SOURCE` (`fixtures` default | `postgres`), `TOURNAMENT_DATABASE_URL`, `NEXT_PUBLIC_SITE_URL` (drives canonical/OG/robots/sitemap), `NEXT_PUBLIC_POSTHOG_*`. All optional; fixtures mode is hermetic and is the correct CI/build default.
-- **Env surface for ui/**: `DATABASE_URL` (Prisma → ops DB; `postgresql://` per `ui/public/prisma/schema.prisma` — the SQLite form in README is stale for this schema), `NEXT_PUBLIC_SITE_URL`.
+- **Env surface for ui/**: `DATABASE_URL` (Prisma → ops DB; `postgresql://` per the Prisma schema, now `ui/prisma/schema.prisma` — the SQLite form in README is stale for this schema), `NEXT_PUBLIC_SITE_URL`.
 - **Vercel today**: one project `metamage` (id `prj_Zd2wzMJGWCMd716KS1bPSBpHdzia`), rootDirectory `ui/`, PR previews enabled, production deploys failing since at least 2026-09-27 (missing `DATABASE_URL`, plus cause 1). `vercel` CLI is not installed locally; ops are via dashboard/API.
 - **No local `.vercel/` link dirs** in repo root, `web/`, or `ui/`.
 
@@ -81,7 +81,7 @@ Three path-filtered GitHub Actions workflows give every PR a fast, correct verdi
 - No custom domains beyond the two named; no CDN config beyond Vercel defaults.
 - No migration of the R visualization or blog to CI.
 - Ops-DB grants are one-time shell commands, not code.
-- `ui/public/prisma/schema.prisma` is served as a static file in production (anything under `public/` is). Not fixed here — moving it changes the `postinstall` and Prisma client paths. Phase 5 leaves a follow-up note in `ui/README.md`; a later PR moves it to `ui/prisma/`.
+- ~~`ui/public/prisma/schema.prisma` is served as a static file in production (anything under `public/` is).~~ Resolved on this branch: the schema moved to `ui/prisma/schema.prisma` (out of `public/`) and `postinstall` now runs `prisma generate --schema=./prisma/schema.prisma`.
 
 ---
 
@@ -259,7 +259,7 @@ All three set `concurrency: group: <workflow>-${{ github.ref }}, cancel-in-progr
 **What to implement**
 
 - Root `README.md`: add "Continuous integration & deployment" section (three workflows, two projects/domains, what triggers what).
-- `ui/README.md`: correct the `DATABASE_URL` example to a Postgres URL; document `NEXT_PUBLIC_SITE_URL=https://ai.metamages.com` for prod; add a one-line note that `public/prisma/schema.prisma` is publicly served and slated to move.
+- `ui/README.md`: correct the `DATABASE_URL` example to a Postgres URL; document `NEXT_PUBLIC_SITE_URL=https://ai.metamages.com` for prod; point the schema reference at `ui/prisma/schema.prisma` (moved out of `public/` so it is no longer served statically).
 - Land as one PR (workflows + ui fix + docs), get green checks, merge, observe the first `main` push deploy both apps.
 
 **Verification checklist** — PR shows exactly the expected three checks; after merge, both domains serve updated content; Vercel dashboard shows the deployments tied to the merge commit.
