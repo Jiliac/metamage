@@ -31,8 +31,11 @@ Usage:
   python scripts/update_card_colors.py                     # dry-run: what would be added
   python scripts/update_card_colors.py --write             # append missing cards
   python scripts/update_card_colors.py --oracle oracle_cards.jsonl --write
+  CARD_COLORS_PATH=/path/to/card_colors.json python scripts/update_card_colors.py
 
 Without --oracle the Scryfall "oracle_cards" bulk file is downloaded (~200 MB).
+--colors defaults to $CARD_COLORS_PATH, else
+~/Development/mtg/Parser/MTGOFormatData/Formats/card_colors.json.
 """
 
 from __future__ import annotations
@@ -47,8 +50,9 @@ import sys
 import urllib.request
 from collections import Counter, OrderedDict
 
-DEFAULT_COLORS = os.path.expanduser(
-    "~/Development/mtg/Parser/MTGOFormatData/Formats/card_colors.json"
+DEFAULT_COLORS = os.environ.get(
+    "CARD_COLORS_PATH",
+    os.path.expanduser("~/Development/mtg/Parser/MTGOFormatData/Formats/card_colors.json"),
 )
 WUBRG = "WUBRG"
 BASIC_TYPES = {"Plains": "W", "Island": "U", "Swamp": "B", "Mountain": "R", "Forest": "G"}
@@ -73,9 +77,8 @@ def nonland_color(face: dict) -> str:
     cost = face.get("mana_cost")
     if cost:
         return order(set(SYMBOL_RE.findall(cost)))
-    if cost == "" or cost is None:
-        return order(set(face.get("colors") or []))
-    return ""
+    # No mana cost (Ancestral Vision): fall back to the color indicator.
+    return order(set(face.get("colors") or []))
 
 
 def land_color(face: dict) -> str:
@@ -91,14 +94,15 @@ def derive(card: dict) -> tuple[dict[str, str], dict[str, str]]:
     lands: dict[str, str] = {}
     nonlands: dict[str, str] = {}
     layout = card.get("layout", "normal")
-    faces = card.get("card_faces") or [card]
     # Single-face cards carry mana_cost/colors/type_line at top level; faces
-    # of split/adventure cards carry their own. Fill gaps from the card level.
-    for f in faces:
-        f.setdefault("type_line", card.get("type_line", ""))
-        f.setdefault("oracle_text", card.get("oracle_text", ""))
-        if "colors" not in f and "colors" in card:
-            f["colors"] = card["colors"]
+    # of split/adventure cards carry their own. Fill gaps from the card level
+    # (face values win) into new dicts so the input card is never mutated.
+    defaults = {
+        "type_line": card.get("type_line", ""),
+        "oracle_text": card.get("oracle_text", ""),
+        **({"colors": card["colors"]} if "colors" in card else {}),
+    }
+    faces = [{**defaults, **f} for f in card.get("card_faces") or [card]]
 
     if layout == "split":
         color = order(set(SYMBOL_RE.findall("".join(f.get("mana_cost", "") for f in faces))))
@@ -213,6 +217,40 @@ def render(existing: dict, new_lands: list, new_nonlands: list) -> str:
     )
 
 
+def missing_rows(derived: dict, existing_rows: list, released: dict,
+                 since: str | None) -> list[dict]:
+    """Derived cards absent from ``existing_rows``, optionally released on/after
+    ``since``, ordered by (release date, name)."""
+    have = {e["Name"] for e in existing_rows}
+    rows = [
+        {"Name": n, "Color": c} for n, c in derived.items()
+        if n not in have and (since is None or released.get(n, "9999") >= since)
+    ]
+    return sorted(rows, key=lambda e: (released.get(e["Name"], "9999"), e["Name"]))
+
+
+def print_summary(new_l: list, new_n: list, released: dict) -> None:
+    print(f"missing: {len(new_l)} lands, {len(new_n)} non-lands")
+    by_year = Counter(released.get(e["Name"], "?")[:4] for e in new_l + new_n)
+    print("by release year:", dict(sorted(by_year.items())))
+    for e in (new_l + new_n)[-15:]:
+        print(f"   {released.get(e['Name'])}  {e['Name']:50s} {e['Color']}")
+
+
+def write_atomic(path: str, text: str) -> None:
+    """Write via a sibling temp file + os.replace so a crash never leaves a
+    truncated card_colors.json behind."""
+    tmp = path + ".tmp"
+    try:
+        with open(tmp, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        raise
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--colors", default=DEFAULT_COLORS, help="path to card_colors.json")
@@ -230,30 +268,16 @@ def main() -> int:
         validate(existing, lands, nonlands)
         return 0
 
-    have_l = {e["Name"] for e in existing["Lands"]}
-    have_n = {e["Name"] for e in existing["NonLands"]}
-
-    def missing(derived, have):
-        rows = [
-            {"Name": n, "Color": c} for n, c in derived.items()
-            if n not in have and (args.since is None or released.get(n, "9999") >= args.since)
-        ]
-        return sorted(rows, key=lambda e: (released.get(e["Name"], "9999"), e["Name"]))
-
-    new_l, new_n = missing(lands, have_l), missing(nonlands, have_n)
-    print(f"missing: {len(new_l)} lands, {len(new_n)} non-lands")
-    by_year = Counter(released.get(e["Name"], "?")[:4] for e in new_l + new_n)
-    print("by release year:", dict(sorted(by_year.items())))
-    for e in (new_l + new_n)[-15:]:
-        print(f"   {released.get(e['Name'])}  {e['Name']:50s} {e['Color']}")
+    new_l = missing_rows(lands, existing["Lands"], released, args.since)
+    new_n = missing_rows(nonlands, existing["NonLands"], released, args.since)
+    print_summary(new_l, new_n, released)
 
     if not args.write:
         print("dry-run; pass --write to update", args.colors)
         return 0
     text = render(existing, new_l, new_n)
     json.loads(text)  # must stay valid JSON for the C# loader
-    with open(args.colors, "w", encoding="utf-8") as fh:
-        fh.write(text)
+    write_atomic(args.colors, text)
     print(f"wrote {args.colors}: {len(existing['Lands'])+len(new_l)} lands, "
           f"{len(existing['NonLands'])+len(new_n)} non-lands")
     return 0
