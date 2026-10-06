@@ -18,3 +18,4 @@ prompts/
 # Parser output copied in by sync_parser_data.sh
 parser_data/
 /sync_parser_data.sh
+.vercel
