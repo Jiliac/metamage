@@ -260,9 +260,7 @@ async def summarize_with_link(
     answer: str, provider: str, session_id: str
 ) -> tuple[str, str]:
     """Summarize answer and append session link within 300-char Bluesky limit."""
-    site_url = os.getenv("NEXT_PUBLIC_SITE_URL", "https://www.metamages.com").rstrip(
-        "/"
-    )
+    site_url = os.getenv("NEXT_PUBLIC_SITE_URL", "https://ai.metamages.com").rstrip("/")
     session_link = f"{site_url}/sessions/{session_id}"
     suffix = f"\n\nFull analysis: {session_link}"
     allowed_len = 300 - len(suffix)
