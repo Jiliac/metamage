@@ -1,4 +1,4 @@
-<!-- Generated: 2026-05-11 | Files scanned: ~220 | Token estimate: ~750 -->
+<!-- Generated: 2026-10-06 | Files scanned: ~220 | Token estimate: ~900 -->
 
 # MetaMage — Architecture
 
@@ -25,6 +25,12 @@ External MTG data (MTGODecklistCache + MTGOArchetypeParser JSON)
 
    All agents persist sessions/tool calls → Ops DB (Postgres preferred; SQLite fallback)
      └─ ui/  (Next.js 15)            reads Ops DB via Prisma → /sessions, /tool/[id]
+
+   Tournament DB is also served directly to the public web app:
+     └─ web/  (Next.js 15; DATA_SOURCE=fixtures|postgres) → meta explorer pages
+
+   CI: .github/workflows/ci-python|ci-web|ci-ui gate PRs by path slice; docs-only PRs run none.
+   Deploy: Vercel git integration — push to main deploys both apps (per-slice previews).
 ```
 
 ## Service Boundaries
@@ -37,14 +43,21 @@ External MTG data (MTGODecklistCache + MTGOArchetypeParser JSON)
 | Ingestion           | `src/ingest`         | Python / SQLAlchemy   | external JSON, Scryfall    | tournament.db                            |
 | Visualization       | `visualize/`         | R                     | tournament.db              | Results/\*.pdf, marav.csv                |
 | Web UI              | `ui/`                | Next.js 15 / Prisma   | Ops DB                     | —                                        |
+| Web app             | `web/`               | Next.js 15 / postgres | Tournament DB (ro) or fixtures | —                                    |
 | Social adapters     | `src/social_clients` | Python httpx/tweepy   | Bluesky/Twitter APIs       | platform-side replies                    |
 
 ## Two Databases
 
 - **Tournament DB** (Postgres prod / SQLite dev) — domain data. Dual-mode engine in `src/models/base.py` selects Postgres via `TOURNAMENT_DATABASE_URL`, else the local SQLite file. Models in `src/models/`, schema in `docs/schema.mmd`. Fresh Postgres is bootstrapped via `create_all` + `alembic stamp head`; backfill via `scripts/migrate_tournament_to_postgres.py`.
-- **Ops DB** (Postgres prod / SQLite dev) — chat sessions, tool calls, social notifications. Models in `src/ops_model/`. UI Prisma schema mirrors `chat_models.py` at `ui/public/prisma/schema.prisma`.
+- **Ops DB** (Postgres prod / SQLite dev) — chat sessions, tool calls, social notifications. Models in `src/ops_model/`. UI Prisma schema mirrors `chat_models.py` at `ui/prisma/schema.prisma`.
 
 Both DBs can share one Neon project as separate databases.
+
+## CI & Deployment
+
+- Three path-filtered workflows in `.github/workflows/`: `ci-python` (ruff + pytest), `ci-web` (lint/format/tsc/vitest/build — hermetic `DATA_SOURCE=fixtures`), `ci-ui` (lint/format/tsc/build — needs `OPS_DATABASE_URL`, since Prisma runs at build time). Docs-only PRs run none. Builds use frozen lockfiles, Node 24 + pnpm 11 / Python 3.13 via `uv`.
+- Vercel git integration: `metamage-web` (`web/` → metamages.com, Tournament DB) and `metamage-ui` (`ui/` → ai.metamages.com, Ops DB). Push to `main` deploys; PRs get per-slice previews via an Ignored Build Step. The Postgres read path (`DATA_SOURCE=postgres`) is only exercised by Vercel builds — a red Vercel check is a real signal.
+- Details + env vars per project: README "Continuous Integration & Deployment"; plan in `docs/plans/2026-09-28-ci-cd-deploy-web-ui-plan.md`.
 
 ## Read-only Hardening (MCP)
 

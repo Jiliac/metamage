@@ -1,8 +1,8 @@
-<!-- Generated: 2026-05-11 | Files scanned: ~80 | Token estimate: ~950 -->
+<!-- Generated: 2026-10-06 | Files scanned: ~80 | Token estimate: ~950 -->
 
 # Backend Codemap
 
-Python services in `src/`. All MCP tools read `data/tournament.db` (or `TOURNAMENT_DB_PATH`) read-only.
+Python services in `src/`. All MCP tools read the tournament DB (SQLite dev via `TOURNAMENT_DB_PATH`/`data/tournament.db`, Postgres prod via `TOURNAMENT_DATABASE_URL`) read-only.
 
 ## Entry Points
 
@@ -68,7 +68,7 @@ Polling loop: `server.main()` → `poll_and_process_once` per platform (bluesky/
    - `fetch_thread_and_update` — pull thread
    - `triage.should_answer_notification` — LLM gate (skippable)
    - `build_conversation_messages` → `agent_runner.run_agent_with_logging` (MCP-backed)
-   - `summarize_with_link` — ≤300 char reply + session URL
+   - `summarize_with_link` — ≤300 char reply + session URL (from `NEXT_PUBLIC_SITE_URL`, default `https://ai.metamages.com`)
    - reply via `social_clients` adapter
 
 ## Analysis Layer (`src/analysis/`)
