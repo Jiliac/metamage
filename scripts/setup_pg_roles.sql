@@ -19,8 +19,11 @@
 -- role that can create roles):
 --
 --   psql "$ADMIN_URL" \
---     -v ro_password="'...'" -v rw_password="'...'" -v dbname=tournament \
+--     -v ro_password="$RO_PASSWORD" -v rw_password="$RW_PASSWORD" -v dbname=tournament \
 --     -f scripts/setup_pg_roles.sql
+--
+-- Pass bare passwords: :'ro_password' below does the SQL quoting, so wrapping
+-- the value in extra quotes would make them part of the stored password.
 --
 -- The connection strings then map to env vars:
 --   TOURNAMENT_DATABASE_URL       -> metamage_ro   (MCP + R read path)

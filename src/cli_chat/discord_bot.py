@@ -47,7 +47,7 @@ class AgentContainer:
 
                     logger.info("Creating Claude Sonnet client...")
                     llm = ChatAnthropic(
-                        model="claude-sonnet-4-6",
+                        model="claude-sonnet-5-5",
                         # temperature=0.1,
                         max_tokens=4096,
                     )
@@ -213,7 +213,10 @@ async def mage(interaction: discord.Interaction, query: str):
             answer = "I couldn't produce a response this time."
 
         # Echo the query + response (like ChatGPT/Claude) and append session link
-        session_link = f"\n\nFor more details see: <https://www.metamages.com/sessions/{session_id}>"
+        site_url = (
+            os.getenv("NEXT_PUBLIC_SITE_URL") or "https://ai.metamages.com"
+        ).rstrip("/")
+        session_link = f"\n\nFor more details see: <{site_url}/sessions/{session_id}>"
         query_header = f"**Question:** {query}\n\n"
 
         # Discord message length safety - ensure session link is always preserved

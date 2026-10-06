@@ -3,6 +3,7 @@ node_modules
 out
 build
 *.lock
+pnpm-lock.yaml
 public/
 .env*
 next-env.d.ts

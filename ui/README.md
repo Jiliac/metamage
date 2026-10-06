@@ -20,7 +20,7 @@
 ## Environment
 
 - `NEXT_PUBLIC_SITE_URL` — canonical base URL for OpenGraph/Twitter and links (default `http://localhost:3000`)
-- `DATABASE_URL` — Prisma connection to Ops DB (e.g., `file:../../data/ops.db` or Postgres URL)
+- `DATABASE_URL` — Prisma connection to the Ops DB (`neondb`) via the dedicated SELECT-only role, e.g. `postgresql://metamage_ops_ro:<password>@<host>/neondb?sslmode=require` (grant: `scripts/setup_ops_pg_roles.sql`). The SQLite `file:` form is not supported by this schema (`provider = "postgresql"` in `ui/prisma/schema.prisma`).
 
 ## Setup
 

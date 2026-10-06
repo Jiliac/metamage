@@ -53,7 +53,7 @@ Special path: `ingest_duel_commander.py` for Duel Commander DB; `commander_arche
 
 ## Ops DB
 
-### Chat models (`src/ops_model/chat_models.py`) — mirrored in Prisma (`ui/public/prisma/schema.prisma`)
+### Chat models (`src/ops_model/chat_models.py`) — mirrored in Prisma (`ui/prisma/schema.prisma`)
 
 | Table           | Columns                                                                                               |
 | --------------- | ----------------------------------------------------------------------------------------------------- |

@@ -1,12 +1,64 @@
-<!-- Generated: 2026-05-11 | Files scanned: 35 | Token estimate: ~650 -->
+<!-- Generated: 2026-10-06 | Files scanned: ~70 | Token estimate: ~1100 -->
 
 # Frontend Codemap
 
-Next.js 15 App Router app at `ui/` — read-only viewer for chat sessions and tool results stored in Ops DB.
+Two Next.js 15 App Router apps, both deployed by Vercel git integration on push to `main`:
 
-Stack: Next 15.5 · React 19 · Prisma 6 · Tailwind v4 · shadcn/Radix · @tanstack/react-table · react-markdown.
+- `web/` — public tournament meta explorer → https://metamages.com (Vercel `metamage-web`)
+- `ui/` — chat session viewer → https://ai.metamages.com (Vercel `metamage-ui`)
 
-## Page Tree
+Sections after `web/` document `ui/`: read-only viewer for chat sessions and tool results stored in Ops DB. Stack: Next 15.5 · React 19 · Prisma 6 · Tailwind v4 · shadcn/Radix · @tanstack/react-table · react-markdown.
+
+## web/ — Public Meta Explorer
+
+Stack: Next 15.5 · React 19 · Tailwind v4 · @tanstack/react-table · Recharts · Radix. Reads Tournament DB directly (no API layer) or committed fixtures — backend chosen once by `DATA_SOURCE`.
+
+### Page Tree
+
+```
+web/src/app/
+├── layout.tsx              root shell: metadataBase, fonts, Navbar, Providers, Toaster
+├── page.tsx                redirect → /meta/{DEFAULT_FORMAT} (modern, per FORMAT_ORDER)
+├── providers.tsx           client providers: next-themes + PostHog
+├── robots.ts, sitemap.ts   SEO endpoints (use NEXT_PUBLIC_SITE_URL)
+├── og/route.tsx            dynamic OpenGraph card (nodejs runtime, reads query-string lens)
+└── meta/[format]/
+    ├── page.tsx            meta overview (tiers, presence, trends)
+    ├── archetype/[slug]/   archetype detail
+    ├── matrix/page.tsx     matchup matrix
+    ├── tournaments/page.tsx tournament results
+    └── changes/page.tsx    meta changes (bans / set releases)
+```
+
+### Datasource (`web/src/datasource/`)
+
+`DATA_SOURCE` picks the backend: `fixtures` (default — committed JSON under `fixtures/`, hermetic, used by CI) or `postgres` (`TOURNAMENT_DATABASE_URL`, SELECT-only `metamage_ro` role; fails loudly if the URL is missing). Types + derived stats in `types.ts` / `derive.ts`; `format-order.ts` pins the format chip order.
+
+### Components (`web/src/components/`)
+
+| File / dir                                     | Role                                                                  |
+| ---------------------------------------------- | --------------------------------------------------------------------- |
+| `Navbar.tsx`                                   | top nav (format chips per `FORMAT_ORDER`)                             |
+| `LensBar/`                                     | lens controls: FormatPicker, WindowPicker, KnobsPopover, ArchetypeAdder |
+| `charts/`                                      | TierChart, TrendChart, MatchupMatrix, PresenceBars, WrCiChart, WrPresenceScatter |
+| `tables/`                                      | MetaTable, CardAdoptionTable, MatchupList                             |
+| `DeckTile`, `ArtCrop`, `ManaPips`, `BucketBadge`, `KpiStat` | deck/card display atoms                                  |
+| `ui/*`                                         | shadcn primitives                                                     |
+
+Scripts (`web/scripts/`): `gen-fixtures.ts` (regenerate fixture JSON), `gen-archetype-art.ts` (art map, uses `TOURNAMENT_DATABASE_URL`).
+
+### Env (web)
+
+- `DATA_SOURCE` — `fixtures` (default) | `postgres`
+- `TOURNAMENT_DATABASE_URL` — Tournament DB Postgres URL (read-only role)
+- `NEXT_PUBLIC_SITE_URL` — public origin (robots/sitemap/OG)
+- `NEXT_PUBLIC_POSTHOG_KEY` / `NEXT_PUBLIC_POSTHOG_HOST` — optional analytics
+
+## ui/ — Session Viewer
+
+Next.js 15 App Router app at `ui/`.
+
+## Page Tree (`ui/`)
 
 ```
 ui/src/app/
@@ -59,13 +111,13 @@ All routes use `@/lib/prisma` singleton. No writes — UI is read-only.
 - `src/lib/prisma.ts` — `PrismaClient` singleton (dev hot-reload safe)
 - `src/lib/utils.ts` — `cn()` tailwind merge
 
-## Env
+## Env (`ui/`)
 
-- `DATABASE_URL` — Postgres (Ops DB) for Prisma
-- `NEXT_PUBLIC_SITE_URL` — used by `sitemap.ts`/`robots.ts` and share links
+- `DATABASE_URL` — Postgres (Ops DB) for Prisma (CI secret: `OPS_DATABASE_URL`)
+- `NEXT_PUBLIC_SITE_URL` — used by `sitemap.ts`/`robots.ts` and share links (also read by the bots when building session URLs; default `https://ai.metamages.com`)
 
-## Build / Lint
+## Build / Lint (`ui/`)
 
 - `npm run dev` / `next dev` · `next build` · `next start`
 - ESLint flat config (`eslint.config.mjs`), Prettier `format` / `format:check`
-- `postinstall` regenerates Prisma client from `public/prisma/schema.prisma`
+- `postinstall` regenerates Prisma client from `prisma/schema.prisma`

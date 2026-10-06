@@ -20,7 +20,7 @@ uv run -m src.socialbot.server
 
 - `BLUESKY_USERNAME`, `BLUESKY_PASSWORD` — account credentials
 - `ANTHROPIC_API_KEY` — for the agent
-- `NEXT_PUBLIC_SITE_URL` — used to build the per-session URL in replies
+- `NEXT_PUBLIC_SITE_URL` — used to build the per-session URL in replies (default `https://ai.metamages.com`)
 - `SOCIALBOT_POLL_INTERVAL` — seconds between polls (default 30)
 - `SOCIALBOT_MAX_TO_PROCESS` — max pending notifications per cycle (default 1)
 - `SOCIALBOT_MAX_TURNS`, `SOCIALBOT_CONTEXT_MAX_CHARS` — context limits

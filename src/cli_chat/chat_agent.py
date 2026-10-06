@@ -72,7 +72,7 @@ class MTGChatAgent:
             if self.provider == "claude":
                 print("🧠 Initializing Claude Sonnet...")
                 llm = ChatAnthropic(
-                    model="claude-sonnet-4-6",
+                    model="claude-sonnet-5-5",
                     max_tokens=4096,
                 )
             elif self.provider == "opus":
