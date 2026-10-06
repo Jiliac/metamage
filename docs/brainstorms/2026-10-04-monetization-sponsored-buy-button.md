@@ -26,9 +26,10 @@ is not data the audience would pay for directly.
 - **One partner per surface.** Exclusivity is the product. A vendor pays to keep
   the other vendor off the Modern page, not for impressions.
 - **Data stays untouched and the slot is labelled.** Every buy link carries a
-  disclosure beside it saying the site may earn a commission, and the sponsor
-  name when the slot is sold. A sponsor who asks for a nicer meta share is a
-  sponsor we drop.
+  disclosure beside it saying the site may earn a commission. A sold slot is
+  also labelled as paid, naming the vendor ("Sponsored by <vendor>"), so the
+  paid relationship is clear without hovering. A sponsor who asks for a nicer
+  meta share is a sponsor we drop.
 - **Rejected:** freemium Pro tier gated on matchups, API/data licensing, paid
   weekly report, tournament-organizer tooling, donations. Reason: audience will
   not pay for the data itself.

@@ -2,7 +2,7 @@
 
 # Backend Codemap
 
-Python services in `src/`. All MCP tools read the tournament DB (SQLite dev via `TOURNAMENT_DB_PATH`/`data/tournament.db`, Postgres prod via `TOURNAMENT_DATABASE_URL`) read-only.
+Python services in `src/`. MCP tools read the tournament DB (SQLite dev via `TOURNAMENT_DB_PATH`/`data/tournament.db`, Postgres prod via `TOURNAMENT_DATABASE_URL`); `add_archetype_alias` is the sole write tool.
 
 ## Entry Points
 

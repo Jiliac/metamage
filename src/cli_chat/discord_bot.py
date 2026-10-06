@@ -213,9 +213,9 @@ async def mage(interaction: discord.Interaction, query: str):
             answer = "I couldn't produce a response this time."
 
         # Echo the query + response (like ChatGPT/Claude) and append session link
-        site_url = os.getenv("NEXT_PUBLIC_SITE_URL", "https://ai.metamages.com").rstrip(
-            "/"
-        )
+        site_url = (
+            os.getenv("NEXT_PUBLIC_SITE_URL") or "https://ai.metamages.com"
+        ).rstrip("/")
         session_link = f"\n\nFor more details see: <{site_url}/sessions/{session_id}>"
         query_header = f"**Question:** {query}\n\n"
 

@@ -31,8 +31,10 @@ WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'metamage_ops_ro')
 REVOKE CONNECT ON DATABASE neondb FROM PUBLIC;
 GRANT CONNECT ON DATABASE neondb TO metamage_ops_ro;
 
--- The schema was created by neondb_owner; PUBLIC may already hold USAGE on
--- PG < 15, but grant explicitly so the ro role works on any provisioner.
+-- PG < 15 (or an upgraded cluster) gives PUBLIC CREATE on schema public, which
+-- would let the ro role create objects. Strip it (no-op on PG 15+), then grant
+-- USAGE explicitly so the ro role works on any provisioner.
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 GRANT USAGE ON SCHEMA public TO metamage_ops_ro;
 
 -- Read on every existing table, and on future tables the owner creates

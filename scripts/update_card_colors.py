@@ -234,17 +234,25 @@ def print_summary(new_l: list, new_n: list, released: dict) -> None:
     by_year = Counter(released.get(e["Name"], "?")[:4] for e in new_l + new_n)
     print("by release year:", dict(sorted(by_year.items())))
     for e in (new_l + new_n)[-15:]:
-        print(f"   {released.get(e['Name'])}  {e['Name']:50s} {e['Color']}")
+        print(f"   {released.get(e['Name'], '?')}  {e['Name']:50s} {e['Color']}")
 
 
 def write_atomic(path: str, text: str) -> None:
     """Write via a sibling temp file + os.replace so a crash never leaves a
-    truncated card_colors.json behind."""
+    truncated card_colors.json behind. The temp file is fsynced before the
+    rename and the directory after it, so the swap also survives power loss."""
     tmp = path + ".tmp"
     try:
         with open(tmp, "w", encoding="utf-8") as fh:
             fh.write(text)
+            fh.flush()
+            os.fsync(fh.fileno())
         os.replace(tmp, path)
+        dir_fd = os.open(os.path.dirname(os.path.abspath(path)), os.O_RDONLY)
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
     except BaseException:
         if os.path.exists(tmp):
             os.remove(tmp)
