@@ -2,9 +2,11 @@ import { unstable_cache } from 'next/cache'
 
 import type {
   ArchetypeDetailDTO,
+  ArchetypeEntriesDTO,
   ArchetypeRef,
   ArchetypeSlug,
   CardAdoptionDTO,
+  DeckDTO,
   FormatDTO,
   FormatSlug,
   IsoDate,
@@ -112,6 +114,25 @@ function withCache(inner: MetaDataSource): MetaDataSource {
       (q: MetaQuery & { slug: ArchetypeSlug }): Promise<TrendPointDTO[]> =>
         inner.getArchetypeTrends(q),
       ['getArchetypeTrends'],
+      { revalidate: HOUR, tags: ['archetype'] }
+    ),
+
+    // Keyed on the window like the other archetype reads.
+    getArchetypeEntries: unstable_cache(
+      (q: MetaQuery & { slug: ArchetypeSlug }): Promise<ArchetypeEntriesDTO> =>
+        inner.getArchetypeEntries(q),
+      ['getArchetypeEntries'],
+      { revalidate: HOUR, tags: ['archetype'] }
+    ),
+
+    // Keyed on the ENTRY ID only (KTD7): the id is a globally unique UUID, so
+    // the wrapper drops `format` before the call — one cache entry per deck,
+    // shared by the archetype page and the tournament page, and never
+    // duplicated per window the way the archetype reads above are.
+    getDeck: unstable_cache(
+      (q: { format?: FormatSlug; entryId: string }): Promise<DeckDTO | null> =>
+        inner.getDeck({ entryId: q.entryId }),
+      ['getDeck'],
       { revalidate: HOUR, tags: ['archetype'] }
     ),
 

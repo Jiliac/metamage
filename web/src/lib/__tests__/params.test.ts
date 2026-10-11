@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import type { MatrixOrderEntryDTO } from '@/datasource/types'
+import { MAX_DECKS_PAGE } from '@/lib/decks'
 import {
   asArchetypeSlug,
   buildHref,
+  parseDeckId,
+  parseDecksPage,
   parseMatrixTopN,
   parseMetaQuery,
   parseRow,
@@ -157,5 +160,69 @@ describe('buildHref row round-trip (KTD4)', () => {
       now: NOW,
     })
     expect(href).toBe('/meta/pauper/matrix?n=20&row=dimir-control')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// KTD6/KTD8: the Decklists tab's route extras. `?deck` validates before any
+// data call; `?decks` pages the recent-decks column; both ride the fixed
+// buildHref order after `tab` and stay out of `MetaQuery`.
+// ---------------------------------------------------------------------------
+
+const DECK_ID = '3f2b8c1a-9d4e-4c7b-a1f2-0b6d5e8a9c10'
+
+describe('parseDeckId (KTD6)', () => {
+  it('accepts a well-formed UUID and normalizes case', () => {
+    expect(parseDeckId(DECK_ID)).toBe(DECK_ID)
+    expect(parseDeckId(DECK_ID.toUpperCase())).toBe(DECK_ID)
+  })
+
+  it('rejects path traversal, empty, junk and over-length input', () => {
+    expect(parseDeckId('../x')).toBeUndefined()
+    expect(parseDeckId('')).toBeUndefined()
+    expect(parseDeckId(undefined)).toBeUndefined()
+    expect(parseDeckId('not-a-uuid')).toBeUndefined()
+    // Over-length: a valid UUID with trailing junk.
+    expect(parseDeckId(`${DECK_ID}-extra`)).toBeUndefined()
+    // Missing dashes are not the 8-4-4-4-12 shape.
+    expect(parseDeckId('3f2b8c1a9d4e4c7ba1f20b6d5e8a9c10')).toBeUndefined()
+  })
+})
+
+describe('parseDecksPage (KTD8)', () => {
+  it('defaults to 1; 0, negative, junk and blank clamp to 1', () => {
+    expect(parseDecksPage(SP(''))).toBe(1)
+    expect(parseDecksPage(SP('decks=1'))).toBe(1)
+    expect(parseDecksPage(SP('decks=0'))).toBe(1)
+    expect(parseDecksPage(SP('decks=-3'))).toBe(1)
+    expect(parseDecksPage(SP('decks=junk'))).toBe(1)
+    expect(parseDecksPage(SP('decks=2.5'))).toBe(1)
+  })
+
+  it('parses real pages and clamps past the cap page count', () => {
+    expect(parseDecksPage(SP('decks=2'))).toBe(2)
+    expect(parseDecksPage(SP('decks=99'))).toBe(MAX_DECKS_PAGE)
+  })
+})
+
+describe('buildHref deck + decks round-trip (KTD6/KTD8)', () => {
+  it('emits deck after tab in the fixed order and round-trips both', () => {
+    const href = fmtHref({ tab: 'decklists', deck: DECK_ID, decks: 2 })
+    expect(href).toBe(`/meta/pauper?tab=decklists&deck=${DECK_ID}&decks=2`)
+    const qs = href.split('?')[1] ?? ''
+    expect(parseDeckId(SP(qs).deck)).toBe(DECK_ID)
+    expect(parseDecksPage(SP(qs))).toBe(2)
+  })
+
+  it('omits decks=1 as the default', () => {
+    expect(fmtHref({ tab: 'decklists', deck: DECK_ID, decks: 1 })).toBe(
+      `/meta/pauper?tab=decklists&deck=${DECK_ID}`
+    )
+    expect(fmtHref({})).toBe('/meta/pauper')
+  })
+
+  it('deck and decks never leak into parseMetaQuery output', () => {
+    const withDeck = parseMetaQuery('pauper', SP('deck=x&decks=2'), NOW)
+    expect(withDeck).toEqual(parseMetaQuery('pauper', SP(''), NOW))
   })
 })

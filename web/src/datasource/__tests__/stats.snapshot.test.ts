@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { parseDeckId } from '@/lib/params'
 import {
   assignTiers,
   binomialCi,
@@ -14,6 +15,8 @@ import {
   wrExclDraws,
 } from '@/lib/stats'
 import { FixtureDataSource } from '@/datasource/fixtures'
+import type { RawDb } from '@/datasource/fixtures'
+import rawDb from '@/datasource/fixtures/data/db.json'
 import type {
   ArchetypeSlug,
   FormatSlug,
@@ -267,5 +270,136 @@ describe('FixtureDataSource — derived report snapshot (drift guard)', () => {
       tier: r.tier,
     }))
     expect(shape).toMatchSnapshot()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Decklists tab fixtures (U4, KTD12): the regenerated DB carries synthetic
+// entries with deterministic UUID ids, decklists sampled from the adoption
+// pools, and a generation-time `cardData` map. These cases read the REGENERATED
+// db.json — run `pnpm --dir web gen:fixtures` before `pnpm test` if it is stale.
+// ---------------------------------------------------------------------------
+
+describe('FixtureDataSource — decklists tab fixtures (KTD12)', () => {
+  const db = rawDb as unknown as RawDb
+
+  const entriesOf = (slug: string, q: Partial<MetaQuery> = {}) =>
+    new FixtureDataSource().getArchetypeEntries({
+      ...stdQuery(),
+      ...q,
+      slug: slug as ArchetypeSlug,
+    })
+
+  /** Every raw entry id in the DB, in stored order. */
+  function allEntryIds(): string[] {
+    const ids: string[] = []
+    for (const f of db.formats) {
+      for (const w of f.windows) {
+        for (const a of w.archetypes) {
+          for (const e of a.entries) ids.push(e.id)
+        }
+      }
+    }
+    return ids
+  }
+
+  it('entries come back newest first with deterministic ids', async () => {
+    const { total, entries } = await entriesOf('selesnya-ouroboroid')
+    // KTD12: up to 8 entries per archetype-window, and fixtures never cross
+    // the cap so total equals the returned rows.
+    expect(entries.length).toBeGreaterThan(0)
+    expect(entries.length).toBeLessThanOrEqual(8)
+    expect(total).toBe(entries.length)
+    for (let i = 1; i < entries.length; i++) {
+      expect(entries[i - 1]!.event.date >= entries[i]!.event.date).toBe(true)
+    }
+    // Deterministic ids: a fresh data source yields the identical list.
+    const again = await entriesOf('selesnya-ouroboroid')
+    expect(again.entries.map(e => e.id)).toEqual(entries.map(e => e.id))
+  })
+
+  it('unknown slug yields the empty entries list', async () => {
+    const { total, entries } = await entriesOf('no-such-archetype')
+    expect(total).toBe(0)
+    expect(entries).toEqual([])
+  })
+
+  it('every fixture entry id passes parseDeckId and is globally unique', () => {
+    const ids = allEntryIds()
+    expect(ids.length).toBeGreaterThan(100)
+    const unique = new Set(ids)
+    expect(unique.size).toBe(ids.length)
+    for (const id of ids) expect(parseDeckId(id)).toBe(id)
+  })
+
+  it('constructed getDeck returns a 60/15 list with typed cards', async () => {
+    const { entries } = await entriesOf('selesnya-ouroboroid')
+    const target = entries.find(e => e.hasCards)!
+    const deck = await new FixtureDataSource().getDeck({
+      format: 'standard' as FormatSlug,
+      entryId: target.id,
+    })
+    expect(deck).not.toBeNull()
+    expect(deck!.format).toBe('standard')
+    expect(deck!.archetype.slug).toBe('selesnya-ouroboroid')
+    expect(deck!.entry.id).toBe(target.id)
+    expect(deck!.entry.hasCards).toBe(true)
+    expect(deck!.main.reduce((s, c) => s + c.count, 0)).toBe(60)
+    expect(deck!.side.reduce((s, c) => s + c.count, 0)).toBe(15)
+    // KTD12 card data: every fixture card carries its generation-time KTD1
+    // fields (lands legitimately have no mana cost, but never a null type).
+    for (const card of [...deck!.main, ...deck!.side]) {
+      expect(card.typeLine).not.toBeNull()
+      expect(card.scryfallUri).not.toBeNull()
+      expect(card.name).not.toBe(card.name.toLowerCase())
+    }
+  })
+
+  it('getDeck with an unknown id returns null', async () => {
+    const deck = await new FixtureDataSource().getDeck({
+      entryId: '00000000-0000-4000-8000-000000000000',
+    })
+    expect(deck).toBeNull()
+  })
+
+  it('cardless entry maps to empty lists, hasCards false (R9)', async () => {
+    let cardlessId: string | null = null
+    for (const f of db.formats) {
+      for (const w of f.windows) {
+        for (const a of w.archetypes) {
+          const hit = a.entries.find(e => e.deck === null)
+          if (hit) {
+            cardlessId = hit.id
+            break
+          }
+        }
+      }
+    }
+    expect(cardlessId).not.toBeNull()
+    const deck = await new FixtureDataSource().getDeck({ entryId: cardlessId! })
+    expect(deck).not.toBeNull()
+    expect(deck!.main).toEqual([])
+    expect(deck!.side).toEqual([])
+    expect(deck!.entry.hasCards).toBe(false)
+    expect(deck!.entry.decklistUrl).toBeNull()
+  })
+
+  it('duel decks carry 99 maindeck cards and one Commander (R6)', async () => {
+    const { entries } = await entriesOf('najeela', {
+      format: 'duel-commander' as FormatSlug,
+      start: '2026-06-01' as IsoDate,
+      end: '2026-06-30' as IsoDate,
+    })
+    expect(entries.length).toBeGreaterThan(0)
+    const target = entries.find(e => e.hasCards)!
+    const deck = await new FixtureDataSource().getDeck({
+      format: 'duel-commander' as FormatSlug,
+      entryId: target.id,
+    })
+    expect(deck).not.toBeNull()
+    expect(deck!.format).toBe('duel-commander')
+    expect(deck!.main.reduce((s, c) => s + c.count, 0)).toBe(99)
+    expect(deck!.side).toHaveLength(1)
+    expect(deck!.side[0]!.typeLine).not.toBeNull()
   })
 })

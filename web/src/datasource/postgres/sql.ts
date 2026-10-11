@@ -1,3 +1,4 @@
+import { ARCHETYPE_ENTRIES_CAP } from '@/datasource/types'
 import { db } from '@/datasource/postgres/client'
 
 // ---------------------------------------------------------------------------
@@ -247,10 +248,14 @@ export const MATCHUPS_SQL = (
 
 // ---- Per-archetype detail ---------------------------------------------------
 
-// Card adoption inside one archetype's decks (names lowercase in the DB, per
-// the contract comment). avg_count averages the copy count over decks that
-// play the card (mirrors the R `avg_copies`); decks_playing is distinct
-// entries; presence_pct = decks_playing / the archetype's deck count.
+// Card adoption inside one archetype's decks. Names come through
+// coalesce(display_name, name) (KTD11): the stored Scryfall display_name when
+// the card is backfilled, else the lowercase DB name. Grouping by
+// `dc.card_id, c.id` (the cards primary key) is what lets Postgres accept the
+// coalesce — grouping by c.name would reject selecting c.display_name.
+// avg_count averages the copy count over decks that play the card (mirrors
+// the R `avg_copies`); decks_playing is distinct entries; presence_pct =
+// decks_playing / the archetype's deck count.
 export const CARD_ADOPTION_SQL = (
   formatId: string,
   start: string,
@@ -258,7 +263,7 @@ export const CARD_ADOPTION_SQL = (
   archetypeId: string,
   board: string
 ) => db()<CardAdoptionRow[]>`
-  select dc.card_id, c.name,
+  select dc.card_id, coalesce(c.display_name, c.name) as name,
          avg(dc.count)::float8 as avg_count,
          count(distinct dc.entry_id)::int as decks_playing
   from deck_cards dc
@@ -270,8 +275,8 @@ export const CARD_ADOPTION_SQL = (
     and t.date < (${end}::date + interval '1 day')
     and te.archetype_id = ${archetypeId}
     and dc.board = ${board}
-  group by dc.card_id, c.name
-  order by decks_playing desc, c.name asc
+  group by dc.card_id, c.id
+  order by decks_playing desc, name asc
 `
 
 // The archetype's DISTINCT entry count in the window — the presence_pct
@@ -425,4 +430,136 @@ export const META_CHANGES_SQL = (formatId: string) => db()<MetaChangeRow[]>`
   from meta_changes
   where format_id = ${formatId}
   order by date asc
+`
+
+// ---- Decklists tab (plan U3) -------------------------------------------------
+
+export type EntrySummaryRow = {
+  id: string
+  entry_rank: number
+  wins: number
+  losses: number
+  draws: number
+  decklist_url: string | null
+  handle: string
+  tournament_id: string
+  tournament_name: string
+  date: Date | string
+  link: string | null
+  source: string
+  has_cards: boolean
+}
+
+export type EntryListRow = EntrySummaryRow & { total: number }
+
+// The archetype's window entries for the recent-decks column, newest first,
+// capped at ARCHETYPE_ENTRIES_CAP with the uncapped total (KTD7, R9/R12).
+//
+// `has_cards` comes from a grouped join on deck_cards (the `carded` CTE has at
+// most one row per entry, so the left join preserves row shape) — NOT a
+// correlated per-row subquery, the shape
+// docs/solutions/performance-issues/archetype-pages-correlated-subquery-latency.md
+// calls out as the Neon latency trap. The `total` CTE counts the same window
+// set once, so R12's "Showing the newest N of total" never needs a second
+// round trip.
+//
+// Parity expectation (unverified against the live DB): for a window where the
+// archetype has 2,450 entries, total = 2450 and at most 2,000 rows come back,
+// ordered by date desc with same-event rows adjacent (tournament name, rank,
+// handle) so the column can group by event without re-sorting.
+export const ARCHETYPE_ENTRIES_SQL = (
+  formatId: string,
+  start: string,
+  end: string,
+  archetypeId: string
+) => db()<EntryListRow[]>`
+  with win as (
+    select te.id, te.rank as entry_rank, te.wins, te.losses, te.draws,
+           te.decklist_url, te.player_id,
+           t.id as tournament_id, t.name as tournament_name, t.date, t.link,
+           t.source
+    from tournament_entries te
+    join tournaments t on t.id = te.tournament_id
+    where t.format_id = ${formatId}
+      and t.date >= ${start}::timestamp
+      and t.date < (${end}::date + interval '1 day')
+      and te.archetype_id = ${archetypeId}
+  ),
+  carded as (
+    select dc.entry_id
+    from deck_cards dc
+    join win on win.id = dc.entry_id
+    group by dc.entry_id
+  ),
+  total as (
+    select count(*)::int as total from win
+  )
+  select win.id, win.entry_rank, win.wins, win.losses, win.draws,
+         win.decklist_url, win.tournament_id, win.tournament_name, win.date,
+         win.link, win.source,
+         p.handle,
+         (carded.entry_id is not null) as has_cards,
+         total.total
+  from win
+  join players p on p.id = win.player_id
+  left join carded on carded.entry_id = win.id
+  cross join total
+  order by win.date desc, win.tournament_name asc, win.entry_rank asc,
+           p.handle asc
+  limit ${ARCHETYPE_ENTRIES_CAP}
+`
+
+// One entry's header (tournament, player, rank, record, URLs) plus its
+// deck_cards joined to cards, carrying the KTD1 card data. Keyed on the entry
+// id alone — entry ids are globally unique UUIDs, so no format filter: the
+// row's `format_name` (formats.name is the lowercase slug) and the CURRENT
+// archetype are what the page reads to redirect per KTD6 after a
+// reclassification.
+//
+// An entry with zero deck_cards comes back as one row with null card columns
+// (the left joins pad it) — mapDeckRows renders that as header + empty lists,
+// the "no list published" deck of R9.
+export type DeckRow = Omit<EntrySummaryRow, 'has_cards'> & {
+  format_name: string
+  archetype_name: string
+  archetype_color: string | null
+  // card columns — null on the padding row of a cardless entry
+  card_id: string | null
+  count: number | null
+  board: string | null
+  name: string | null
+  display_name: string | null
+  type_line: string | null
+  mana_cost: string | null
+  cmc: number | null
+  image_normal: string | null
+  image_back: string | null
+  scryfall_uri: string | null
+}
+
+export const DECK_SQL = (entryId: string) => db()<DeckRow[]>`
+  with header as (
+    select te.id, te.rank as entry_rank, te.wins, te.losses, te.draws,
+           te.decklist_url, te.player_id,
+           t.id as tournament_id, t.name as tournament_name, t.date, t.link,
+           t.source, f.name as format_name, p.handle,
+           a.name as archetype_name, a.color as archetype_color
+    from tournament_entries te
+    join tournaments t on t.id = te.tournament_id
+    join formats f on f.id = t.format_id
+    join players p on p.id = te.player_id
+    join archetypes a on a.id = te.archetype_id
+    where te.id = ${entryId}
+  )
+  select h.id, h.entry_rank, h.wins, h.losses, h.draws, h.decklist_url,
+         h.tournament_id, h.tournament_name, h.date, h.link, h.source,
+         h.format_name, h.handle, h.archetype_name, h.archetype_color,
+         dc.card_id, dc.count, dc.board,
+         c.name, c.display_name, c.type_line, c.mana_cost, c.cmc,
+         c.image_normal, c.image_back, c.scryfall_uri
+  from header h
+  left join deck_cards dc on dc.entry_id = h.id
+  left join cards c on c.id = dc.card_id
+  order by dc.board asc, dc.count desc,
+           coalesce(c.display_name, c.name) asc
 `
