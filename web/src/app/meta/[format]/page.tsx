@@ -40,12 +40,13 @@ import { MatchupList, selectRowCells } from '@/components/tables/MatchupList'
 // ---------------------------------------------------------------------------
 // Meta overview landing (WP5). All RSC: parse the lens once, resolve the data
 // source, compose —
-//   LensBar → ledger headline + KPI grid → matrix hero (notched gold frame)
-//   → 'Top of the field' compact DeckTile strip → MetaTable panel
+//   LensBar → ledger headline + KPI grid → 'Top of the field' compact
+//   DeckTile strip → matrix hero (notched gold frame) → MetaTable panel
 //   → scatter panel → footer.
-// The matrix comes first because matchups are the moat (PRODUCT.md principle
-// 3); the headline states the leader's share and win rate with its interval
-// instead of an editorial claim (principle 4). Empty window → EmptyState (§5).
+// The tile strip is one row so the matrix (the moat, PRODUCT.md principle 3)
+// still lands inside the first scroll; the headline states the leader's share
+// and win rate with its interval instead of an editorial claim (principle 4).
+// Empty window → EmptyState (§5).
 // ---------------------------------------------------------------------------
 
 type RouteParams = { format: string }
@@ -324,8 +325,32 @@ export default async function MetaOverviewPage({
         </div>
       </div>
 
-      {/* ---- MATCHUP MATRIX — first after the headline (principle 3), inside
-          the notched gold frame (§9 rule 4) ---- */}
+      {/* ---- TOP OF THE FIELD — compact DeckTile strip. One row on desktop,
+          so the matrix below still lands inside the first scroll. ---- */}
+      <section className="mt-14">
+        <p className="eyebrow mb-1.5">Most played</p>
+        <h2 className="font-display text-[23px] font-bold">Top of the field</h2>
+        <p className="text-ink-2 mt-0.5 text-[13.5px]">
+          The six most-played archetypes of the window. Art is each deck&rsquo;s
+          signature card.
+        </p>
+        <div className="mt-[18px] grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(150px,100%),1fr))]">
+          {top6.map(row => (
+            <DeckTile
+              key={row.slug}
+              row={row}
+              rank={row.presenceRank}
+              variant="compact"
+              href={buildHref(query.format, query, {
+                path: `/archetype/${row.slug}`,
+              })}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* ---- MATCHUP MATRIX — the moat (principle 3), inside the notched gold
+          frame (§9 rule 4) ---- */}
       <section className="mt-14">
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div>
@@ -359,29 +384,6 @@ export default async function MetaOverviewPage({
               <MatchupMatrixHero query={query} n={matrixTopN} sp={sp} />
             </Suspense>
           </div>
-        </div>
-      </section>
-
-      {/* ---- TOP OF THE FIELD — compact DeckTile strip ---- */}
-      <section className="mt-14">
-        <p className="eyebrow mb-1.5">Most played</p>
-        <h2 className="font-display text-[23px] font-bold">Top of the field</h2>
-        <p className="text-ink-2 mt-0.5 text-[13.5px]">
-          The six most-played archetypes of the window. Art is each deck&rsquo;s
-          signature card.
-        </p>
-        <div className="mt-[18px] grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(150px,100%),1fr))]">
-          {top6.map(row => (
-            <DeckTile
-              key={row.slug}
-              row={row}
-              rank={row.presenceRank}
-              variant="compact"
-              href={buildHref(query.format, query, {
-                path: `/archetype/${row.slug}`,
-              })}
-            />
-          ))}
         </div>
       </section>
 
