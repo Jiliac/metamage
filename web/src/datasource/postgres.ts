@@ -1,9 +1,13 @@
 import type {
   ArchetypeDetailDTO,
+  ArchetypeEntriesDTO,
   ArchetypeRef,
   ArchetypeRowDTO,
   ArchetypeSlug,
   CardAdoptionDTO,
+  DeckCardDTO,
+  DeckDTO,
+  DeckSummaryDTO,
   FormatDTO,
   FormatSlug,
   IsoDate,
@@ -52,8 +56,10 @@ import {
 } from '@/datasource/postgres/naming'
 import {
   ARCHETYPE_BY_ALIAS_SQL,
+  ARCHETYPE_ENTRIES_SQL,
   CARD_ADOPTION_SQL,
   DECK_COUNT_SQL,
+  DECK_SQL,
   FORMATS_SQL,
   LATEST_WINDOW_SQL,
   META_CHANGES_SQL,
@@ -62,6 +68,10 @@ import {
   TOURNAMENTS_SQL,
   TREND_SQL,
   type ArchetypeRow,
+  type CardAdoptionRow,
+  type DeckRow,
+  type EntryListRow,
+  type EntrySummaryRow,
   type MatchupRow,
   type PlayerRow,
 } from '@/datasource/postgres/sql'
@@ -327,6 +337,34 @@ export class PostgresDataSource implements MetaDataSource {
     return this.trendFor(formatId, q, target.id)
   }
 
+  /** The archetype's window entries for the recent-decks column (KTD7).
+   *  Keyed on the window like the other archetype reads. An unknown format or
+   *  slug yields the empty list — the page 404s on `getArchetypeDetail`'s
+   *  null before it ever asks for entries. */
+  async getArchetypeEntries(
+    q: MetaQuery & { slug: ArchetypeSlug }
+  ): Promise<ArchetypeEntriesDTO> {
+    const formatId = await this.formatIdFor(String(q.format))
+    if (!formatId) return { total: 0, entries: [] }
+    const target = await this.resolveArchetypeRow(formatId, String(q.slug))
+    if (!target) return { total: 0, entries: [] }
+    return mapEntryListRows(
+      await ARCHETYPE_ENTRIES_SQL(formatId, q.start, q.end, target.id)
+    )
+  }
+
+  /** One entry's full decklist (KTD7). The SQL is keyed on the entry id
+   *  alone — entry ids are globally unique UUIDs and the DTO carries the
+   *  entry's CURRENT archetype + format, which is what the KTD6 redirect
+   *  reads after a reclassification. `q.format` is caller context only
+   *  (the cache wrapper drops it so the key is the entry id). */
+  async getDeck(q: {
+    format?: FormatSlug
+    entryId: string
+  }): Promise<DeckDTO | null> {
+    return mapDeckRows(await DECK_SQL(q.entryId))
+  }
+
   async getMatchupMatrix(
     q: MetaQuery & { matrixTopN: number }
   ): Promise<MatrixDTO> {
@@ -528,21 +566,10 @@ export class PostgresDataSource implements MetaDataSource {
       DECK_COUNT_SQL(formatId, q.start, q.end, archetypeId),
     ])
     const total = deckCount[0]?.decks ?? 0
-    const map = (
-      rows: typeof mainRows,
-      board: 'MAIN' | 'SIDE'
-    ): CardAdoptionDTO[] =>
-      rows.map(r => ({
-        cardId: r.card_id,
-        // Raw DB casing (lowercase): the contract title-cases card names at
-        // render (types.ts CardAdoptionDTO), and fixtures return them raw too.
-        name: r.name,
-        board,
-        avgCount: r.avg_count,
-        decksPlaying: r.decks_playing,
-        presencePct: total > 0 ? r.decks_playing / total : 0,
-      }))
-    return { main: map(mainRows, 'MAIN'), side: map(sideRows, 'SIDE') }
+    return {
+      main: mainRows.map(r => mapCardAdoptionRow(r, 'MAIN', total)),
+      side: sideRows.map(r => mapCardAdoptionRow(r, 'SIDE', total)),
+    }
   }
 
   private async trendFor(
@@ -634,4 +661,102 @@ function groupBy<T, K>(items: T[], key: (t: T) => K): Map<K, T[]> {
     else m.set(k, [it])
   }
   return m
+}
+
+// ---------------------------------------------------------------------------
+// Decklists mappers (pure; exported so the tests can run without a DB).
+// ---------------------------------------------------------------------------
+
+/** KTD11: the stored Scryfall display_name wins; a card that predates the
+ *  backfill falls through to the raw DB name (lowercase), which U5's
+ *  title-case helper covers at render. */
+export function cardDisplayName(
+  displayName: string | null,
+  name: string
+): string {
+  return displayName ?? name
+}
+
+/** One CARD_ADOPTION_SQL row → DTO. The SQL coalesces display_name over the
+ *  raw name (KTD11) and flags which one it returned, so the renderer
+ *  title-cases only the lowercase fallback. */
+export function mapCardAdoptionRow(
+  row: CardAdoptionRow,
+  board: 'MAIN' | 'SIDE',
+  totalDecks: number
+): CardAdoptionDTO {
+  return {
+    cardId: row.card_id,
+    name: row.name,
+    hasDisplayName: row.has_display_name,
+    board,
+    avgCount: row.avg_count,
+    decksPlaying: row.decks_playing,
+    presencePct: totalDecks > 0 ? row.decks_playing / totalDecks : 0,
+  }
+}
+
+function mapEntrySummary(row: EntrySummaryRow): DeckSummaryDTO {
+  return {
+    id: row.id,
+    player: row.handle,
+    // `rank` is stored 0 for Melee/unranked rows; null so KTD4's "lower
+    // nonzero rank, 0 sorts last" and the R2 label logic stay honest.
+    rank: row.entry_rank > 0 ? row.entry_rank : null,
+    wins: row.wins,
+    losses: row.losses,
+    draws: row.draws,
+    decklistUrl: row.decklist_url,
+    event: {
+      id: row.tournament_id,
+      name: row.tournament_name,
+      date: asIso(row.date),
+      link: row.link,
+      source: row.source as TournamentDTO['source'],
+    },
+    hasCards: row.has_cards,
+  }
+}
+
+export function mapEntryListRows(rows: EntryListRow[]): ArchetypeEntriesDTO {
+  return {
+    total: rows[0]?.total ?? 0,
+    entries: rows.map(mapEntrySummary),
+  }
+}
+
+function mapDeckCard(row: DeckRow): DeckCardDTO {
+  return {
+    cardId: row.card_id as string,
+    name: cardDisplayName(row.display_name, row.name as string),
+    board: row.board as DeckCardDTO['board'],
+    count: row.count as number,
+    typeLine: row.type_line,
+    manaCost: row.mana_cost,
+    cmc: row.cmc,
+    imageNormal: row.image_normal,
+    imageBack: row.image_back,
+    scryfallUri: row.scryfall_uri,
+  }
+}
+
+/** One entry's header + its card rows (DECK_SQL repeats the header on every
+ *  joined row) → the DeckDTO. Null when the id matched no row; an entry
+ *  without deck_cards comes back as a single all-null padding row, which
+ *  maps to empty main/side lists and `hasCards: false` (R9). */
+export function mapDeckRows(rows: DeckRow[]): DeckDTO | null {
+  const head = rows[0]
+  if (!head) return null
+  const hasCards = rows.some(r => r.card_id !== null)
+  return {
+    format: head.format_name as FormatSlug,
+    archetype: {
+      slug: asSlug(slugifyArchetype(head.archetype_name)),
+      name: archetypeDisplayName(head.archetype_name),
+      color: head.archetype_color ?? null,
+    },
+    entry: mapEntrySummary({ ...head, has_cards: hasCards }),
+    main: rows.filter(r => r.board === 'MAIN').map(mapDeckCard),
+    side: rows.filter(r => r.board === 'SIDE').map(mapDeckCard),
+  }
 }

@@ -26,7 +26,7 @@ pnpm dev                     # http://localhost:3000 → redirects to /meta/stan
 ```
 
 No database, no API keys, no external services are required in development: the
-committed fixture DB (`src/datasource/fixtures/data/db.json`) is the default
+committed fixture DB (`src/datasource/fixtures/data/db.jsonl`) is the default
 backend.
 
 ## Scripts
@@ -39,7 +39,7 @@ backend.
 | `pnpm lint`         | ESLint (next + prettier).                                                                                                                                                                      |
 | `pnpm format`       | Prettier write. `pnpm format:check` to verify.                                                                                                                                                 |
 | `pnpm test`         | Vitest — the `stats.ts` unit + fixture snapshot-parity suite.                                                                                                                                  |
-| `pnpm gen:fixtures` | Regenerate `db.json` (seeded, deterministic; fetches Scryfall art crops at gen time).                                                                                                          |
+| `pnpm gen:fixtures` | Regenerate `db.jsonl` (seeded, deterministic; fetches Scryfall art crops at gen time).                                                                                                         |
 | `pnpm gen:art`      | Regenerate `src/datasource/art-map.json` from the live DB (needs `TOURNAMENT_DATABASE_URL`).                                                                                                   |
 | `pnpm gen:art:fill` | Same, but keeps every already-resolved art URL and only fetches the still-null cards.                                                                                                          |
 
@@ -103,7 +103,7 @@ memoized by `unstable_cache` keyed on the method + serialized query (ISR-style
 memo for the long tail of windows/knobs).
 
 ```text
-page.tsx ─► getDataSource() ─► withCache() ─┬─► FixtureDataSource  ─► db.json        (DATA_SOURCE=fixtures, default)
+page.tsx ─► getDataSource() ─► withCache() ─┬─► FixtureDataSource  ─► db.jsonl       (DATA_SOURCE=fixtures, default)
                                             └─► PostgresDataSource ─► Neon (metamage_ro) (DATA_SOURCE=postgres)
                                                     │
                                                     └─ both derive every stat via src/lib/stats.ts
@@ -152,7 +152,7 @@ src/
     types.ts                the frozen MetaDataSource contract + DTOs
     index.ts                getDataSource() singleton + unstable_cache layer
     fixtures.ts             FixtureDataSource (selection pipeline in TS)
-    fixtures/data/db.json   committed seeded fixture DB
+    fixtures/data/db.jsonl  committed seeded fixture DB (JSONL, ≤1,000 lines)
     postgres.ts             PostgresDataSource (live Neon read path, DATA_SOURCE=postgres)
     art-map.json            archetype -> signature card art crops (pnpm gen:art / gen:art:fill)
   hooks/useMetaParams.ts    the single lens read/write choke point

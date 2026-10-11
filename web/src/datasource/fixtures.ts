@@ -1,9 +1,14 @@
+import { ARCHETYPE_ENTRIES_CAP } from '@/datasource/types'
 import type {
   ArchetypeDetailDTO,
+  ArchetypeEntriesDTO,
   ArchetypeRef,
   ArchetypeRowDTO,
   ArchetypeSlug,
   CardAdoptionDTO,
+  DeckCardDTO,
+  DeckDTO,
+  DeckSummaryDTO,
   FormatDTO,
   FormatSlug,
   IsoDate,
@@ -31,7 +36,9 @@ import {
   weightOf,
   type IntrinsicRow,
 } from '@/datasource/derive'
-import rawDb from '@/datasource/fixtures/data/db.json'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { decodeDbJsonl } from '@/datasource/fixtures-jsonl'
 
 // ---------------------------------------------------------------------------
 // FixtureDataSource — the read-path firewall (blueprint §3, §5). It loads the
@@ -83,6 +90,49 @@ export type RawArchetype = {
   mainCards: RawCard[]
   sideCards: RawCard[]
   trend: RawTrendWeek[]
+  /** Synthetic recent-deck entries (KTD12): at most 8 per archetype-window. */
+  entries: RawEntry[]
+  /** Shared decklists the entries sample from (indexes into this array). */
+  deckLists: RawDeckList[]
+}
+
+/** One synthetic decklist entry (KTD12) — light header, cards by reference. */
+export type RawEntry = {
+  /** Deterministic UUID-shaped id so `?deck` passes KTD6 validation. */
+  id: string
+  tournamentId: string
+  player: string
+  /** MTGO placing; 0 = unranked (Melee/CardsRealm) → mapped to null. */
+  rank: number
+  w: number
+  l: number
+  d: number
+  decklistUrl: string | null
+  /** Index into the archetype's `deckLists`; null = no list published (R9). */
+  deck: number | null
+}
+
+/** One decklist row by card NAME — card data lives in the global `cardData`
+ *  map, keyed by the same lowercase name, so a card's KTD1 fields are stored
+ *  once across every deck that plays it. */
+export type RawDeckCard = { n: string; c: number; b: 'MAIN' | 'SIDE' }
+
+export type RawDeckList = {
+  main: RawDeckCard[]
+  side: RawDeckCard[]
+}
+
+/** KTD1 card data for one fixture card name, resolved once at generation time
+ *  via Scryfall `/cards/collection` (the runtime fixture backend stays
+ *  offline). */
+export type RawCardData = {
+  displayName: string
+  typeLine: string | null
+  manaCost: string | null
+  cmc: number | null
+  imageNormal: string | null
+  imageBack: string | null
+  scryfallUri: string | null
 }
 
 /** One unordered matchup pair (a's record vs b); reverse derived by swapping. */
@@ -124,10 +174,32 @@ export type RawFormat = {
 
 export type RawDb = {
   generatedAt: string
+  /** KTD12: KTD1 card data keyed by the lowercase fixture card name. */
+  cardData: Record<string, RawCardData>
   formats: RawFormat[]
 }
 
-const db = rawDb as unknown as RawDb
+/** The committed fixture DB, relative to the web app root (the cwd of
+ *  `next` and `vitest`). */
+export const FIXTURE_DB_PATH = join(
+  'src',
+  'datasource',
+  'fixtures',
+  'data',
+  'db.jsonl'
+)
+
+let loadedDb: RawDb | null = null
+
+/** Read and decode the JSONL fixture on first use, not at import: index.ts
+ *  imports this module under DATA_SOURCE=postgres too, where the file is
+ *  never read (and need not be traced into the deployment). */
+export function fixtureDb(): RawDb {
+  loadedDb ??= decodeDbJsonl(
+    readFileSync(join(process.cwd(), FIXTURE_DB_PATH), 'utf8')
+  )
+  return loadedDb
+}
 
 // ---- Small helpers ---------------------------------------------------------
 
@@ -139,7 +211,7 @@ function windowKey(start: string, end: string): string {
 }
 
 function findFormat(format: string): RawFormat | undefined {
-  return db.formats.find(f => f.slug === format)
+  return fixtureDb().formats.find(f => f.slug === format)
 }
 
 function findWindow(
@@ -246,11 +318,145 @@ function cardDto(raw: RawCard, board: 'MAIN' | 'SIDE'): CardAdoptionDTO {
   return {
     cardId: raw.cardId,
     name: raw.name,
+    // Fixture adoption names are raw lowercase DB names (RawCard).
+    hasDisplayName: false,
     board,
     avgCount: raw.avgCount,
     decksPlaying: raw.decksPlaying,
     presencePct: raw.presencePct,
   }
+}
+
+// ---- Decklists tab (KTD12 fixture parity) -----------------------------------
+
+function slugifyCardName(name: string): string {
+  return name
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase()
+}
+
+function entrySummary(entry: RawEntry, t: RawTournament): DeckSummaryDTO {
+  return {
+    id: entry.id,
+    player: entry.player,
+    // Stored 0 for unranked rows (Melee/CardsRealm) → null, as in Postgres.
+    rank: entry.rank > 0 ? entry.rank : null,
+    wins: entry.w,
+    losses: entry.l,
+    draws: entry.d,
+    decklistUrl: entry.decklistUrl,
+    event: {
+      id: t.id,
+      name: t.name,
+      date: asIso(t.date),
+      link: t.link ?? null,
+      source: t.source,
+    },
+    hasCards: entry.deck !== null,
+  }
+}
+
+/** Code-unit order, like Postgres sorting the lowercase-hex id columns. */
+function compareIds(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0
+}
+
+/** Mirror of ARCHETYPE_ENTRIES_SQL's `order by date desc, tournament name
+ *  asc, tournament id, unranked last, entry rank asc, handle asc, entry id`
+ *  so the recent-decks column groups the same way in fixtures mode as on
+ *  Postgres. Rank 0 is already null on the DTO, so "unranked last" reads the
+ *  null; the entry id is the unique final key. */
+export function compareEntrySummaries(
+  a: DeckSummaryDTO,
+  b: DeckSummaryDTO
+): number {
+  return (
+    b.event.date.localeCompare(a.event.date) ||
+    a.event.name.localeCompare(b.event.name) ||
+    compareIds(a.event.id, b.event.id) ||
+    Number(a.rank === null) - Number(b.rank === null) ||
+    (a.rank ?? 0) - (b.rank ?? 0) ||
+    a.player.localeCompare(b.player) ||
+    compareIds(a.id, b.id)
+  )
+}
+
+function entrySummaries(win: RawWindow, raw: RawArchetype): DeckSummaryDTO[] {
+  const byId = new Map(win.tournaments.map(t => [t.id, t] as const))
+  const rows: DeckSummaryDTO[] = []
+  for (const e of raw.entries) {
+    const t = byId.get(e.tournamentId)
+    if (!t) continue
+    rows.push(entrySummary(e, t))
+  }
+  return rows.sort(compareEntrySummaries)
+}
+
+/** One decklist row with the generation-time KTD1 card data from the global
+ *  map; a name missing from the map degrades to nulls (R5/R7 text render). */
+function deckCard(row: RawDeckCard, board: DeckCardDTO['board']): DeckCardDTO {
+  const data = fixtureDb().cardData[row.n] ?? null
+  return {
+    cardId: slugifyCardName(row.n),
+    // KTD11: the stored display_name wins; the lowercase name is the fallback.
+    name: data ? data.displayName : row.n,
+    board,
+    count: row.c,
+    typeLine: data?.typeLine ?? null,
+    manaCost: data?.manaCost ?? null,
+    cmc: data?.cmc ?? null,
+    imageNormal: data?.imageNormal ?? null,
+    imageBack: data?.imageBack ?? null,
+    scryfallUri: data?.scryfallUri ?? null,
+  }
+}
+
+/** Mirror of DECK_SQL's `board asc, count desc, display name asc`. */
+function deckRows(
+  rows: RawDeckCard[] | undefined,
+  board: DeckCardDTO['board']
+): DeckCardDTO[] {
+  const { cardData } = fixtureDb()
+  return (rows ?? [])
+    .slice()
+    .sort(
+      (a, b) =>
+        b.c - a.c ||
+        (cardData[a.n]?.displayName ?? a.n).localeCompare(
+          cardData[b.n]?.displayName ?? b.n
+        )
+    )
+    .map(r => deckCard(r, board))
+}
+
+// Lazy entry-id → deck index. Built once on the first `getDeck` call and keyed
+// on the entry id alone (KTD7): entry ids are globally unique UUIDs, so no
+// format or window filter — the DTO carries the entry's CURRENT archetype and
+// format for the KTD6 redirect.
+type DeckHit = {
+  formatSlug: string
+  win: RawWindow
+  arch: RawArchetype
+  entry: RawEntry
+}
+
+let deckIndex: Map<string, DeckHit> | null = null
+
+function deckIndexOf(): Map<string, DeckHit> {
+  if (deckIndex) return deckIndex
+  const map = new Map<string, DeckHit>()
+  for (const f of fixtureDb().formats) {
+    for (const w of f.windows) {
+      for (const a of w.archetypes) {
+        for (const e of a.entries) {
+          map.set(e.id, { formatSlug: f.slug, win: w, arch: a, entry: e })
+        }
+      }
+    }
+  }
+  deckIndex = map
+  return map
 }
 
 // ---- The data source -------------------------------------------------------
@@ -262,7 +468,7 @@ function emptyKpis(): WindowKpisDTO {
 export class FixtureDataSource implements MetaDataSource {
   async listFormats(): Promise<FormatDTO[]> {
     return sortFormats(
-      db.formats.map(f => ({
+      fixtureDb().formats.map(f => ({
         slug: f.slug as FormatSlug,
         name: f.name,
         displayName: f.displayName,
@@ -285,7 +491,7 @@ export class FixtureDataSource implements MetaDataSource {
       kpis: win.kpis,
       rows,
       other,
-      generatedAt: db.generatedAt,
+      generatedAt: fixtureDb().generatedAt,
     }
   }
 
@@ -308,7 +514,7 @@ export class FixtureDataSource implements MetaDataSource {
         kpis: win ? win.kpis : emptyKpis(),
         rows: [],
         other: null,
-        generatedAt: db.generatedAt,
+        generatedAt: fixtureDb().generatedAt,
       }
     }
     return this.buildReport(win, q, DEFAULT_SORT)
@@ -396,6 +602,50 @@ export class FixtureDataSource implements MetaDataSource {
     const raw = win?.archetypes.find(a => a.slug === String(q.slug))
     if (!raw) return []
     return raw.trend.map(trendPoint)
+  }
+
+  /** The archetype's window entries for the recent-decks column (KTD7, KTD12).
+   *  Keyed on the window like the other archetype reads; an unknown format or
+   *  slug yields the empty list — the page 404s on `getArchetypeDetail`'s null
+   *  before it ever asks for entries. */
+  async getArchetypeEntries(
+    q: MetaQuery & { slug: ArchetypeSlug }
+  ): Promise<ArchetypeEntriesDTO> {
+    const win = findWindow(q.format, q)
+    const raw = win?.archetypes.find(a => a.slug === String(q.slug))
+    if (!raw || !win) return { total: 0, entries: [] }
+    const entries = entrySummaries(win, raw)
+    return {
+      total: entries.length,
+      entries: entries.slice(0, ARCHETYPE_ENTRIES_CAP),
+    }
+  }
+
+  /** One entry's full decklist by id, ignoring the window (KTD7, KTD12).
+   *  `q.format` is caller context only; the DTO carries the entry's CURRENT
+   *  archetype + format, which is what the KTD6 redirect reads after a
+   *  reclassification. Unknown id → null. */
+  async getDeck(q: {
+    format?: FormatSlug
+    entryId: string
+  }): Promise<DeckDTO | null> {
+    const hit = deckIndexOf().get(q.entryId)
+    if (!hit) return null
+    const t = hit.win.tournaments.find(x => x.id === hit.entry.tournamentId)
+    if (!t) return null
+    const list =
+      hit.entry.deck !== null ? hit.arch.deckLists[hit.entry.deck] : null
+    return {
+      format: hit.formatSlug as FormatSlug,
+      archetype: {
+        slug: asSlug(hit.arch.slug),
+        name: hit.arch.name,
+        color: hit.arch.color,
+      },
+      entry: entrySummary(hit.entry, t),
+      main: deckRows(list?.main, 'MAIN'),
+      side: deckRows(list?.side, 'SIDE'),
+    }
   }
 
   async getMatchupMatrix(

@@ -8,6 +8,7 @@ import type {
   MetaQuery,
   MetaSort,
 } from '@/datasource/types'
+import { MAX_DECKS_PAGE } from '@/lib/decks'
 
 // ---------------------------------------------------------------------------
 // The URL is the single source of truth for view state. This module is the ONLY
@@ -310,6 +311,33 @@ export function parseRow(
   return slug
 }
 
+// ---- Decklists-tab extras (KTD6/KTD8) — route extras, never in MetaQuery ----
+
+const DECK_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+
+/**
+ * `?deck=<entryId>` (KTD6): validated against a strict UUID pattern BEFORE
+ * any data call, so garbage values (`../x`, empty, over-length, junk) never
+ * reach a datasource. A well-formed but unknown UUID does cost one query; the
+ * `getDeck` wrapper caches found decks only, so it cannot grow the cache.
+ * Returns the lower-cased id, or undefined.
+ */
+export function parseDeckId(raw: string | undefined): string | undefined {
+  if (!raw) return undefined
+  const id = raw.toLowerCase()
+  return DECK_ID_RE.test(id) ? id : undefined
+}
+
+/**
+ * `?decks=<n>` (KTD8): the newest 50·n recent decks. 1 is the default;
+ * 0, negative, junk and blank clamp to 1; anything past the cap's last page
+ * clamps to it (the loaded list never exceeds ARCHETYPE_ENTRIES_CAP rows).
+ */
+export function parseDecksPage(sp: SearchParamsInput): number {
+  return intField(readParam(sp, 'decks'), 1, 1, MAX_DECKS_PAGE)
+}
+
 export type BuildHrefOpts = {
   /** Appended after `/meta/{format}`, e.g. `/matrix` or `/archetype/{slug}`. */
   path?: string
@@ -325,6 +353,13 @@ export type BuildHrefOpts = {
   matrixOrder?: readonly MatrixOrderEntryDTO[]
   /** Archetype-detail tab (`?tab`). */
   tab?: string
+  /** Decklists tab's selected deck (`?deck`, KTD6). Rides after `tab` in the
+   *  fixed order so tab links, redirects and paging keep the selection.
+   *  Canonical URLs exclude it, like `?row` (KTD6 SEO). */
+  deck?: string
+  /** Recent-decks page (`?decks`, KTD8). 1 is the default → omitted;
+   *  the parsed value is clamped by `parseDecksPage`. */
+  decks?: number
   /** Injected clock so the window-omission check is testable. */
   now?: Date
 }
@@ -371,6 +406,14 @@ export function buildHref(
     params.set('row', opts.row)
   }
   if (opts.tab) params.set('tab', opts.tab)
+  // `?deck` rides after `tab` (KTD6): the selection survives tab switches,
+  // the stale-slug redirect and the "Show older decks" link.
+  if (opts.deck) params.set('deck', opts.deck)
+  // `?decks` recent-decks page: 1 is the default, so a clean tab link stays
+  // clean (KTD8). Larger pages serialize verbatim.
+  if (opts.decks !== undefined && opts.decks > 1) {
+    params.set('decks', String(opts.decks))
+  }
 
   const qs = params.toString()
   const base = `/meta/${format}${opts.path ?? ''}`

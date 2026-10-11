@@ -1,20 +1,17 @@
 import * as React from 'react'
 
+import { titleCaseName } from '@/lib/card-names'
 import { cn } from '@/lib/utils'
 import { STICKY_COL_1, STICKY_COL_2 } from './sticky'
 import type { CardAdoptionDTO } from '@/datasource/types'
 
 // ---------------------------------------------------------------------------
 // CardAdoptionTable — MAIN/SIDE adoption for an archetype's decklists (§6). The
-// ledger treatment: uppercase tracked headers, title-cased card names (DB names
-// are lowercase, §3), a gold presence sharebar, mono tabular figures. Server-
-// renderable (no sorting needed here). One instance per board.
+// ledger treatment: uppercase tracked headers, title-cased card names (KTD11's
+// small-words/hyphen fallback for the lowercase DB names), a gold presence
+// sharebar, mono tabular figures. Server-renderable (no sorting needed here).
+// One instance per board.
 // ---------------------------------------------------------------------------
-
-/** DB card names are lowercase — title-case for display (leaves // split cards). */
-function titleCase(name: string): string {
-  return name.replace(/(^|\s)([a-z])/g, (_m, p, c) => p + c.toUpperCase())
-}
 
 export type CardAdoptionTableProps = {
   cards: CardAdoptionDTO[]
@@ -81,7 +78,7 @@ export function CardAdoptionTable({
                     STICKY_COL_2
                   )}
                 >
-                  {titleCase(c.name)}
+                  {c.hasDisplayName ? c.name : titleCaseName(c.name)}
                 </td>
                 <td className="num text-ink px-3.5 py-[7px] text-right hidden md:table-cell">
                   {c.avgCount.toFixed(1)}
