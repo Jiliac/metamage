@@ -87,5 +87,7 @@ Verification checks, on both DBs:
 - `deck_cards` and `card_colors` row counts match the pre-migration counts.
 
 After any full reload, a Neon backfill run should update zero rows; this is the
-parity check. Re-run the backfill (without `--refresh`) after any ingest that
+parity check. Cards whose bulk-file entry lacks required fields (inside the 1%
+pre-flight tolerance) are never written; each run lists them as `skipped`, and
+they stay null. Re-run the backfill (without `--refresh`) after any ingest that
 hit Scryfall errors.

@@ -8,10 +8,11 @@ fills ``display_name``, ``type_line``, ``mana_cost``, ``cmc``,
 ``image_normal``, ``image_back``, ``scryfall_uri`` and ``scryfall_id`` on
 every matching ``cards`` row. No per-card API calls.
 
-A pre-flight check (KTD3) runs on the matched set before any write: the
-required fields must be present on at least 99% of matched cards and every
-double-faced card must carry per-face images, otherwise the run aborts
-without writing.
+A pre-flight check (KTD3) runs before any write over every ``cards`` row the
+bulk file matches, not only the rows this run would write: the required
+fields must be present on at least 99% of them and every double-faced card
+must carry per-face images, otherwise the run aborts without writing. Cards
+inside the 1% tolerance are skipped (left null) and reported as skipped.
 
 By default only rows whose ``type_line`` is null are written, so an
 interrupted run resumes where it stopped; ``--refresh`` rewrites every
@@ -25,8 +26,8 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import sys
+from itertools import batched
 from pathlib import Path
-from typing import Iterable
 
 # Ensure we can import from src/
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -130,21 +131,6 @@ def candidate_rows(session, refresh: bool) -> list:
     return query.all()
 
 
-def chunked(iterable: Iterable, size: int):
-    it = iter(iterable)
-    while True:
-        chunk = []
-        try:
-            for _ in range(size):
-                chunk.append(next(it))
-        except StopIteration:
-            if chunk:
-                yield chunk
-            break
-        if chunk:
-            yield chunk
-
-
 def run(
     oracle_path: str | None,
     refresh: bool = False,
@@ -157,6 +143,7 @@ def run(
     session = session_factory()
     try:
         rows = candidate_rows(session, refresh)
+        all_oracle_ids = [oid for (oid,) in session.query(Card.scryfall_oracle_id)]
     finally:
         session.close()
 
@@ -164,28 +151,36 @@ def run(
                if row.scryfall_oracle_id in index]
     unmatched = [row for row in rows if row.scryfall_oracle_id not in index]
 
-    if not preflight([card for _, card in matched]):
+    # Judge the bulk file against every matched row, not just this run's
+    # candidates: on a resume the leftovers are the cards a previous run
+    # skipped, and on their own they would always fail the 1% tolerance.
+    if not preflight([index[oid] for oid in all_oracle_ids if oid in index]):
         print(f"matched: {len(matched)}, updated: 0, unmatched: {len(unmatched)} "
               f"(aborted; nothing written)")
         return 1
 
+    # Pre-flight tolerated these; writing them would leave a null type_line
+    # that every rerun retries, so they are skipped instead.
+    skipped = [(row, card) for row, card in matched
+               if required_field_problems(card)]
+    writable = [(row, card) for row, card in matched
+                if not required_field_problems(card)]
+
     updated = 0
-    if matched:
+    if writable:
         if dry_run:
-            updated = len(matched)
+            updated = len(writable)
         else:
             session = session_factory()
             try:
-                for chunk in chunked(matched, batch_size):
-                    # All eight KTD1 fields in one statement per row:
-                    # ``type_line`` doubles as the "done" marker for the
-                    # resume filter.
-                    for row, card in chunk:
-                        session.execute(
-                            update(Card)
-                            .where(Card.id == row.id)
-                            .values(**extract_scryfall_fields(card))
-                        )
+                for chunk in batched(writable, batch_size):
+                    # One executemany per chunk (ORM bulk UPDATE by primary
+                    # key) carrying all eight KTD1 fields: ``type_line``
+                    # doubles as the "done" marker for the resume filter.
+                    session.execute(update(Card), [
+                        {"id": row.id, **extract_scryfall_fields(card)}
+                        for row, card in chunk
+                    ])
                     session.commit()
                     updated += len(chunk)
             except Exception:
@@ -196,7 +191,10 @@ def run(
 
     mode = " (dry run; nothing written)" if dry_run else ""
     print(f"matched: {len(matched)}, updated: {updated}, "
-          f"unmatched: {len(unmatched)}{mode}")
+          f"skipped: {len(skipped)}, unmatched: {len(unmatched)}{mode}")
+    for row, card in skipped[:20]:
+        print(f"  skipped: {card.get('name', row.name)} ({row.scryfall_oracle_id}): "
+              f"missing {', '.join(required_field_problems(card))}")
     for row in unmatched[:20]:
         print(f"  unmatched: {row.name} ({row.scryfall_oracle_id})")
     return 0
@@ -228,8 +226,12 @@ def main(argv: list[str] | None = None) -> int:
         help=f"rows per transaction (default {DEFAULT_BATCH_SIZE})",
     )
     args = ap.parse_args(argv)
-    return run(args.oracle, refresh=args.refresh, dry_run=args.dry_run,
-               batch_size=args.batch_size)
+    try:
+        return run(args.oracle, refresh=args.refresh, dry_run=args.dry_run,
+                   batch_size=args.batch_size)
+    except _ucc.DownloadError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ Revises: ce8d1497fd5a
 Create Date: 2026-10-11 03:00:00.000000
 
 """
+import sqlite3
 from typing import Sequence, Union
 
 from alembic import op
@@ -49,6 +50,15 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Downgrade schema."""
-    with op.batch_alter_table('cards', schema=None) as batch_op:
-        for name, _ in reversed(NEW_COLUMNS):
-            batch_op.drop_column(name)
+    # Plain ALTER TABLE ... DROP COLUMN, never batch mode: batch drop_column
+    # rebuilds cards on SQLite, and under PRAGMA foreign_keys=ON the rebuild's
+    # DROP TABLE cascades into card_colors and is blocked by deck_cards.
+    # Native DROP COLUMN needs SQLite 3.35+; refuse rather than rebuild.
+    if (op.get_bind().dialect.name == 'sqlite'
+            and sqlite3.sqlite_version_info < (3, 35)):
+        raise RuntimeError(
+            f'SQLite {sqlite3.sqlite_version} lacks ALTER TABLE DROP COLUMN '
+            '(3.35+); refusing a cards rebuild that would empty card_colors'
+        )
+    for name, _ in reversed(NEW_COLUMNS):
+        op.drop_column('cards', name)

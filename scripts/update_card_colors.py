@@ -46,7 +46,10 @@ import io
 import json
 import os
 import re
+import shutil
 import sys
+import tempfile
+import urllib.error
 import urllib.request
 from collections import Counter, OrderedDict
 
@@ -63,6 +66,12 @@ SKIP_LAYOUTS = {
 }
 SKIP_SET_TYPES = {"memorabilia", "token", "minigame", "alchemy"}
 UA = {"User-Agent": "metamage-card-colors/1.0", "Accept": "application/json"}
+BULK_DATA_URL = "https://api.scryfall.com/bulk-data"
+DOWNLOAD_TIMEOUT = 60  # seconds per connect/read, not for the whole transfer
+
+
+class DownloadError(RuntimeError):
+    """The Scryfall bulk file could not be fetched."""
 
 
 def order(colors: set[str]) -> str:
@@ -127,15 +136,39 @@ def derive(card: dict) -> tuple[dict[str, str], dict[str, str]]:
     return lands, nonlands
 
 
+def download_oracle_cards(dest: str) -> None:
+    """Stream the gzipped oracle_cards JSONL to ``dest``; DownloadError on failure."""
+    url = BULK_DATA_URL
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers=UA),
+                                    timeout=DOWNLOAD_TIMEOUT) as resp:
+            meta = json.load(resp)
+        entry = next((x for x in meta.get("data", []) if x.get("type") == "oracle_cards"), {})
+        if not entry.get("jsonl_download_uri"):
+            raise DownloadError(f"no oracle_cards jsonl_download_uri in {url}")
+        url = entry["jsonl_download_uri"]
+        print(f"downloading {url}", file=sys.stderr)
+        with urllib.request.urlopen(urllib.request.Request(url, headers=UA),
+                                    timeout=DOWNLOAD_TIMEOUT) as resp, open(dest, "wb") as out:
+            shutil.copyfileobj(resp, out)
+    except urllib.error.HTTPError as exc:
+        raise DownloadError(f"HTTP {exc.code} {exc.reason} from {url}") from exc
+    except urllib.error.URLError as exc:
+        raise DownloadError(f"cannot reach {url}: {exc.reason}") from exc
+    except (OSError, ValueError) as exc:  # mid-stream timeout/reset, bad JSON
+        raise DownloadError(f"download from {url} failed: {exc}") from exc
+
+
 def iter_cards(path: str | None):
     if path is None:
-        meta = json.load(urllib.request.urlopen(urllib.request.Request(
-            "https://api.scryfall.com/bulk-data", headers=UA)))
-        uri = next(x for x in meta["data"] if x["type"] == "oracle_cards")["jsonl_download_uri"]
-        print(f"downloading {uri}", file=sys.stderr)
-        raw = urllib.request.urlopen(urllib.request.Request(uri, headers=UA)).read()
-        fh = io.TextIOWrapper(gzip.GzipFile(fileobj=io.BytesIO(raw)), encoding="utf-8")
-    elif path.endswith(".gz"):
+        # Stream to a temp file instead of buffering the whole gzip in memory;
+        # the directory is removed once the generator is exhausted or closed.
+        with tempfile.TemporaryDirectory(prefix="oracle-cards-") as tmp:
+            dest = os.path.join(tmp, "oracle_cards.jsonl.gz")
+            download_oracle_cards(dest)
+            yield from iter_cards(dest)
+        return
+    if path.endswith(".gz"):
         fh = io.TextIOWrapper(gzip.open(path), encoding="utf-8")
     else:
         fh = open(path, encoding="utf-8")
@@ -270,7 +303,11 @@ def main() -> int:
 
     with open(args.colors, encoding="utf-8") as fh:
         existing = json.load(fh, object_pairs_hook=OrderedDict)
-    lands, nonlands, released = build(args.oracle)
+    try:
+        lands, nonlands, released = build(args.oracle)
+    except DownloadError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
 
     if args.validate:
         validate(existing, lands, nonlands)

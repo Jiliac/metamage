@@ -5,11 +5,13 @@ Hand-built Scryfall dicts and a local JSONL fixture; no network.
 
 import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -135,7 +137,7 @@ def test_backfill_fills_both_rows(tmp_path, db_url, capsys):
 
     assert bcd.main(["--oracle", str(oracle)]) == 0
     out = capsys.readouterr().out
-    assert "matched: 2" in out
+    assert re.search(r"\bmatched: 2\b", out)
     assert "updated: 2" in out
     assert "unmatched: 0" in out
 
@@ -174,13 +176,13 @@ def test_filled_row_untouched_without_refresh_and_rewritten_with_it(
 
     assert bcd.main(["--oracle", str(oracle)]) == 0
     out = capsys.readouterr().out
-    assert "matched: 0" in out
+    assert re.search(r"\bmatched: 0\b", out)
     assert "updated: 0" in out
     assert _row(db_url, "oid-bolt").display_name == "stale name"
 
     assert bcd.main(["--oracle", str(oracle), "--refresh"]) == 0
     out = capsys.readouterr().out
-    assert "matched: 1" in out
+    assert re.search(r"\bmatched: 1\b", out)
     assert "updated: 1" in out
     refreshed = _row(db_url, "oid-bolt")
     assert refreshed.display_name == "Lightning Bolt"
@@ -194,7 +196,7 @@ def test_unmatched_oracle_id_reported_and_left_null(tmp_path, db_url, capsys):
 
     assert bcd.main(["--oracle", str(oracle)]) == 0
     out = capsys.readouterr().out
-    assert "matched: 0" in out
+    assert re.search(r"\bmatched: 0\b", out)
     assert "updated: 0" in out
     assert "unmatched: 1" in out
     assert "custom card" in out
@@ -210,7 +212,7 @@ def test_reversible_card_without_oracle_id_is_skipped(tmp_path, db_url, capsys):
 
     assert bcd.main(["--oracle", str(oracle)]) == 0
     out = capsys.readouterr().out
-    assert "matched: 1" in out
+    assert re.search(r"\bmatched: 1\b", out)
     assert "updated: 1" in out
 
 
@@ -221,7 +223,7 @@ def test_dry_run_reports_counts_and_writes_nothing(tmp_path, db_url, capsys):
 
     assert bcd.main(["--oracle", str(oracle), "--dry-run"]) == 0
     out = capsys.readouterr().out
-    assert "matched: 1" in out
+    assert re.search(r"\bmatched: 1\b", out)
     assert "updated: 1" in out
     assert "unmatched: 1" in out
     assert "dry run" in out
@@ -241,7 +243,7 @@ def test_second_run_updates_zero_rows(tmp_path, db_url, capsys):
 
     assert bcd.main(["--oracle", str(oracle)]) == 0
     out = capsys.readouterr().out
-    assert "matched: 0" in out
+    assert re.search(r"\bmatched: 0\b", out)
     assert "updated: 0" in out
 
 
@@ -278,7 +280,7 @@ def test_interrupted_run_leaves_first_chunk_and_rerun_fills_rest(
 
     assert bcd.main(["--oracle", str(oracle), "--batch-size", "1"]) == 0
     out = capsys.readouterr().out
-    assert "matched: 2" in out  # the resume filter skips the already-filled row
+    assert re.search(r"\bmatched: 2\b", out)  # the resume filter skips the already-filled row
     assert "updated: 2" in out
     assert all(_row(db_url, oid).type_line is not None
                for oid in ("oid-bolt", "oid-finks", "oid-giant"))
@@ -301,6 +303,84 @@ def test_preflight_failure_on_missing_type_lines_writes_nothing(
         row = _row(db_url, oid)
         assert row.type_line is None
         assert row.display_name is None
+
+
+def _summary(out: str) -> str:
+    return next(line for line in out.splitlines() if line.startswith("matched:"))
+
+
+def test_tolerated_bad_card_is_skipped_and_rerun_updates_zero(
+    tmp_path, db_url, capsys
+):
+    # 100 good cards + 1 bad one is inside the 1% pre-flight tolerance.
+    good = [
+        {**BOLT, "name": f"Card {i}", "oracle_id": f"oid-{i}", "id": f"print-{i}"}
+        for i in range(100)
+    ]
+    oracle = tmp_path / "oracle_cards.jsonl"
+    _write_jsonl(oracle, [*good, BAD_CARD])
+    _seed(db_url, [(f"card {i}", f"oid-{i}") for i in range(100)]
+          + [("bad card", "oid-bad")])
+
+    assert bcd.main(["--oracle", str(oracle)]) == 0
+    out = capsys.readouterr().out
+    assert _summary(out) == (
+        "matched: 101, updated: 100, skipped: 1, unmatched: 0"
+    )
+    assert "skipped: Bad Card (oid-bad)" in out
+    bad = _row(db_url, "oid-bad")
+    assert bad.type_line is None
+    assert bad.display_name is None  # not written at all
+
+    # The bad row is still a candidate, but alone it must not trip the
+    # pre-flight, and nothing is written for it.
+    assert bcd.main(["--oracle", str(oracle)]) == 0
+    out = capsys.readouterr().out
+    assert _summary(out) == "matched: 1, updated: 0, skipped: 1, unmatched: 0"
+
+
+def test_each_chunk_is_one_batched_update(tmp_path, db_url, capsys):
+    oracle = tmp_path / "oracle_cards.jsonl"
+    cards = [
+        {**BOLT, "name": f"Card {i}", "oracle_id": f"oid-{i}", "id": f"print-{i}"}
+        for i in range(5)
+    ]
+    _write_jsonl(oracle, cards)
+    _seed(db_url, [(f"card {i}", f"oid-{i}") for i in range(5)])
+
+    updates = []
+
+    def record(conn, cursor, statement, parameters, context, executemany):
+        if statement.lstrip().upper().startswith("UPDATE"):
+            updates.append(len(parameters) if executemany else 1)
+
+    event.listen(Engine, "before_cursor_execute", record)
+    try:
+        assert bcd.main(["--oracle", str(oracle), "--batch-size", "2"]) == 0
+    finally:
+        event.remove(Engine, "before_cursor_execute", record)
+
+    assert _summary(capsys.readouterr().out) == (
+        "matched: 5, updated: 5, skipped: 0, unmatched: 0"
+    )
+    assert updates == [2, 2, 1]  # one statement per chunk, not per row
+    assert all(_row(db_url, f"oid-{i}").type_line == "Instant" for i in range(5))
+
+
+def test_download_failure_reports_error_and_writes_nothing(
+    db_url, monkeypatch, capsys
+):
+    _seed(db_url, [("lightning bolt", "oid-bolt")])
+
+    def failing_iter_cards(path):
+        raise bcd._ucc.DownloadError("HTTP 503 Service Unavailable from x")
+        yield  # pragma: no cover
+
+    monkeypatch.setattr(bcd._ucc, "iter_cards", failing_iter_cards)
+    assert bcd.main([]) == 1
+    err = capsys.readouterr().err
+    assert "HTTP 503 Service Unavailable" in err
+    assert _row(db_url, "oid-bolt").type_line is None
 
 
 def test_preflight_requires_per_face_images_on_double_faced_cards(
