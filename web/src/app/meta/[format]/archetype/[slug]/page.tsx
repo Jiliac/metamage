@@ -12,7 +12,11 @@ import {
   asArchetypeSlug,
   isArchetypeSlug,
 } from '@/lib/params'
-import { pickFeaturedDeck, sliceRecentDecks } from '@/lib/decks'
+import {
+  isOutsideWindow,
+  pickFeaturedDeck,
+  sliceRecentDecks,
+} from '@/lib/decks'
 import { buildPageMetadata } from '@/lib/seo'
 
 import {
@@ -184,10 +188,10 @@ export default async function ArchetypeDetailPage({
       })
     )
   }
-  // Inside the loaded window entries = inside the window (the list is the
-  // newest ARCHETYPE_ENTRIES_CAP rows of the window).
+  // Decided by the deck's date, not by membership in the loaded entries: the
+  // list is capped, so an in-window deck past the cap is still in the window.
   const outsideWindow =
-    !!picked && !entries.entries.some(e => e.id === picked.entry.id)
+    !!picked && isOutsideWindow(picked.entry.event.date, query)
   const deck: DeckDTO | null =
     picked ??
     (featured

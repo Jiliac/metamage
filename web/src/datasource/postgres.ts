@@ -68,6 +68,7 @@ import {
   TOURNAMENTS_SQL,
   TREND_SQL,
   type ArchetypeRow,
+  type CardAdoptionRow,
   type DeckRow,
   type EntryListRow,
   type EntrySummaryRow,
@@ -565,23 +566,10 @@ export class PostgresDataSource implements MetaDataSource {
       DECK_COUNT_SQL(formatId, q.start, q.end, archetypeId),
     ])
     const total = deckCount[0]?.decks ?? 0
-    const map = (
-      rows: typeof mainRows,
-      board: 'MAIN' | 'SIDE'
-    ): CardAdoptionDTO[] =>
-      rows.map(r => ({
-        cardId: r.card_id,
-        // CARD_ADOPTION_SQL coalesces display_name over the raw name (KTD11):
-        // backfilled cards arrive display-cased, unbackfilled ones lowercase.
-        // The contract title-cases only that fallback at render
-        // (types.ts CardAdoptionDTO); fixtures return raw names too.
-        name: r.name,
-        board,
-        avgCount: r.avg_count,
-        decksPlaying: r.decks_playing,
-        presencePct: total > 0 ? r.decks_playing / total : 0,
-      }))
-    return { main: map(mainRows, 'MAIN'), side: map(sideRows, 'SIDE') }
+    return {
+      main: mainRows.map(r => mapCardAdoptionRow(r, 'MAIN', total)),
+      side: sideRows.map(r => mapCardAdoptionRow(r, 'SIDE', total)),
+    }
   }
 
   private async trendFor(
@@ -687,6 +675,25 @@ export function cardDisplayName(
   name: string
 ): string {
   return displayName ?? name
+}
+
+/** One CARD_ADOPTION_SQL row → DTO. The SQL coalesces display_name over the
+ *  raw name (KTD11) and flags which one it returned, so the renderer
+ *  title-cases only the lowercase fallback. */
+export function mapCardAdoptionRow(
+  row: CardAdoptionRow,
+  board: 'MAIN' | 'SIDE',
+  totalDecks: number
+): CardAdoptionDTO {
+  return {
+    cardId: row.card_id,
+    name: row.name,
+    hasDisplayName: row.has_display_name,
+    board,
+    avgCount: row.avg_count,
+    decksPlaying: row.decks_playing,
+    presencePct: totalDecks > 0 ? row.decks_playing / totalDecks : 0,
+  }
 }
 
 function mapEntrySummary(row: EntrySummaryRow): DeckSummaryDTO {

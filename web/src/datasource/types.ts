@@ -114,6 +114,9 @@ export type CardAdoptionDTO = {
   // KTD11: the stored Scryfall display_name when the card is backfilled, else
   // the lowercase DB name — title-case only that fallback at render.
   name: string
+  // True when `name` is the stored display_name (already proper-cased); the
+  // renderer must not re-case it ("Will-o'-the-Wisp" would get mangled).
+  hasDisplayName: boolean
   board: 'MAIN' | 'SIDE'
   avgCount: number
   decksPlaying: number

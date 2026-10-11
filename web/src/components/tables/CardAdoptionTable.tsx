@@ -78,7 +78,7 @@ export function CardAdoptionTable({
                     STICKY_COL_2
                   )}
                 >
-                  {titleCaseName(c.name)}
+                  {c.hasDisplayName ? c.name : titleCaseName(c.name)}
                 </td>
                 <td className="num text-ink px-3.5 py-[7px] text-right hidden md:table-cell">
                   {c.avgCount.toFixed(1)}

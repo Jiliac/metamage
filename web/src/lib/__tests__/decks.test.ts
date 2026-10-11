@@ -10,6 +10,7 @@ import {
   formatInt,
   groupEntriesByEvent,
   groupMaindeck,
+  isOutsideWindow,
   pickFeaturedDeck,
   placingOrRecord,
   sliceRecentDecks,
@@ -277,6 +278,28 @@ describe('sliceRecentDecks (KTD8, R12)', () => {
     expect(page.shown).toBe(1)
     expect(page.hasMore).toBe(false)
     expect(page.capReached).toBe(false)
+  })
+})
+
+describe('isOutsideWindow (R11)', () => {
+  const window = { start: '2026-09-07', end: '2026-10-06' }
+
+  it('treats both window ends as inside', () => {
+    expect(isOutsideWindow('2026-09-07', window)).toBe(false)
+    expect(isOutsideWindow('2026-10-06', window)).toBe(false)
+  })
+
+  it('flags dates before the start or after the end', () => {
+    expect(isOutsideWindow('2026-09-06', window)).toBe(true)
+    expect(isOutsideWindow('2026-10-07', window)).toBe(true)
+  })
+
+  it('keeps an in-window deck inside even past the entries cap', () => {
+    // The page used to test membership in the capped entry list; a deck
+    // older than the 2,000th row of a long window is still in the window.
+    expect(
+      isOutsideWindow('2026-04-15', { ...window, start: '2026-04-01' })
+    ).toBe(false)
   })
 })
 

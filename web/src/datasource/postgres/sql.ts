@@ -55,6 +55,7 @@ export type MatchupRow = {
 export type CardAdoptionRow = {
   card_id: string
   name: string
+  has_display_name: boolean
   avg_count: number
   decks_playing: number
 }
@@ -264,6 +265,7 @@ export const CARD_ADOPTION_SQL = (
   board: string
 ) => db()<CardAdoptionRow[]>`
   select dc.card_id, coalesce(c.display_name, c.name) as name,
+         (c.display_name is not null) as has_display_name,
          avg(dc.count)::float8 as avg_count,
          count(distinct dc.entry_id)::int as decks_playing
   from deck_cards dc

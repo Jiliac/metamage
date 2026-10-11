@@ -143,6 +143,17 @@ export function formatInt(n: number): string {
   return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 
+/** R11: a selected deck is outside the lens when its tournament date (UTC
+ *  calendar day) falls before `start` or after `end`, both inclusive — the
+ *  same bounds the window queries use. Decided by date, not by membership in
+ *  the loaded entries, which are capped at ARCHETYPE_ENTRIES_CAP. */
+export function isOutsideWindow(
+  date: string,
+  window: { start: string; end: string }
+): boolean {
+  return date < window.start || date > window.end
+}
+
 /** R12's end-of-list note past the cap: "Showing the newest 2,000 of 3,041". */
 export function decksCapLabel(shown: number, total: number): string {
   return `Showing the newest ${formatInt(shown)} of ${formatInt(total)} decks`

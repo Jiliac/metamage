@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import artMap from '@/datasource/art-map.json'
 import {
   cardDisplayName,
+  mapCardAdoptionRow,
   mapDeckRows,
   mapEntryListRows,
 } from '@/datasource/postgres'
@@ -385,5 +386,42 @@ describe('cardDisplayName (KTD11)', () => {
     expect(cardDisplayName(null, 'soul-guide lantern')).toBe(
       'soul-guide lantern'
     )
+  })
+})
+
+describe('mapCardAdoptionRow (KTD11)', () => {
+  const row = {
+    card_id: 'c1',
+    name: "Will-o'-the-Wisp",
+    has_display_name: true,
+    avg_count: 2.5,
+    decks_playing: 3,
+  }
+
+  it('flags a stored display name so the renderer keeps its casing', () => {
+    const dto = mapCardAdoptionRow(row, 'MAIN', 12)
+    expect(dto).toEqual({
+      cardId: 'c1',
+      name: "Will-o'-the-Wisp",
+      hasDisplayName: true,
+      board: 'MAIN',
+      avgCount: 2.5,
+      decksPlaying: 3,
+      presencePct: 0.25,
+    })
+  })
+
+  it('marks the lowercase fallback for title-casing', () => {
+    const dto = mapCardAdoptionRow(
+      { ...row, name: 'soul-guide lantern', has_display_name: false },
+      'SIDE',
+      12
+    )
+    expect(dto.hasDisplayName).toBe(false)
+    expect(dto.name).toBe('soul-guide lantern')
+  })
+
+  it('reports zero presence when the archetype has no decks', () => {
+    expect(mapCardAdoptionRow(row, 'MAIN', 0).presencePct).toBe(0)
   })
 })

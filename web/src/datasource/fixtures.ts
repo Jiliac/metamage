@@ -296,6 +296,8 @@ function cardDto(raw: RawCard, board: 'MAIN' | 'SIDE'): CardAdoptionDTO {
   return {
     cardId: raw.cardId,
     name: raw.name,
+    // Fixture adoption names are raw lowercase DB names (RawCard).
+    hasDisplayName: false,
     board,
     avgCount: raw.avgCount,
     decksPlaying: raw.decksPlaying,
