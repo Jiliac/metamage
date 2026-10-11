@@ -8,7 +8,7 @@ import type {
   MetaQuery,
 } from '@/datasource/types'
 import type { DeckSelection } from '@/lib/deck-selection'
-import { sliceRecentDecks } from '@/lib/decks'
+import { recordFootnote, sliceRecentDecks } from '@/lib/decks'
 import { buildHref } from '@/lib/params'
 
 import {
@@ -207,6 +207,10 @@ export function DecklistsTab({
       }
     />
   )
+  const footnote = recordFootnote([
+    ...(deck ? [deck.entry.event.source] : []),
+    ...recentPage.visible.map(e => e.event.source),
+  ])
   // "Back to featured" drops the selection, keeping the lens + decks page.
   const backToFeaturedHref =
     featured && deck && deck.entry.id !== featured.id
@@ -266,6 +270,11 @@ export function DecklistsTab({
           <CardBreakdown main={detail.mainCards} side={detail.sideCards} />
         )}
       </div>
+
+      {/* One provenance footnote per tab, only when an MTGO event is on
+          screen: MTGO records are partial (matches vs unpublished decks are
+          not stored). */}
+      {footnote && <p className="mt-2 text-[12px] text-ink-3">{footnote}</p>}
     </DeckNavProvider>
   )
 }

@@ -314,18 +314,46 @@ function ordinal(n: number): string {
   return `${n}${suffix}`
 }
 
+/** W-L, with draws appended only when nonzero ("5-1", "3-3-1"); null for an
+ *  all-zero row (no published record). */
+function formatRecord({
+  wins,
+  losses,
+  draws,
+}: Pick<DeckSummaryDTO, 'wins' | 'losses' | 'draws'>): string | null {
+  if (!wins && !losses && !draws) return null
+  return draws > 0 ? `${wins}-${losses}-${draws}` : `${wins}-${losses}`
+}
+
 /**
- * "placing (MTGO rank when present) or W-L-D record": rank 1 → "1st"; rank
- * 0/null with any games → "5-1-0"; an all-zero row (Melee/unranked without a
- * published record) gets no label.
+ * "placing · record" when both exist: rank 1 with a 7-0 record → "1st · 7-0";
+ * only a rank → "1st"; only a record → "5-1" (see `formatRecord`); an
+ * all-zero row gets no label. MTGO records are partial (they count only
+ * matches between published decks) — `recordFootnote` explains that once per
+ * tab, so the label itself stays bare.
  */
-export function placingOrRecord(
+export function deckResultLabel(
   entry: Pick<DeckSummaryDTO, 'rank' | 'wins' | 'losses' | 'draws'>
 ): string | null {
   const rank = entry.rank ?? 0
-  if (rank > 0) return ordinal(rank)
-  if (entry.wins || entry.losses || entry.draws) {
-    return `${entry.wins}-${entry.losses}-${entry.draws}`
-  }
-  return null
+  const placing = rank > 0 ? ordinal(rank) : null
+  const record = formatRecord(entry)
+  if (placing && record) return `${placing} · ${record}`
+  return placing ?? record
+}
+
+/**
+ * The Decklists tab's one provenance footnote, from the sources of the decks
+ * on screen: null unless an MTGO deck is shown (its record may be partial);
+ * the Melee sentence is added only when a Melee deck is shown too.
+ */
+export function recordFootnote(
+  sources: readonly DeckSummaryDTO['event']['source'][]
+): string | null {
+  if (!sources.includes('MTGO')) return null
+  const mtgo =
+    'MTGO win–loss records count only matches between published decks, so they are often partial.'
+  return sources.includes('MELEE')
+    ? `${mtgo} Melee records are complete.`
+    : mtgo
 }
