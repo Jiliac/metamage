@@ -57,7 +57,9 @@ export function DeckTile({
         className
       )}
     >
-      <div className="bg-raised relative aspect-[2.3]">
+      {/* Scryfall art_crop is ~626×457; match it so object-cover doesn't
+          slice off the top and bottom of the art. */}
+      <div className="bg-raised relative aspect-[626/457]">
         <ArtCrop
           url={row.art?.artCropUrl ?? null}
           colors={row.color}
