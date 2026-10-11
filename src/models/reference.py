@@ -105,6 +105,18 @@ class Card(Base, TimestampMixin):
     )
     first_printed_date = Column(DateTime, nullable=True, index=True)
 
+    # Scryfall display data (KTD1), written only by the offline pipeline.
+    # display_name is a plain String because CaseInsensitiveText lowercases on
+    # every write, destroying Scryfall's proper-case name.
+    display_name = Column(String(200), nullable=True)
+    type_line = Column(String(100), nullable=True)
+    mana_cost = Column(String(64), nullable=True)
+    cmc = Column(FLOAT, nullable=True)
+    image_normal = Column(String(255), nullable=True)
+    image_back = Column(String(255), nullable=True)
+    scryfall_uri = Column(String(255), nullable=True)
+    scryfall_id = Column(String(36), nullable=True)
+
     # Relationships
     deck_cards = relationship("DeckCard", back_populates="card")
     card_colors = relationship(

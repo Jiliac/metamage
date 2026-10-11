@@ -1,52 +1,40 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 
 import { getDataSource } from '@/datasource'
-import type { ArchetypeDetailDTO, ArchetypeRef } from '@/datasource/types'
 import {
   buildHref,
+  parseDeckId,
+  parseDecksPage,
   parseMetaQuery,
   asArchetypeSlug,
   isArchetypeSlug,
 } from '@/lib/params'
+import { resolveDeckSelection } from '@/lib/deck-selection'
 import { buildPageMetadata } from '@/lib/seo'
 
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { ManaPips } from '@/components/ManaPips'
-import { CardAdoptionTable } from '@/components/tables/CardAdoptionTable'
-import { MatchupList } from '@/components/tables/MatchupList'
-import { TrendChart } from '@/components/charts/TrendChart'
-import { WrCiChart } from '@/components/charts/WrCiChart'
+import {
+  ArchetypeHeader,
+  ArchetypeTabs,
+  DecklistsTab,
+  PageFooter,
+  readTab,
+  type TabKey,
+} from './sections'
 
 // ---------------------------------------------------------------------------
-// Archetype detail (WP5). RSC. resolveSlug() first — stale/renamed slugs 302 to
-// the canonical URL, unknown slugs 404. Radix tabs are driven by `?tab=`: the
-// active tab seeds `defaultValue`; all four panels are server-rendered from the
-// single getArchetypeDetail() payload. (WP7 may wire ?tab URL sync on switch.)
+// Archetype detail (WP5 + U7). RSC. resolveSlug() first — stale/renamed slugs
+// 307 to the canonical URL (keeping ?deck), unknown slugs 404. Radix tabs are
+// driven by `?tab=`: the active tab seeds `defaultValue`; all four panels are
+// server-rendered. The Decklists tab shows the featured deck (KTD4) plus a
+// recent-decks column driven by `?deck`/`?decks` (KTD6/KTD8); `deck` resolves
+// by entry id + archetype ignoring the window, and never enters the canonical
+// URL — like `?row` today. The slug → deck flow lives in
+// `@/lib/deck-selection`; the sections in `./sections`.
 // ---------------------------------------------------------------------------
 
 type RouteParams = { format: string; slug: string }
 type SearchParams = Record<string, string | string[] | undefined>
-
-const TABS = ['decklists', 'matchups', 'trends', 'performance'] as const
-type TabKey = (typeof TABS)[number]
-
-function readTab(sp: SearchParams): TabKey {
-  const raw = sp['tab']
-  const v = Array.isArray(raw) ? raw[0] : raw
-  return (TABS as readonly string[]).includes(v ?? '')
-    ? (v as TabKey)
-    : 'decklists'
-}
-
-const pct1 = (x: number) => `${(x * 100).toFixed(1)}%`
-
-function tierLabel(tier: number | null): string | null {
-  // Display bands 1-based (best = T1) to match the spike + MTG convention; the
-  // stored band stays 0-based for the tier math (§9, no "T0").
-  return tier === null ? null : `T${tier + 1}`
-}
 
 // Prebuild the top-N archetypes per format at the default window (blueprint §2);
 // the long tail (rarer archetypes, other windows) renders on demand + cached.
@@ -112,126 +100,70 @@ export default async function ArchetypeDetailPage({
 
   const query = parseMetaQuery(format, sp)
   const tab = readTab(sp)
-  const ds = getDataSource()
+  // Route extras, never in the MetaQuery (KTD6/KTD8): `deck` is validated
+  // against a UUID pattern BEFORE any data call so garbage cannot reach the
+  // datasource; `decks` clamps to the cap's last page.
+  const deckId = parseDeckId(typeof sp.deck === 'string' ? sp.deck : undefined)
+  const decksPage = parseDecksPage(sp)
 
-  // Slug discipline: redirect stale slugs, 404 unknown ones.
-  const canonical: ArchetypeRef | null = await ds.resolveSlug(
-    query.format,
-    asArchetypeSlug(slug)
-  )
-  if (!canonical) notFound()
-  if (canonical.slug !== slug) {
-    redirect(
-      buildHref(query.format, query, {
-        path: `/archetype/${canonical.slug}`,
-        // Omit the default tab so the canonical redirect target stays clean.
-        tab: tab === 'decklists' ? undefined : tab,
-      })
-    )
-  }
-
-  const detail: ArchetypeDetailDTO | null = await ds.getArchetypeDetail({
-    ...query,
-    slug: canonical.slug,
+  // Slug discipline + the KTD6 deck flow. Redirects (307, keeping ?deck) for
+  // stale slugs and reclassified decks; 404 for unknown slugs.
+  const selection = await resolveDeckSelection(getDataSource(), {
+    query,
+    slug: asArchetypeSlug(slug),
+    deckId,
+    // Omit the default tab so the redirect target stays clean.
+    tab: tab === 'decklists' ? undefined : tab,
   })
-  if (!detail) notFound()
+  if (selection.kind === 'redirect') redirect(selection.href)
+  if (selection.kind === 'notFound') notFound()
 
-  const { archetype, summary } = detail
-  const tier = tierLabel(summary.tier)
-  const record = `${summary.wins}-${summary.losses}-${summary.draws}`
-
-  // Order by match volume — the user asked for "matchups sorted by number of
-  // matches"; wr falls back as the tiebreak for equal-volume pairs.
-  const nonMirror = detail.matchups
-    .filter(m => !m.isMirror)
-    .sort((a, b) => b.games - a.games || b.wr - a.wr)
-
+  const { canonical, detail, deck } = selection
+  const archPath = `/archetype/${canonical.slug}`
+  // Forward the deck only when it actually resolved to the shown deck.
+  const shownDeckId = deck && deck.entry.id === deckId ? deckId : undefined
+  // The selection survives tab switches (KTD6).
   const tabHref = (t: TabKey) =>
     buildHref(query.format, query, {
-      path: `/archetype/${canonical.slug}`,
+      path: archPath,
       tab: t,
+      deck: shownDeckId,
     })
+  const decklists = (
+    <DecklistsTab
+      selection={selection}
+      query={query}
+      archPath={archPath}
+      decksPage={decksPage}
+      shownDeckId={shownDeckId}
+    />
+  )
+
+  // Without window data (only reachable with a valid ?deck) the page shows
+  // the deck alone; its colors stand in when it still belongs here.
+  const color =
+    detail?.archetype.color ??
+    (selection.reclassifiedTo ? null : (deck?.archetype.color ?? null))
 
   return (
     <>
-      {/* ---- HEADER ---- */}
-      <header className="mt-6">
-        <p className="eyebrow mb-1.5">
-          Archetype · {format[0]?.toUpperCase()}
-          {format.slice(1)}
-        </p>
-        <div className="flex flex-wrap items-center gap-3">
-          <ManaPips colors={archetype.color} size={17} />
-          <h1 className="font-display text-[clamp(26px,4vw,38px)] font-bold">
-            {archetype.name}
-          </h1>
-          {tier && (
-            <span className="inline-block border border-gold-soft px-2 py-0.5 text-[10.5px] font-bold tracking-[0.08em] text-gold">
-              {tier}
-            </span>
-          )}
-        </div>
-        <p className="mt-2 text-[13.5px] text-ink-2">
-          <span className="data text-ink">{pct1(summary.wr)}</span> win rate ·{' '}
-          <span className="data">{record}</span> ·{' '}
-          <span className="data">{summary.matches}</span> matches ·{' '}
-          <span className="data">{pct1(summary.share)}</span> of the meta
-        </p>
-      </header>
-
-      {/* ---- TABS (Radix; seeded from ?tab) ---- */}
-      <Tabs defaultValue={tab} className="mt-8">
-        <TabsList>
-          {TABS.map(t => (
-            // asChild → the trigger IS the link, so switching tabs rewrites the
-            // URL (?tab) and the RSC re-renders with the new active panel (§2).
-            <TabsTrigger key={t} value={t} asChild className="capitalize">
-              <Link href={tabHref(t)}>{t}</Link>
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        {/* DECKLISTS */}
-        <TabsContent value="decklists" className="mt-4">
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="min-w-0">
-              <h3 className="eyebrow mb-2">Maindeck</h3>
-              <CardAdoptionTable cards={detail.mainCards} board="MAIN" />
-            </div>
-            <div className="min-w-0">
-              <h3 className="eyebrow mb-2">Sideboard</h3>
-              <CardAdoptionTable cards={detail.sideCards} board="SIDE" />
-            </div>
-          </div>
-        </TabsContent>
-
-        {/* MATCHUPS — this row vs all (shared MatchupList, games-ordered) */}
-        <TabsContent value="matchups" className="mt-4">
-          <MatchupList cells={nonMirror} />
-        </TabsContent>
-
-        {/* TRENDS */}
-        <TabsContent value="trends" className="mt-4">
-          <div className="border border-line bg-surface p-4 shadow-ledger">
-            <TrendChart trends={detail.trends} />
-          </div>
-        </TabsContent>
-
-        {/* PERFORMANCE */}
-        <TabsContent value="performance" className="mt-4">
-          <div className="border border-line bg-surface p-4 shadow-ledger">
-            <WrCiChart rows={[summary]} />
-          </div>
-        </TabsContent>
-      </Tabs>
-
-      <footer className="mt-[72px] flex flex-wrap items-center gap-[18px] border-t border-line pt-[18px] text-[12.5px] text-ink-3">
-        <span>Card art © Wizards of the Coast, via Scryfall</span>
-        <span>
-          Every view is a URL — this page is{' '}
-          <span className="data">{tabHref(tab)}</span>
-        </span>
-      </footer>
+      <ArchetypeHeader
+        format={format}
+        name={detail?.archetype.name ?? canonical.name}
+        color={color}
+        summary={detail?.summary ?? null}
+      />
+      {detail ? (
+        <ArchetypeTabs
+          tab={tab}
+          tabHref={tabHref}
+          detail={detail}
+          decklists={decklists}
+        />
+      ) : (
+        <div className="mt-8">{decklists}</div>
+      )}
+      <PageFooter href={tabHref(detail ? tab : 'decklists')} />
     </>
   )
 }

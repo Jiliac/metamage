@@ -111,7 +111,12 @@ export type MatrixDTO = {
 
 export type CardAdoptionDTO = {
   cardId: string
-  name: string // lowercase in DB — title-case at render
+  // KTD11: the stored Scryfall display_name when the card is backfilled, else
+  // the lowercase DB name — title-case only that fallback at render.
+  name: string
+  // True when `name` is the stored display_name (already proper-cased); the
+  // renderer must not re-case it ("Will-o'-the-Wisp" would get mangled).
+  hasDisplayName: boolean
   board: 'MAIN' | 'SIDE'
   avgCount: number
   decksPlaying: number
@@ -197,6 +202,77 @@ export type SourceDTO = {
   entries: number
 }
 
+// ---- Decklists tab (the archetype page's featured deck + recent column) ----
+
+/** R12: the recent-decks list loads the newest ARCHETYPE_ENTRIES_CAP window
+ *  entries; past the cap it ends with "Showing the newest N of total". */
+export const ARCHETYPE_ENTRIES_CAP = 2000
+
+/** One recent deck of an archetype — the row the recent-decks column renders
+ *  and the input the featured pick (KTD4) scores. Light on purpose: no cards. */
+export type DeckSummaryDTO = {
+  id: string
+  player: string
+  /** MTGO placing; Melee/unranked rows store 0 in the DB → null. KTD4 sorts
+   *  null (0) last. */
+  rank: number | null
+  wins: number
+  losses: number
+  draws: number
+  /** The source decklist URL, or null when none was published — the header
+   *  then falls back to `event.link` (R2). */
+  decklistUrl: string | null
+  event: {
+    id: string
+    name: string
+    date: IsoDate
+    link: string | null
+    source: TournamentDTO['source']
+  }
+  /** Has deck_cards rows: false renders "no list published" (R9) and excludes
+   *  the entry from featured-deck candidates (KTD4). */
+  hasCards: boolean
+}
+
+/** The archetype's window entries for the recent-decks column (KTD7
+ *  `getArchetypeEntries`). Newest first, capped, with the uncapped total. */
+export type ArchetypeEntriesDTO = {
+  /** Every window entry of the archetype — R12's N past the cap. */
+  total: number
+  /** Newest first, at most ARCHETYPE_ENTRIES_CAP rows. */
+  entries: DeckSummaryDTO[]
+}
+
+/** One card row of a decklist with the persisted KTD1 card data. */
+export type DeckCardDTO = {
+  cardId: string
+  /** The stored display_name, falling back to the raw DB name (KTD11). */
+  name: string
+  board: 'MAIN' | 'SIDE'
+  count: number
+  // KTD1 card data — null when the card has not been backfilled yet (R5
+  // renders those in the Other group with a title-cased name, R7 as text).
+  typeLine: string | null
+  manaCost: string | null
+  cmc: number | null
+  imageNormal: string | null
+  imageBack: string | null // back face; null on single-faced cards
+  scryfallUri: string | null
+}
+
+/** One entry's full decklist (KTD7 `getDeck`). `format` and `archetype` are
+ *  the entry's CURRENT values — after a reclassification they may differ from
+ *  the page's, which is what the KTD6 redirect reads. */
+export type DeckDTO = {
+  format: FormatSlug
+  archetype: { slug: ArchetypeSlug; name: string; color: string | null }
+  entry: DeckSummaryDTO
+  /** Maindeck rows (R3 groups them by type). */
+  main: DeckCardDTO[]
+  /** Sideboard rows, flat (labelled "Commander" in Duel Commander, R6). */
+  side: DeckCardDTO[]
+}
+
 export type ArchetypeRef = { slug: ArchetypeSlug; name: string }
 
 export interface MetaDataSource {
@@ -217,6 +293,17 @@ export interface MetaDataSource {
   getArchetypeTrends(
     q: MetaQuery & { slug: ArchetypeSlug }
   ): Promise<TrendPointDTO[]>
+  /** The archetype's window entries for the recent-decks column, newest
+   *  first, capped at ARCHETYPE_ENTRIES_CAP with the uncapped total (KTD7,
+   *  R9/R12). Keyed on the window like the other archetype reads. */
+  getArchetypeEntries(
+    q: MetaQuery & { slug: ArchetypeSlug }
+  ): Promise<ArchetypeEntriesDTO>
+  /** One entry's full decklist by id, ignoring the window (KTD7). Entry ids
+   *  are globally unique UUIDs, so `format` rides along for caller context
+   *  only and the DTO carries the entry's current archetype + format for the
+   *  KTD6 redirect. Unknown id → null. */
+  getDeck(q: { format?: FormatSlug; entryId: string }): Promise<DeckDTO | null>
   getMatchupMatrix(q: MetaQuery & { matrixTopN: number }): Promise<MatrixDTO>
   getMatchup(
     q: MetaQuery & { a: ArchetypeSlug; b: ArchetypeSlug }

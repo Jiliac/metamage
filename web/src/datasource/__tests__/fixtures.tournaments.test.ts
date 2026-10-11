@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { FixtureDataSource } from '@/datasource/fixtures'
+import { FixtureDataSource, fixtureDb } from '@/datasource/fixtures'
 import { ALL_FORMATS } from '@/datasource/format-order'
-import rawDb from '@/datasource/fixtures/data/db.json'
 import { asIsoDate, parseMetaQuery } from '@/lib/params'
 import { isEventId } from '@/lib/events'
 
@@ -10,7 +9,7 @@ const ds = new FixtureDataSource()
 const now = new Date('2026-10-11T12:00:00Z')
 
 // The first fixture window (every format shares the same month windows).
-const { start, end } = rawDb.formats[0].windows[0]
+const { start, end } = fixtureDb().formats[0].windows[0]
 const lens = (format: string) => ({
   ...parseMetaQuery(format, {}, now),
   start: asIsoDate(start),
@@ -27,7 +26,7 @@ describe('FixtureDataSource tournaments', () => {
   it('lists every format for ALL_FORMATS, newest first', async () => {
     const all = await ds.getTournaments(lens(ALL_FORMATS))
     const perFormat = await Promise.all(
-      rawDb.formats.map(f => ds.getTournaments(lens(f.slug)))
+      fixtureDb().formats.map(f => ds.getTournaments(lens(f.slug)))
     )
     expect(all).toHaveLength(perFormat.flat().length)
     expect(new Set(all.map(t => t.format)).size).toBeGreaterThan(1)

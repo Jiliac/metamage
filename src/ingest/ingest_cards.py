@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from models.reference import Card
 from models.reference import Set as SetModel, CardColor
+from ingest.scryfall_fields import extract_scryfall_fields
 
 # Scryfall requires User-Agent and Accept headers on every request, otherwise
 # they rate-limit aggressively (see https://scryfall.com/docs/api).
@@ -25,8 +26,9 @@ SCRYFALL_HEADERS = {
     "User-Agent": "metamage-ingest/1.0",
     "Accept": "application/json",
 }
-# Scryfall asks for 50–100ms between requests; use 100ms to stay safely under cap.
-SCRYFALL_REQUEST_DELAY = 0.1
+# Scryfall caps /cards/named at ~2 requests per second; 500ms keeps us at or
+# below that cap.
+SCRYFALL_REQUEST_DELAY = 0.5
 
 
 class CardCache:
@@ -342,6 +344,7 @@ def get_or_create_card(
         colors=colors_str,
         first_printed_set_id=earliest_set.id if earliest_set else None,
         first_printed_date=first_printed_date,
+        **extract_scryfall_fields(scryfall_data),
     )
     session.add(card)
     session.flush()  # Get the ID

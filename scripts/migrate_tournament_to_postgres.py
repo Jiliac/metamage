@@ -27,7 +27,7 @@ import sys
 from enum import Enum
 from pathlib import Path
 
-from sqlalchemy import create_engine, func, select, text
+from sqlalchemy import create_engine, func, inspect as sa_inspect, select, text
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 
@@ -131,10 +131,30 @@ def find_archetype_collisions(source_session) -> dict:
     return remap
 
 
+def assert_cards_columns_match_model(target_engine) -> None:
+    """Refuse to stamp head when the target's `cards` table lacks a model column.
+
+    An unmigrated target (e.g. Neon before the card-display migration) keeps its
+    old `cards` table: create_all skips the existing table, so stamping head
+    would mark the new revision applied without ever adding the columns — and a
+    later reload (COPY derives its columns from the model) would fail on them.
+    """
+    existing = {c["name"] for c in sa_inspect(target_engine).get_columns("cards")}
+    missing = [c.name for c in Card.__table__.columns if c.name not in existing]
+    if missing:
+        raise RuntimeError(
+            "Target `cards` table is missing model column(s): "
+            + ", ".join(missing)
+            + ". Run `alembic upgrade head` against the target before reloading."
+        )
+
+
 def bootstrap_schema(target_engine, target_url: str) -> None:
     """create_all + `alembic stamp head` so future migrations have a baseline."""
     print("Creating schema on target (create_all)...")
     Base.metadata.create_all(target_engine)
+
+    assert_cards_columns_match_model(target_engine)
 
     print("Stamping alembic head...")
     from alembic.config import Config
