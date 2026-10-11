@@ -1,12 +1,13 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { notFound, permanentRedirect } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 
 import { getDataSource } from '@/datasource'
 import { isAllFormats } from '@/datasource/format-order'
 import type {
   FormatDTO,
   MatrixDTO,
+  MetaQuery,
   StandingDTO,
   TournamentDetailDTO,
   TournamentDTO,
@@ -18,12 +19,14 @@ import {
   leaderLabel,
   placingLabel,
   recordLabel,
+  SOURCE_LABEL,
   sortStandings,
   standingLink,
   type EventFieldRow,
   type StandingLink,
 } from '@/lib/events'
 import { buildHref, parseMetaQuery } from '@/lib/params'
+import { longDate } from '@/lib/dates'
 import { buildPageMetadata } from '@/lib/seo'
 import { cn } from '@/lib/utils'
 
@@ -47,23 +50,6 @@ import { PresenceBars } from '@/components/charts/PresenceBars'
 type RouteParams = { format: string; id: string }
 type SearchParams = Record<string, string | string[] | undefined>
 
-const MONTHS = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-] // prettier-ignore
-
-const SOURCE_LABEL: Record<TournamentDTO['source'], string> = {
-  MTGO: 'Magic Online',
-  MELEE: 'Melee.gg',
-  CARDSREALM: 'Cardsrealm',
-  OTHER: 'Other',
-}
-
-function longDate(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  return `${MONTHS[m - 1]} ${d}, ${y}`
-}
-
 function formatLabel(formats: FormatDTO[], slug: string): string {
   return formats.find(f => f.slug === slug)?.name ?? slug
 }
@@ -77,22 +63,20 @@ async function loadEvent(id: string): Promise<TournamentDetailDTO | null> {
 
 export async function generateMetadata({
   params,
-  searchParams,
 }: {
   params: Promise<RouteParams>
-  searchParams: Promise<SearchParams>
 }): Promise<Metadata> {
   const { id } = await params
-  const sp = await searchParams
   const detail = await loadEvent(id)
   if (!detail) return { title: 'Tournament not found' }
   const t = detail.tournament
   const formats = await getDataSource().listFormats()
-  const query = parseMetaQuery(t.format, sp)
+  // The event is window-free: canonical and OG use the default lens, so every
+  // window that links here shares one canonical URL.
   return buildPageMetadata({
     view: 'meta',
     format: t.format,
-    query,
+    query: parseMetaQuery(t.format, {}),
     path: `/tournaments/${t.id}`,
     title: `${t.name} — ${longDate(t.date)}`,
     description: `${formatLabel(formats, t.format)} standings, field and matchups for ${t.name} (${t.entries} players).`,
@@ -115,7 +99,9 @@ export default async function TournamentPage({
 
   const query = parseMetaQuery(format, sp)
   if (!isAllFormats(format) && format !== t.format) {
-    permanentRedirect(
+    // 307, not 308: browsers cache a 308, and an event's format can still be
+    // corrected by a later ingest.
+    redirect(
       buildHref(
         t.format,
         { ...query, format: t.format },
@@ -126,12 +112,6 @@ export default async function TournamentPage({
 
   const formats = await getDataSource().listFormats()
   const formatName = formatLabel(formats, t.format)
-  // Archetype links always target the event's real format.
-  const eventQuery = { ...query, format: t.format }
-  const standings = sortStandings(detail.standings)
-  const { field, matrix } = eventStats(standings, detail.matchups, t.date)
-  const hrefFor = (slug: string) =>
-    archetypeHref(t.format, eventQuery, slug, t.date)
 
   return (
     <>
@@ -140,48 +120,70 @@ export default async function TournamentPage({
           href={buildHref(format, query, { path: '/tournaments' })}
           className="text-ink-3 no-underline hover:text-gold hover:underline hover:underline-offset-[3px]"
         >
-          ←{' '}
-          {isAllFormats(format)
-            ? 'All tournaments'
-            : `${formatName} tournaments`}
+          ← {isAllFormats(format) ? 'All' : formatName} tournaments
         </Link>
       </nav>
 
       <EventHeader tournament={t} formatName={formatName} />
 
-      {standings.length === 0 ? (
+      {detail.standings.length === 0 ? (
         <p className="mt-8 border border-line bg-surface p-6 text-[13.5px] text-ink-2">
           No standings were published for this event.
         </p>
       ) : (
-        <>
-          <EventKpis standings={standings} field={field} />
-          <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
-            <section aria-labelledby="standings-h" className="min-w-0">
-              <h2 id="standings-h" className="eyebrow mb-2">
-                Standings
-              </h2>
-              <StandingsTable
-                standings={standings}
-                showPlace={standings.some(s => s.rank !== null)}
-                linkFor={s => standingLink(t.format, eventQuery, s, t.date)}
-                archetypeHrefFor={hrefFor}
-              />
-              <p className="mt-2 text-[12px] text-ink-3">
-                Records count only matches against other published decks.
-              </p>
-            </section>
-            <FieldPanel field={field} hrefFor={hrefFor} />
-          </div>
-          <MatchupsSection matrix={matrix} hrefFor={hrefFor} />
-        </>
+        // Archetype links always target the event's real format.
+        <EventBody detail={detail} query={{ ...query, format: t.format }} />
       )}
 
-      <footer className="mt-[72px] flex flex-wrap items-center gap-[18px] border-t border-line pt-[18px] text-[12.5px] text-ink-3">
-        <span>
-          Source: {SOURCE_LABEL[t.source]} · {longDate(t.date)}
-        </span>
-      </footer>
+      <EventFooter tournament={t} />
+    </>
+  )
+}
+
+function EventFooter({ tournament: t }: { tournament: TournamentDTO }) {
+  return (
+    <footer className="mt-[72px] flex flex-wrap items-center gap-[18px] border-t border-line pt-[18px] text-[12.5px] text-ink-3">
+      <span>
+        Source: {SOURCE_LABEL[t.source]} · {longDate(t.date)}
+      </span>
+    </footer>
+  )
+}
+
+/** KPIs, standings, field and matrix of an event with standings. */
+function EventBody({
+  detail,
+  query,
+}: {
+  detail: TournamentDetailDTO
+  query: MetaQuery
+}) {
+  const t = detail.tournament
+  const standings = sortStandings(detail.standings)
+  const { field, matrix } = eventStats(standings, detail.matchups, t.date)
+  const hrefFor = (slug: string) => archetypeHref(t.format, query, slug, t.date)
+
+  return (
+    <>
+      <EventKpis standings={standings} field={field} />
+      <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <section aria-labelledby="standings-h" className="min-w-0">
+          <h2 id="standings-h" className="eyebrow mb-2">
+            Standings
+          </h2>
+          <StandingsTable
+            standings={standings}
+            showPlace={standings.some(s => s.rank !== null)}
+            linkFor={s => standingLink(t.format, query, s, t.date)}
+            archetypeHrefFor={hrefFor}
+          />
+          <p className="mt-2 text-[12px] text-ink-3">
+            Records count only matches against other published decks.
+          </p>
+        </section>
+        <FieldPanel field={field} hrefFor={hrefFor} />
+      </div>
+      <MatchupsSection matrix={matrix} hrefFor={hrefFor} />
     </>
   )
 }
@@ -415,11 +417,7 @@ function StandingRow({
         <span className="inline-flex items-center gap-2">
           <ManaPips colors={s.archetype.color} size={14} />
           <DeckName standing={s} link={link} archetypeHref={archetypeHref} />
-          {!s.hasDecklist && (
-            <span className="text-[11px] text-ink-3">
-              {link ? 'source list ↗' : 'no list'}
-            </span>
-          )}
+          <ListHint standing={s} link={link} />
         </span>
       </td>
       <td className="border-b border-line px-3.5 py-2 text-ink-2">
@@ -430,6 +428,24 @@ function StandingRow({
       </td>
     </tr>
   )
+}
+
+/** Flags a row whose click leaves for the source site, or that has no list
+ *  anywhere. Keyed on the link, so a bucket row with stored cards still says
+ *  it opens the source. */
+function ListHint({
+  standing: s,
+  link,
+}: {
+  standing: StandingDTO
+  link: StandingLink | null
+}) {
+  const hint = link?.external
+    ? 'source list ↗'
+    : !s.hasDecklist
+      ? 'no list'
+      : null
+  return hint ? <span className="text-[11px] text-ink-3">{hint}</span> : null
 }
 
 /** The row's one link: the decklist (stretched over the row), else the

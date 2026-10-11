@@ -11,6 +11,8 @@ import type {
 } from '@/datasource/types'
 import { ALL_FORMATS, isAllFormats } from '@/datasource/format-order'
 import { buildHref, parseMetaQuery } from '@/lib/params'
+import { shortDate } from '@/lib/dates'
+import { SOURCE_LABEL } from '@/lib/events'
 import { buildPageMetadata } from '@/lib/seo'
 import { cn } from '@/lib/utils'
 import { STICKY_COL_1 } from '@/components/tables/sticky'
@@ -29,18 +31,6 @@ import { KpiStat } from '@/components/KpiStat'
 type RouteParams = { format: string }
 type SearchParams = Record<string, string | string[] | undefined>
 
-const MONTHS = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-] // prettier-ignore
-
-const SOURCE_LABEL: Record<TournamentDTO['source'], string> = {
-  MTGO: 'Magic Online',
-  MELEE: 'Melee.gg',
-  CARDSREALM: 'Cardsrealm',
-  OTHER: 'Other',
-}
-
 function titleCase(slug: string): string {
   return slug
     .split('-')
@@ -55,11 +45,6 @@ function formatName(formats: FormatDTO[], slug: string): string {
 
 function formatChip(formats: FormatDTO[], slug: string): string {
   return formats.find(f => f.slug === slug)?.displayName ?? titleCase(slug)
-}
-
-function shortDate(iso: string): string {
-  const [, m, d] = iso.split('-').map(Number)
-  return `${MONTHS[m - 1]} ${d}`
 }
 
 // Dynamic (window-driven) + cached by the data layer (blueprint §2). The

@@ -39,6 +39,7 @@ export function isHttpUrl(url: string | null): url is string {
 
 const asSlug = (s: string) => slugifyArchetype(s) as ArchetypeSlug
 
+/** A tournaments row as the DTO; drops non-http(s) source links. */
 export function tournamentDto(t: TournamentRow): TournamentDTO {
   return {
     id: t.id,
@@ -51,6 +52,7 @@ export function tournamentDto(t: TournamentRow): TournamentDTO {
   }
 }
 
+/** One standings row as the DTO; rank 0 becomes null (no placing). */
 export function standingDto(r: StandingRow): StandingDTO {
   return {
     entryId: r.entry_id,
@@ -71,6 +73,7 @@ export function standingDto(r: StandingRow): StandingDTO {
   }
 }
 
+/** One event matchup row, with archetype names slugified. */
 export function eventMatchupDto(m: EventMatchupRow): EventMatchupDTO {
   return {
     rowSlug: asSlug(m.row_name),

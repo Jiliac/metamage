@@ -7,7 +7,7 @@ import { useTheme } from 'next-themes'
 import { Menu, Moon, Sun, X } from 'lucide-react'
 
 import { buildHref } from '@/lib/params'
-import { DEFAULT_FORMAT, isAllFormats } from '@/datasource/format-order'
+import { isNavActive, navFormat } from '@/lib/nav'
 import { cn, CONTAINER_CLASS } from '@/lib/utils'
 import {
   Collapsible,
@@ -41,26 +41,6 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Tournaments', sub: '/tournaments' },
 ]
 
-const OTHER_SUBS = ['/matrix', '/changes', '/tournaments']
-
-/** `subPath` is `sub` itself or one of its children (`/tournaments/{id}`). */
-function within(subPath: string, sub: string): boolean {
-  return subPath === sub || subPath.startsWith(`${sub}/`)
-}
-
-function isActive(itemSub: string, subPath: string): boolean {
-  if (itemSub === '') return !OTHER_SUBS.some(s => within(subPath, s))
-  return within(subPath, itemSub)
-}
-
-/** Only the tournaments views exist for the `all` pseudo-format; every other
- *  view falls back to the default format. */
-function navFormat(format: string, itemSub: string): string {
-  return isAllFormats(format) && itemSub !== '/tournaments'
-    ? DEFAULT_FORMAT
-    : format
-}
-
 const navLinkClass =
   'border-b-2 border-transparent py-0.5 text-[13.5px] tracking-[0.04em] text-ink-2 no-underline transition-colors hover:text-ink ' +
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold'
@@ -82,7 +62,7 @@ function NavLinks({ linkClass: linkCls }: { linkClass?: string }) {
           matrixTopN: item.sub === '/matrix' ? matrixTopN : undefined,
           row: hasMatrix ? row : undefined,
         })
-        const active = isActive(item.sub, subPath)
+        const active = isNavActive(item.sub, subPath)
         return (
           <Link
             key={item.label}
@@ -107,7 +87,7 @@ function NavLinksFallback({ linkClass: linkCls }: { linkClass?: string }) {
   return (
     <>
       {NAV_ITEMS.map(item => {
-        const active = isActive(item.sub, subPath)
+        const active = isNavActive(item.sub, subPath)
         return (
           <Link
             key={item.label}

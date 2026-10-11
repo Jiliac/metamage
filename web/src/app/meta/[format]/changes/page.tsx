@@ -6,6 +6,7 @@ import { getDataSource } from '@/datasource'
 import { DUEL_COMMANDER_FORMAT, isAllFormats } from '@/datasource/format-order'
 import type { ArchetypeRef, FormatDTO, MetaChangeDTO } from '@/datasource/types'
 import { parseMetaQuery } from '@/lib/params'
+import { longDate } from '@/lib/dates'
 import { buildPageMetadata } from '@/lib/seo'
 
 import { LensBar } from '@/components/LensBar/LensBar'
@@ -19,11 +20,6 @@ import { EmptyState } from '@/components/EmptyState'
 type RouteParams = { format: string }
 type SearchParams = Record<string, string | string[] | undefined>
 
-const MONTHS = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-] // prettier-ignore
-
 function titleCase(slug: string): string {
   return slug
     .split('-')
@@ -33,11 +29,6 @@ function titleCase(slug: string): string {
 
 function formatName(formats: FormatDTO[], slug: string): string {
   return formats.find(f => f.slug === slug)?.name ?? titleCase(slug)
-}
-
-function longDate(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  return `${MONTHS[m - 1]} ${d}, ${y}`
 }
 
 // Format-level timeline — SSG per format, refreshed daily (blueprint §2).

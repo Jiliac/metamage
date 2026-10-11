@@ -9,6 +9,7 @@ import type {
   MatrixOrderEntryDTO,
   MetaQuery,
   StandingDTO,
+  TournamentDTO,
 } from '@/datasource/types'
 import { asIsoDate, buildHref } from '@/lib/params'
 import { presenceRank, wr as wrOf } from '@/lib/stats'
@@ -26,6 +27,14 @@ const EVENT_ID_RE = /^[A-Za-z0-9][A-Za-z0-9-]{0,63}$/
 
 export function isEventId(raw: string): boolean {
   return EVENT_ID_RE.test(raw)
+}
+
+/** Display name of each event source. */
+export const SOURCE_LABEL: Record<TournamentDTO['source'], string> = {
+  MTGO: 'Magic Online',
+  MELEE: 'Melee.gg',
+  CARDSREALM: 'Cardsrealm',
+  OTHER: 'Other',
 }
 
 const points = (s: StandingDTO) => 3 * s.wins + s.draws
@@ -93,6 +102,8 @@ export type EventStats = { field: EventFieldRow[]; matrix: MatrixDTO }
  *  with enough games to read. */
 export const EVENT_MATRIX_TOP_N = 10
 
+/** The event field (decks per archetype, presence-ranked) and its matchup
+ *  matrix (top non-bucket archetypes that played at least one game). */
 export function eventStats(
   standings: readonly StandingDTO[],
   matchups: readonly EventMatchupDTO[],

@@ -253,3 +253,69 @@ describe('withCache — decklists methods', () => {
     ).rejects.toThrow('connection refused')
   })
 })
+
+// ---------------------------------------------------------------------------
+// getTournament wrapper: keyed on the event id, a hit cached once, a miss
+// never cached (same throw-inside scheme as getDeck).
+// ---------------------------------------------------------------------------
+
+describe('withCache — getTournament', () => {
+  beforeEach(() => {
+    cacheRecords.clear()
+    vi.stubEnv('DATA_SOURCE', 'postgres')
+    vi.stubEnv('TOURNAMENT_DATABASE_URL', 'postgresql://u:p@localhost/db')
+    vi.resetModules()
+  })
+
+  afterEach(() => {
+    vi.doUnmock('@/datasource/postgres')
+    vi.unstubAllEnvs()
+  })
+
+  async function withInner(getTournament: (id: string) => Promise<unknown>) {
+    vi.doMock('@/datasource/postgres', () => ({
+      PostgresDataSource: class {
+        getTournament = getTournament
+      },
+    }))
+    const { getDataSource } = await import('@/datasource')
+    return getDataSource()
+  }
+
+  it('wraps it under the tournaments tag, keyed on the method', async () => {
+    await withInner(() => Promise.resolve(null))
+    const { keyParts, options } = cacheOf('getTournament')
+    expect(keyParts).toEqual(['getTournament'])
+    expect(options?.tags).toEqual(['tournaments'])
+  })
+
+  it('caches a found event once per id', async () => {
+    const found = { tournament: { id: 'evt' }, standings: [], matchups: [] }
+    let reads = 0
+    const ds = await withInner(() => {
+      reads++
+      return Promise.resolve(found)
+    })
+    expect(await ds.getTournament('evt')).toEqual(found)
+    expect(await ds.getTournament('evt')).toEqual(found)
+    expect(reads).toBe(1)
+  })
+
+  it('never caches a miss, so unknown ids cannot grow the cache', async () => {
+    let reads = 0
+    const ds = await withInner(() => {
+      reads++
+      return Promise.resolve(null)
+    })
+    expect(await ds.getTournament('not-an-event')).toBeNull()
+    expect(await ds.getTournament('not-an-event')).toBeNull()
+    expect(reads).toBe(2)
+  })
+
+  it('propagates real inner errors instead of mapping them to null', async () => {
+    const ds = await withInner(() =>
+      Promise.reject(new Error('connection refused'))
+    )
+    await expect(ds.getTournament('evt')).rejects.toThrow('connection refused')
+  })
+})

@@ -74,8 +74,11 @@ export type SeedEntry = {
   decklistUrl: string | null
 }
 
+type Result = 'W' | 'L' | 'D'
 type Mutable = SeedEntry & { wins: number; losses: number; draws: number }
 
+/** Full standings and matchups for one fixture event: the seeded real
+ *  entries plus filler up to the event size, after a seeded Swiss run. */
 export function synthesizeEvent(
   tournament: TournamentDTO,
   archetypes: readonly FixtureArchetype[],
@@ -86,9 +89,25 @@ export function synthesizeEvent(
     return { standings: [], matchups: [] }
   }
   const rand = rngFrom(seedOf(tournament.id))
+  const field = [
+    ...seeded,
+    ...fillerEntries(archetypes, n - seeded.length, rand),
+  ]
+  const { entries, matchups } = runSwiss(field, rand)
+  return {
+    standings: toStandings(entries, tournament.source === 'MTGO'),
+    matchups,
+  }
+}
 
+/** `count` entries without a stored list, drawn by the window's deck counts. */
+function fillerEntries(
+  archetypes: readonly FixtureArchetype[],
+  count: number,
+  rand: () => number
+): SeedEntry[] {
   const usedPlayers = new Map<string, number>()
-  const filler = Array.from({ length: n - seeded.length }, (): SeedEntry => {
+  return Array.from({ length: count }, (): SeedEntry => {
     const arch = pickWeighted(archetypes, rand)
     const k = usedPlayers.get(arch.slug) ?? 0
     usedPlayers.set(arch.slug, k + 1)
@@ -100,59 +119,69 @@ export function synthesizeEvent(
       decklistUrl: null,
     }
   })
-  let entries: Mutable[] = [...seeded, ...filler].map(e => ({
+}
+
+const points = (e: Mutable) => 3 * e.wins + e.draws
+
+/** A seeded Swiss run (pair by points, ~5% draws): every entry's record plus
+ *  the archetype-pair cells, from both sides. */
+function runSwiss(
+  field: readonly SeedEntry[],
+  rand: () => number
+): { entries: Mutable[]; matchups: EventMatchupDTO[] } {
+  let entries: Mutable[] = field.map(e => ({
     ...e,
     wins: 0,
     losses: 0,
     draws: 0,
   }))
-
   const cells = new Map<string, EventMatchupDTO>()
-  const record = (
-    row: FixtureArchetype,
-    col: FixtureArchetype,
-    res: 'W' | 'L' | 'D'
-  ) => {
-    const key = `${row.slug}|${col.slug}`
-    const cur = cells.get(key) ?? {
-      rowSlug: row.slug as ArchetypeSlug,
-      colSlug: col.slug as ArchetypeSlug,
-      wins: 0,
-      losses: 0,
-      draws: 0,
-    }
-    cells.set(key, {
-      ...cur,
-      wins: cur.wins + (res === 'W' ? 1 : 0),
-      losses: cur.losses + (res === 'L' ? 1 : 0),
-      draws: cur.draws + (res === 'D' ? 1 : 0),
-    })
-  }
-
-  const pts = (e: Mutable) => 3 * e.wins + e.draws
-  const rounds = Math.max(3, Math.ceil(Math.log2(n)))
+  const rounds = Math.max(3, Math.ceil(Math.log2(field.length)))
   for (let round = 0; round < rounds; round++) {
-    const order = [...entries].sort((a, b) => pts(b) - pts(a))
+    const order = [...entries].sort((a, b) => points(b) - points(a))
     const next = new Map<string, Mutable>()
     for (let i = 0; i + 1 < order.length; i += 2) {
       const a = order[i]
       const b = order[i + 1]
       const roll = rand()
-      const res: 'W' | 'L' | 'D' = roll < 0.05 ? 'D' : roll < 0.525 ? 'W' : 'L'
+      const res: Result = roll < 0.05 ? 'D' : roll < 0.525 ? 'W' : 'L'
       const resB = res === 'W' ? 'L' : res === 'L' ? 'W' : 'D'
       next.set(a.entryId, bump(a, res))
       next.set(b.entryId, bump(b, resB))
-      record(a.arch, b.arch, res)
-      record(b.arch, a.arch, resB)
+      recordCell(cells, a.arch, b.arch, res)
+      recordCell(cells, b.arch, a.arch, resB)
     }
     entries = entries.map(e => next.get(e.entryId) ?? e)
   }
+  return { entries, matchups: [...cells.values()] }
+}
 
+function recordCell(
+  cells: Map<string, EventMatchupDTO>,
+  row: FixtureArchetype,
+  col: FixtureArchetype,
+  res: Result
+): void {
+  const key = `${row.slug}|${col.slug}`
+  const cur = cells.get(key) ?? {
+    rowSlug: row.slug as ArchetypeSlug,
+    colSlug: col.slug as ArchetypeSlug,
+    wins: 0,
+    losses: 0,
+    draws: 0,
+  }
+  cells.set(key, bump(cur, res))
+}
+
+/** Final order by points then fewer losses; MTGO events publish placings. */
+function toStandings(
+  entries: readonly Mutable[],
+  ranked: boolean
+): StandingDTO[] {
   const finalOrder = [...entries].sort(
-    (a, b) => pts(b) - pts(a) || a.losses - b.losses
+    (a, b) => points(b) - points(a) || a.losses - b.losses
   )
-  const ranked = tournament.source === 'MTGO'
-  const standings: StandingDTO[] = finalOrder.map((e, i) => ({
+  return finalOrder.map((e, i) => ({
     entryId: e.entryId,
     rank: ranked ? i + 1 : null,
     wins: e.wins,
@@ -168,11 +197,12 @@ export function synthesizeEvent(
     ...(e.decklistUrl ? { decklistUrl: e.decklistUrl } : {}),
     hasDecklist: e.hasDecklist,
   }))
-
-  return { standings, matchups: [...cells.values()] }
 }
 
-function bump(e: Mutable, res: 'W' | 'L' | 'D'): Mutable {
+function bump<T extends { wins: number; losses: number; draws: number }>(
+  e: T,
+  res: Result
+): T {
   return {
     ...e,
     wins: e.wins + (res === 'W' ? 1 : 0),
