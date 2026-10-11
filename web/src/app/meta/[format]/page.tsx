@@ -199,7 +199,7 @@ export default async function MetaOverviewPage({
             shownWindow={shown}
           />
         </Suspense>
-        {query.minMatches > 0 || !query.hideBuckets ? (
+        {query.minMatches > 0 ? (
           <EmptyState
             title="No archetypes clear the current filters"
             message={`${fmtName} has results for ${win}, but no archetype reaches the ${query.minMatches}-match floor. Lower the floor to see the field.`}
@@ -210,7 +210,7 @@ export default async function MetaOverviewPage({
             )}
             widenLabel="Lower the floor"
           />
-        ) : (
+        ) : query.hideBuckets ? (
           // The floor is already zero, so only the hidden Unknown/Conflict
           // buckets hold this window's results: lowering it again would link
           // to this same empty view.
@@ -223,6 +223,19 @@ export default async function MetaOverviewPage({
               { sort }
             )}
             widenLabel="Show buckets"
+          />
+        ) : (
+          // Floor zero and buckets already shown: nothing is left to relax,
+          // so the only remaining lever is a wider window.
+          <EmptyState
+            title="No archetypes in this window"
+            message={`${fmtName} has results for ${win}, but no archetype rows to show. Widen the window to see the field.`}
+            widenHref={buildHref(
+              query.format,
+              { ...query, ...expandPreset('last-3m') },
+              { sort }
+            )}
+            widenLabel="Widen the window"
           />
         )}
       </>
