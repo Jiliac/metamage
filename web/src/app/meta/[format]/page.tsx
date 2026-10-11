@@ -134,9 +134,9 @@ export default async function MetaOverviewPage({
     ds.searchArchetypes(query.format, ''),
   ])
 
-  // Default landing on the live-clock month can hit a window with no data (e.g.
-  // the 1st of a month before ingest, or a format not yet seeded past last
-  // month). Rather than blank, fall back to the latest populated window so the
+  // The default landing (last 30 days on the live clock) can hit a window with
+  // no data (a format with no recent events, or fixtures that only seed whole
+  // months). Rather than blank, fall back to the latest populated window so the
   // primary landing always shows the field (§9). Explicit non-default windows
   // still surface the EmptyState below.
   let report = report0

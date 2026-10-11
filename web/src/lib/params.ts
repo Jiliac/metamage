@@ -72,7 +72,7 @@ function readParam(sp: SearchParamsInput, key: string): string | undefined {
 /**
  * Per-request clock. Within one RSC render, `parseMetaQuery` and every
  * `buildHref` call share the same `now`, so the default-window-omission check
- * cannot disagree with the parse across a month boundary mid-request (links
+ * cannot disagree with the parse across a day boundary mid-request (links
  * built at 23:59:59 vs parsed at 00:00:01 would otherwise flip). React's
  * `cache` memoizes per server request and is an identity pass-through on the
  * client, where the drift window is a single event handler tick.
@@ -103,17 +103,12 @@ export function isValidIsoDate(raw: string | undefined): raw is string {
   )
 }
 
-/** The default window: first → last day of `now`'s month (inclusive). */
+/** The default window: "Last 30 days" as of `now` (see `DEFAULT_PRESET`). */
 export function defaultWindow(now: Date = new Date()): {
   start: IsoDate
   end: IsoDate
 } {
-  const y = now.getUTCFullYear()
-  const m = now.getUTCMonth()
-  return {
-    start: toIso(new Date(Date.UTC(y, m, 1))),
-    end: toIso(new Date(Date.UTC(y, m + 1, 0))),
-  }
+  return expandPreset(DEFAULT_PRESET, now)
 }
 
 // ---- Preset expansion (UI sugar → start/end; never stored in the URL) ----
@@ -144,6 +139,9 @@ export const PRESET_LABELS: Record<Preset, string> = {
   'last-3m': 'Last 3 months',
   'last-6m': 'Last 6 months',
 }
+
+/** The preset the bare `/meta/{format}` landing resolves to. */
+export const DEFAULT_PRESET: Preset = 'last-30d'
 
 const PRESET_SPANS: Record<Preset, { days: number } | { months: number }> = {
   'last-7d': { days: 7 },
@@ -186,28 +184,6 @@ export function matchPreset(
     const w = expandPreset(p, now)
     return w.start === window.start && w.end === window.end
   })
-}
-
-// ---- Default-window chip ("This month") ----
-//
-// Returns the picker to `defaultWindow` (the current UTC calendar month). On
-// the last day of a 30-day month "Last 30 days" expands to the same window, so
-// `matchWindowChip` checks the default first: that window is the canonical
-// landing (omitted from the URL), and highlighting both chips would be noise.
-export const DEFAULT_WINDOW_CHIP = 'this-month'
-export const DEFAULT_WINDOW_LABEL = 'This month'
-export type WindowChip = typeof DEFAULT_WINDOW_CHIP | Preset
-
-/** The chip to highlight for `{ start, end }` as of `now` (default first). */
-export function matchWindowChip(
-  window: { start: string; end: string },
-  now: Date = requestNow()
-): WindowChip | undefined {
-  const def = defaultWindow(now)
-  if (window.start === def.start && window.end === def.end) {
-    return DEFAULT_WINDOW_CHIP
-  }
-  return matchPreset(window, now)
 }
 
 // ---- Numeric field: coerce → clamp → default on garbage ----
@@ -366,7 +342,7 @@ export function buildHref(
 ): string {
   const def = defaultWindow(opts.now ?? requestNow())
   const params = new URLSearchParams()
-  // Window is a pair: omit both when it matches the current-month default.
+  // Window is a pair: omit both when it matches the last-30-days default.
   if (!(query.start === def.start && query.end === def.end)) {
     params.set('start', query.start)
     params.set('end', query.end)
