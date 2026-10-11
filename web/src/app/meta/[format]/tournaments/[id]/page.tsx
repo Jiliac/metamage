@@ -6,6 +6,7 @@ import { getDataSource } from '@/datasource'
 import { isAllFormats } from '@/datasource/format-order'
 import type {
   FormatDTO,
+  MatrixDTO,
   StandingDTO,
   TournamentDetailDTO,
   TournamentDTO,
@@ -15,9 +16,11 @@ import {
   deckHref,
   eventStats,
   isEventId,
+  leaderLabel,
   placingLabel,
   recordLabel,
   sortStandings,
+  type EventFieldRow,
 } from '@/lib/events'
 import { buildHref, parseMetaQuery } from '@/lib/params'
 import { buildPageMetadata } from '@/lib/seo'
@@ -115,73 +118,35 @@ export default async function TournamentPage({
       buildHref(
         t.format,
         { ...query, format: t.format },
-        {
-          path: `/tournaments/${t.id}`,
-        }
+        { path: `/tournaments/${t.id}` }
       )
     )
   }
 
   const formats = await getDataSource().listFormats()
+  const formatName = formatLabel(formats, t.format)
   // Archetype links always target the event's real format.
   const eventQuery = { ...query, format: t.format }
   const standings = sortStandings(detail.standings)
   const { field, matrix } = eventStats(standings, detail.matchups, t.date)
-  const anyRank = standings.some(s => s.rank !== null)
-  const winner = standings[0]
-
   const hrefFor = (slug: string) =>
     archetypeHref(t.format, eventQuery, slug, t.date)
-  const fieldHref = Object.fromEntries(
-    field.filter(f => !f.isBucket).map(f => [f.slug, hrefFor(f.slug)])
-  )
-  const fieldCounts = Object.fromEntries(field.map(f => [f.slug, f.decks]))
-  const matrixHref = Object.fromEntries(
-    matrix.order.map(o => [o.slug, hrefFor(o.slug)])
-  )
-  const backHref = buildHref(format, query, { path: '/tournaments' })
-  const backLabel = isAllFormats(format)
-    ? 'All tournaments'
-    : `${formatLabel(formats, t.format)} tournaments`
 
   return (
     <>
       <nav className="mt-6 text-[12.5px]" aria-label="Breadcrumb">
         <Link
-          href={backHref}
+          href={buildHref(format, query, { path: '/tournaments' })}
           className="text-ink-3 no-underline hover:text-gold hover:underline hover:underline-offset-[3px]"
         >
-          ← {backLabel}
+          ←{' '}
+          {isAllFormats(format)
+            ? 'All tournaments'
+            : `${formatName} tournaments`}
         </Link>
       </nav>
 
-      {/* ---- HEADER ---- */}
-      <header className="mt-4">
-        <p className="eyebrow mb-1.5">
-          Event · {formatLabel(formats, t.format)} · {SOURCE_LABEL[t.source]}
-        </p>
-        <h1 className="font-display text-[clamp(24px,4vw,36px)] font-bold">
-          {t.name}
-        </h1>
-        <p className="mt-1.5 text-[13.5px] text-ink-2">
-          <span className="data">{longDate(t.date)}</span> ·{' '}
-          <span className="data">{t.entries}</span> players
-          {t.link && (
-            <>
-              {' '}
-              ·{' '}
-              <a
-                href={t.link}
-                target="_blank"
-                rel="noreferrer"
-                className="text-ink-2 hover:text-gold hover:underline hover:underline-offset-[3px]"
-              >
-                View on {SOURCE_LABEL[t.source]} ↗
-              </a>
-            </>
-          )}
-        </p>
-      </header>
+      <EventHeader tournament={t} formatName={formatName} />
 
       {standings.length === 0 ? (
         <p className="mt-8 border border-line bg-surface p-6 text-[13.5px] text-ink-2">
@@ -189,74 +154,24 @@ export default async function TournamentPage({
         </p>
       ) : (
         <>
-          <KpiStatGroup columns={3} className="mt-6">
-            <KpiStat label="Players" value={standings.length} />
-            <KpiStat
-              label="Archetypes"
-              value={field.filter(f => !f.isBucket).length}
-            />
-            <KpiStat
-              label={winner.rank === 1 ? 'Winner' : 'Best record'}
-              value={winner.archetype.name}
-              className="[&_.num]:truncate [&_.num]:text-[20px]"
-            />
-          </KpiStatGroup>
-
+          <EventKpis standings={standings} field={field} />
           <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
-            {/* ---- STANDINGS ---- */}
             <section aria-labelledby="standings-h" className="min-w-0">
               <h2 id="standings-h" className="eyebrow mb-2">
                 Standings
               </h2>
               <StandingsTable
                 standings={standings}
-                showPlace={anyRank}
+                showPlace={standings.some(s => s.rank !== null)}
                 hrefFor={s => deckHref(t.format, eventQuery, s, t.date)}
               />
               <p className="mt-2 text-[12px] text-ink-3">
                 Records count only matches against other published decks.
               </p>
             </section>
-
-            {/* ---- FIELD ---- */}
-            <aside aria-labelledby="field-h" className="min-w-0">
-              <div className="lg:sticky lg:top-6">
-                <h2 id="field-h" className="eyebrow mb-2">
-                  The field
-                </h2>
-                <div className="border border-line bg-surface px-3.5 py-2 shadow-ledger">
-                  <PresenceBars
-                    rows={field}
-                    unit="decks"
-                    rowHref={fieldHref}
-                    counts={fieldCounts}
-                    compact
-                  />
-                </div>
-              </div>
-            </aside>
+            <FieldPanel field={field} hrefFor={hrefFor} />
           </div>
-
-          {/* ---- MATCHUPS ---- */}
-          <section aria-labelledby="matchups-h" className="mt-10">
-            <h2 id="matchups-h" className="eyebrow mb-1.5">
-              Matchups
-            </h2>
-            <p className="mb-3 max-w-[65ch] text-[13px] text-ink-2">
-              Win rate of the row archetype against the column, in this event
-              only. One event is a small sample: the fainter the cell, the fewer
-              the games behind it.
-            </p>
-            {matrix.order.length >= 2 ? (
-              <div className="border border-line bg-surface p-3 shadow-ledger">
-                <MatchupMatrix data={matrix} rowHref={matrixHref} />
-              </div>
-            ) : (
-              <p className="border border-line bg-surface p-6 text-[13.5px] text-ink-2">
-                Not enough recorded matches between archetypes for a matrix.
-              </p>
-            )}
-          </section>
+          <MatchupsSection matrix={matrix} hrefFor={hrefFor} />
         </>
       )}
 
@@ -266,6 +181,131 @@ export default async function TournamentPage({
         </span>
       </footer>
     </>
+  )
+}
+
+function EventHeader({
+  tournament: t,
+  formatName,
+}: {
+  tournament: TournamentDTO
+  formatName: string
+}) {
+  return (
+    <header className="mt-4">
+      <p className="eyebrow mb-1.5">
+        Event · {formatName} · {SOURCE_LABEL[t.source]}
+      </p>
+      <h1 className="font-display text-[clamp(24px,4vw,36px)] font-bold">
+        {t.name}
+      </h1>
+      <p className="mt-1.5 text-[13.5px] text-ink-2">
+        <span className="data">{longDate(t.date)}</span> ·{' '}
+        <span className="data">{t.entries}</span> players
+        {t.link && (
+          <>
+            {' '}
+            ·{' '}
+            <a
+              href={t.link}
+              target="_blank"
+              rel="noreferrer"
+              className="text-ink-2 hover:text-gold hover:underline hover:underline-offset-[3px]"
+            >
+              View on {SOURCE_LABEL[t.source]} ↗
+            </a>
+          </>
+        )}
+      </p>
+    </header>
+  )
+}
+
+function EventKpis({
+  standings,
+  field,
+}: {
+  standings: StandingDTO[]
+  field: EventFieldRow[]
+}) {
+  const leader = standings[0]
+  return (
+    <KpiStatGroup columns={3} className="mt-6">
+      <KpiStat label="Players" value={standings.length} />
+      <KpiStat
+        label="Archetypes"
+        value={field.filter(f => !f.isBucket).length}
+      />
+      <KpiStat
+        label={leaderLabel(leader.rank)}
+        value={leader.archetype.name}
+        className="[&_.num]:truncate [&_.num]:text-[20px]"
+      />
+    </KpiStatGroup>
+  )
+}
+
+function FieldPanel({
+  field,
+  hrefFor,
+}: {
+  field: EventFieldRow[]
+  hrefFor: (slug: string) => string
+}) {
+  const rowHref = Object.fromEntries(
+    field.filter(f => !f.isBucket).map(f => [f.slug, hrefFor(f.slug)])
+  )
+  const counts = Object.fromEntries(field.map(f => [f.slug, f.decks]))
+  return (
+    <aside aria-labelledby="field-h" className="min-w-0">
+      <div className="lg:sticky lg:top-6">
+        <h2 id="field-h" className="eyebrow mb-2">
+          The field
+        </h2>
+        <div className="border border-line bg-surface px-3.5 py-2 shadow-ledger">
+          <PresenceBars
+            rows={field}
+            unit="decks"
+            rowHref={rowHref}
+            counts={counts}
+            compact
+          />
+        </div>
+      </div>
+    </aside>
+  )
+}
+
+function MatchupsSection({
+  matrix,
+  hrefFor,
+}: {
+  matrix: MatrixDTO
+  hrefFor: (slug: string) => string
+}) {
+  const rowHref = Object.fromEntries(
+    matrix.order.map(o => [o.slug, hrefFor(o.slug)])
+  )
+  return (
+    <section aria-labelledby="matchups-h" className="mt-10">
+      <h2 id="matchups-h" className="eyebrow mb-1.5">
+        Matchups
+      </h2>
+      <p className="mb-3 max-w-[65ch] text-[13px] text-ink-2">
+        Win rate of the row archetype against the column, in this event only.
+        One event is a small sample: the fainter the cell, the fewer the games
+        behind it.
+      </p>
+      {matrix.order.length >= 2 ? (
+        <div className="border border-line bg-surface p-3 shadow-ledger">
+          <MatchupMatrix data={matrix} rowHref={rowHref} />
+        </div>
+      ) : (
+        <p className="border border-line bg-surface p-6 text-[13.5px] text-ink-2">
+          Not enough recorded matches between archetypes for a matrix.
+        </p>
+      )}
+    </section>
   )
 }
 
@@ -313,58 +353,88 @@ function StandingsTable({
           </tr>
         </thead>
         <tbody>
-          {standings.map(s => {
-            const href = hrefFor(s)
-            const top = s.rank === 1
-            return (
-              <tr
-                key={s.entryId}
-                className={cn(
-                  'hover:bg-[var(--gold-wash)]',
-                  s.archetype.isBucket && 'text-ink-2'
-                )}
-              >
-                {showPlace && (
-                  <td className="border-b border-line px-3.5 py-2">
-                    <span
-                      className={cn(
-                        'data',
-                        top ? 'font-bold text-gold' : 'text-ink-2'
-                      )}
-                    >
-                      {placingLabel(s.rank) ?? '—'}
-                    </span>
-                  </td>
-                )}
-                <td className="border-b border-line px-3.5 py-2">
-                  <span className="inline-flex items-center gap-2">
-                    <ManaPips colors={s.archetype.color} size={14} />
-                    {href ? (
-                      <Link
-                        href={href}
-                        className="font-semibold text-ink no-underline hover:text-gold hover:underline hover:underline-offset-[3px]"
-                      >
-                        {s.archetype.name}
-                      </Link>
-                    ) : (
-                      <span className="font-semibold">{s.archetype.name}</span>
-                    )}
-                    {!s.hasDecklist && (
-                      <span className="text-[11px] text-ink-3">no list</span>
-                    )}
-                  </span>
-                </td>
-                <td className="border-b border-line px-3.5 py-2 text-ink-2">
-                  {s.player}
-                </td>
-                <td className="border-b border-line px-3.5 py-2 text-right">
-                  <span className="data">{recordLabel(s)}</span>
-                </td>
-              </tr>
-            )
-          })}
+          {standings.map(s => (
+            <StandingRow
+              key={s.entryId}
+              standing={s}
+              showPlace={showPlace}
+              href={hrefFor(s)}
+            />
+          ))}
         </tbody>
       </table>
     </div>
   )
+}
+
+function StandingRow({
+  standing: s,
+  showPlace,
+  href,
+}: {
+  standing: StandingDTO
+  showPlace: boolean
+  href: string | null
+}) {
+  return (
+    <tr
+      className={cn(
+        'hover:bg-[var(--gold-wash)]',
+        s.archetype.isBucket && 'text-ink-2'
+      )}
+    >
+      {showPlace && (
+        <td className="border-b border-line px-3.5 py-2">
+          <span
+            className={cn(
+              'data',
+              s.rank === 1 ? 'font-bold text-gold' : 'text-ink-2'
+            )}
+          >
+            {placingLabel(s.rank) ?? '—'}
+          </span>
+        </td>
+      )}
+      <td className="border-b border-line px-3.5 py-2">
+        <span className="inline-flex items-center gap-2">
+          <ManaPips colors={s.archetype.color} size={14} />
+          {href ? (
+            <Link
+              href={href}
+              className="font-semibold text-ink no-underline hover:text-gold hover:underline hover:underline-offset-[3px]"
+            >
+              {s.archetype.name}
+            </Link>
+          ) : (
+            <span className="font-semibold">{s.archetype.name}</span>
+          )}
+          <DecklistNote standing={s} />
+        </span>
+      </td>
+      <td className="border-b border-line px-3.5 py-2 text-ink-2">
+        {s.player}
+      </td>
+      <td className="border-b border-line px-3.5 py-2 text-right">
+        <span className="data">{recordLabel(s)}</span>
+      </td>
+    </tr>
+  )
+}
+
+/** No stored cards: point at the source's own list when it published one. */
+function DecklistNote({ standing: s }: { standing: StandingDTO }) {
+  if (s.hasDecklist) return null
+  if (s.decklistUrl) {
+    return (
+      <a
+        href={s.decklistUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="text-[11px] text-ink-3 hover:text-gold hover:underline hover:underline-offset-[3px]"
+      >
+        source list ↗
+      </a>
+    )
+  }
+  return <span className="text-[11px] text-ink-3">no list</span>
 }

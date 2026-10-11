@@ -60,6 +60,13 @@ export function placingLabel(rank: number | null): string | null {
   return `${rank}${suffix}`
 }
 
+/** The headline deck's label from its placing: an outright winner, the best
+ *  published placing when 1st is missing, or the best record when unranked. */
+export function leaderLabel(rank: number | null): string {
+  if (rank === 1) return 'Winner'
+  return rank === null ? 'Best record' : 'Top finisher'
+}
+
 /** 'W-L', with '-D' only when the entry drew. */
 export function recordLabel(s: Pick<StandingDTO, 'wins' | 'losses' | 'draws'>) {
   return s.draws > 0
@@ -130,16 +137,12 @@ export function eventStats(
   return { field, matrix: eventMatrix(field, matchups, date, opts) }
 }
 
-function eventMatrix(
-  field: readonly EventFieldRow[],
-  matchups: readonly EventMatchupDTO[],
-  date: IsoDate,
-  opts: { matrixTopN?: number }
-): MatrixDTO {
-  const cellBy = new Map<string, EventMatchupDTO>()
-  const totals = new Map<string, { w: number; l: number; d: number }>()
+type Totals = { w: number; l: number; d: number }
+
+/** Each row archetype's summed record across the event's matchup rows. */
+function rowTotals(matchups: readonly EventMatchupDTO[]): Map<string, Totals> {
+  const totals = new Map<string, Totals>()
   for (const m of matchups) {
-    cellBy.set(`${m.rowSlug}|${m.colSlug}`, m)
     const t = totals.get(m.rowSlug) ?? { w: 0, l: 0, d: 0 }
     totals.set(m.rowSlug, {
       w: t.w + m.wins,
@@ -147,6 +150,16 @@ function eventMatrix(
       d: t.d + m.draws,
     })
   }
+  return totals
+}
+
+function eventMatrix(
+  field: readonly EventFieldRow[],
+  matchups: readonly EventMatchupDTO[],
+  date: IsoDate,
+  opts: { matrixTopN?: number }
+): MatrixDTO {
+  const totals = rowTotals(matchups)
   const games = (slug: string) => {
     const t = totals.get(slug)
     return t ? t.w + t.l + t.d : 0
@@ -169,12 +182,24 @@ function eventMatrix(
     }
   })
 
-  // One event rarely puts 5 games on a pair, so the window's low-N blanking
-  // would leave a grid of dashes. Show any played pair; the ink's
-  // reliability fade (games/50) already marks how thin each cell is.
-  const cells: MatchupCellDTO[] = []
-  for (const row of ordered) {
-    for (const col of ordered) {
+  return {
+    window: { start: date, end: date },
+    order,
+    cells: eventCells(ordered, matchups),
+  }
+}
+
+/** Every ordered row × column cell. One event rarely puts 5 games on a pair,
+ *  so the window's low-N blanking would leave a grid of dashes. Show any
+ *  played pair; the ink's reliability fade (games/50) already marks how thin
+ *  each cell is. */
+function eventCells(
+  ordered: readonly EventFieldRow[],
+  matchups: readonly EventMatchupDTO[]
+): MatchupCellDTO[] {
+  const cellBy = new Map(matchups.map(m => [`${m.rowSlug}|${m.colSlug}`, m]))
+  return ordered.flatMap(row =>
+    ordered.map(col => {
       const m =
         row.slug === col.slug
           ? undefined
@@ -184,11 +209,9 @@ function eventMatrix(
         losses: m?.losses ?? 0,
         draws: m?.draws ?? 0,
       })
-      cells.push({ ...cell, lowN: cell.games === 0 })
-    }
-  }
-
-  return { window: { start: date, end: date }, order, cells }
+      return { ...cell, lowN: cell.games === 0 }
+    })
+  )
 }
 
 // ---- Links ----------------------------------------------------------------
@@ -211,18 +234,20 @@ function windowHolding(
   }
 }
 
-/** An archetype page href whose window holds the event. */
+/** An archetype page href whose window holds the event; `deck` selects one
+ *  entry on its Decklists tab. */
 export function archetypeHref(
   format: FormatSlug | string,
   query: MetaQuery,
   slug: string,
   eventDate: IsoDate,
-  now?: Date
+  now?: Date,
+  deck?: string
 ): string {
   return buildHref(
     format,
     { ...query, ...windowHolding(query, eventDate) },
-    { path: `/archetype/${slug}`, now }
+    { path: `/archetype/${slug}`, deck, now }
   )
 }
 
@@ -239,13 +264,12 @@ export function deckHref(
   now?: Date
 ): string | null {
   if (standing.archetype.isBucket) return null
-  const href = archetypeHref(
+  return archetypeHref(
     format,
     query,
     standing.archetype.slug,
     eventDate,
-    now
+    now,
+    standing.entryId
   )
-  const deck = `deck=${encodeURIComponent(standing.entryId)}`
-  return href.includes('?') ? `${href}&${deck}` : `${href}?${deck}`
 }

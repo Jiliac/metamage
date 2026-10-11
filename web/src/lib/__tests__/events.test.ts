@@ -7,6 +7,7 @@ import type {
 } from '@/datasource/types'
 import {
   deckHref,
+  leaderLabel,
   eventStats,
   isEventId,
   placingLabel,
@@ -248,5 +249,13 @@ describe('deckHref', () => {
         now
       )
     ).toBeNull()
+  })
+})
+
+describe('leaderLabel', () => {
+  it('names the winner, a top finisher without a 1st, or the best record', () => {
+    expect(leaderLabel(1)).toBe('Winner')
+    expect(leaderLabel(2)).toBe('Top finisher')
+    expect(leaderLabel(null)).toBe('Best record')
   })
 })

@@ -1,5 +1,5 @@
 import artMap from '@/datasource/art-map.json'
-import type { FormatDTO, FormatSlug } from '@/datasource/types'
+import type { FormatDTO, FormatSlug, IsoDate } from '@/datasource/types'
 
 // ---------------------------------------------------------------------------
 // Naming helpers for rows straight from the `tournament` database: URL slugs,
@@ -9,6 +9,15 @@ import type { FormatDTO, FormatSlug } from '@/datasource/types'
 /** Duel Commander's short monogram (its names contain MTG 'Name // Name'
  *  forms, so the chip shows 'DC' per the fixture plan). */
 const DUEL_COMMANDER = 'duel-commander'
+
+/** postgres.js returns JS Date for date/timestamp columns; the DTO wants
+ *  'YYYY-MM-DD' in UTC so it round-trips through the canonical URL. */
+export function asIso(d: unknown): IsoDate {
+  if (d instanceof Date) {
+    return d.toISOString().slice(0, 10) as IsoDate
+  }
+  return String(d).slice(0, 10) as IsoDate
+}
 
 type ArtMapEntry = { cardName: string; artCropUrl: string | null }
 

@@ -16,7 +16,6 @@ import type {
   MetaReportDTO,
   MetaSort,
   SourceDTO,
-  StandingDTO,
   TournamentDetailDTO,
   TournamentDTO,
   TrendPointDTO,
@@ -45,8 +44,15 @@ import {
   orientedPair,
 } from '@/datasource/postgres/matchups'
 import {
+  eventMatchupDto,
+  isUuid,
+  standingDto,
+  tournamentDto,
+} from '@/datasource/postgres/events'
+import {
   archetypeDisplayName,
   artFor,
+  asIso,
   formatDisplayName,
   formatDto,
   isBucketName,
@@ -67,8 +73,6 @@ import {
   EVENT_MATCHUPS_SQL,
   TREND_SQL,
   type ArchetypeRow,
-  type StandingRow,
-  type TournamentRow,
   type MatchupRow,
   type PlayerRow,
 } from '@/datasource/postgres/sql'
@@ -100,14 +104,6 @@ export { archetypeDisplayName, formatDisplayName }
 // ---- Small helpers ---------------------------------------------------------
 
 const asSlug = (s: string) => s as ArchetypeSlug
-const asIso = (d: unknown) => {
-  // postgres.js returns JS Date for date/timestamp columns; the DTO wants
-  // 'YYYY-MM-DD' in UTC so it round-trips through the canonical URL.
-  if (d instanceof Date) {
-    return d.toISOString().slice(0, 10) as IsoDate
-  }
-  return String(d).slice(0, 10) as IsoDate
-}
 
 /** Archetype identity as the class passes it around (display-cased name). */
 type ArchetypeMeta = { id: string; name: string; color: string | null }
@@ -432,6 +428,7 @@ export class PostgresDataSource implements MetaDataSource {
   }
 
   async getTournament(id: string): Promise<TournamentDetailDTO | null> {
+    if (!isUuid(id)) return null
     const [header] = await TOURNAMENT_SQL(id)
     if (!header) return null
     const [standings, matchups] = await Promise.all([
@@ -441,13 +438,7 @@ export class PostgresDataSource implements MetaDataSource {
     return {
       tournament: tournamentDto(header),
       standings: standings.map(standingDto),
-      matchups: matchups.map(m => ({
-        rowSlug: asSlug(slugifyArchetype(m.row_name)),
-        colSlug: asSlug(slugifyArchetype(m.col_name)),
-        wins: m.wins,
-        losses: m.losses,
-        draws: m.draws,
-      })),
+      matchups: matchups.map(eventMatchupDto),
     }
   }
 
@@ -612,43 +603,6 @@ export class PostgresDataSource implements MetaDataSource {
 // ---------------------------------------------------------------------------
 // Module-level helpers (pure; Postgres-specific shapes)
 // ---------------------------------------------------------------------------
-
-/** Source links are rendered as hrefs; only pass through http(s) URLs. */
-function isHttpUrl(url: string | null): url is string {
-  return url !== null && /^https?:\/\//i.test(url)
-}
-
-function tournamentDto(t: TournamentRow): TournamentDTO {
-  return {
-    id: t.id,
-    name: t.name,
-    date: asIso(t.date),
-    format: t.format as FormatSlug,
-    source: t.source as TournamentDTO['source'],
-    ...(isHttpUrl(t.link) ? { link: t.link } : {}),
-    entries: t.entries,
-  }
-}
-
-function standingDto(r: StandingRow): StandingDTO {
-  return {
-    entryId: r.entry_id,
-    // 0 is the ingest's "no placing" sentinel (Melee, leagues).
-    rank: r.rank > 0 ? r.rank : null,
-    wins: r.wins,
-    losses: r.losses,
-    draws: r.draws,
-    player: r.player,
-    archetype: {
-      slug: asSlug(slugifyArchetype(r.archetype)),
-      name: archetypeDisplayName(r.archetype),
-      color: r.color ?? null,
-      isBucket: isBucketName(r.archetype),
-    },
-    ...(isHttpUrl(r.decklist_url) ? { decklistUrl: r.decklist_url } : {}),
-    hasDecklist: r.has_cards,
-  }
-}
 
 function toMeta(r: ArchetypeRow): ArchetypeMeta {
   return {

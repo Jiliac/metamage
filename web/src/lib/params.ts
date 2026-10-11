@@ -325,6 +325,10 @@ export type BuildHrefOpts = {
   matrixOrder?: readonly MatrixOrderEntryDTO[]
   /** Archetype-detail tab (`?tab`). */
   tab?: string
+  /** Decklists tab's selected deck (`?deck`, KTD6). Rides after `tab` in the
+   *  fixed order so tab links, redirects and paging keep the selection.
+   *  Canonical URLs exclude it, like `?row` (KTD6 SEO). */
+  deck?: string
   /** Injected clock so the window-omission check is testable. */
   now?: Date
 }
@@ -371,6 +375,9 @@ export function buildHref(
     params.set('row', opts.row)
   }
   if (opts.tab) params.set('tab', opts.tab)
+  // `?deck` rides after `tab` (KTD6): the selection survives tab switches,
+  // the stale-slug redirect and the "Show older decks" link.
+  if (opts.deck) params.set('deck', opts.deck)
 
   const qs = params.toString()
   const base = `/meta/${format}${opts.path ?? ''}`
