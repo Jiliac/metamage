@@ -116,9 +116,11 @@ The DB holds every deck we need (`deck_cards` per `tournament_entries` row) but 
   One extractor means ingest and backfill can never disagree.
 - KTD3. **Fetch-once mechanics.**
   - **New cards:** filled at creation from the `/cards/named` response ingest already fetches. Zero extra calls.
+  - **Printing:** the stored image is Scryfall's default printing (its "most recent recognizable" print), which is what both `/cards/named` and `oracle_cards` return. (session-settled: user-directed — chosen over the original printing: no extra printing-selection logic.)
   - **Existing cards:** filled by a backfill from the `oracle_cards` bulk file, a single download from `data.scryfall.io`, which has no rate limit. One bulk-data metadata request per run (none with a local file); no per-card API calls.
   - **Backfill pre-flight:** before writing, the backfill checks the file has the required fields (`name`, `type_line` or `card_faces`, image URIs) on at least 99% of matched cards, and that double-faced cards carry per-face images. Otherwise it aborts without writing.
   - **Backfill scope:** writes only rows where `type_line` is null, unless `--refresh` is given. Keyed on `scryfall_oracle_id`.
+  - **Images are not stored, only their URLs.** Browsers fetch them from `cards.scryfall.io`, which Scryfall documents as having no rate limit and serves with `cache-control: public, max-age=31556952` (verified 2026-10-11). Each visitor downloads a card image at most once a year.
   - **Concurrency:** there is no request-path writer, so concurrent ingest runs are the only possible duplicate fetch.
   - **Ingest throttle:** raise `SCRYFALL_REQUEST_DELAY` from 0.1 s to 0.5 s to honor the 2 req/s `/cards/named` limit.
 - KTD4. **Featured selection is a pure function over the archetype's window entries.** It instantiates the featured-deck Key Decision (session-settled: user-directed, governs R1).
@@ -458,9 +460,9 @@ flowchart TB
 
 ## Risks & Dependencies
 
-- **Reload ordering.** The safe order is: migrate both DBs, backfill SQLite, then reload. A reload fails if SQLite lacks the columns, because `select(model)` reads every model column. A reload from an un-backfilled SQLite overwrites Neon's card data with nulls. U1's stamp pre-flight stops a reload against an unmigrated Neon.
+- **Reload ordering.** The safe order is: migrate SQLite, backfill SQLite, migrate Neon's schema, then reload. A reload fails if SQLite lacks the columns, because `select(model)` reads every model column. A reload from an un-backfilled SQLite overwrites Neon's card data with nulls. U1's stamp pre-flight stops a reload against an unmigrated Neon.
 - **Web before schema.** The new web code fails on every archetype page against a Neon without the columns. Mitigation: U3's dependency gate. The current web selects explicit columns, so migrating Neon first is safe.
-- **Wrong target DB.** `alembic/env.py` reads only `TOURNAMENT_DATABASE_URL`, and it calls `load_dotenv()`, which picks the value up from the repo-root `.env` even when the shell has it unset. So a "SQLite" step with the variable merely unset migrates Neon. Mitigation: SQLite steps set the variable to an empty string (dotenv does not override an existing key, and an empty value means SQLite). Each step checks that Alembic logs `SQLiteImpl` or `PostgresqlImpl` as expected; `alembic current` alone cannot tell the DBs apart, since both start at the same revision.
+- **Wrong target DB (Alembic only).** Ingest and scripts resolve `TOURNAMENT_DATABASE_URL` from the shell and default to SQLite. `alembic/env.py` also calls `load_dotenv()`, which picks the Neon URL up from the repo-root `.env` even when the shell has it unset. So an Alembic "SQLite" step with the variable merely unset migrates Neon. Mitigation: SQLite steps set the variable to an empty string (dotenv does not override an existing key, and an empty value means SQLite). Each step checks that Alembic logs `SQLiteImpl` or `PostgresqlImpl` as expected; `alembic current` alone cannot tell the DBs apart, since both start at the same revision.
 - **Lock on Neon.** `ALTER TABLE cards` takes an exclusive lock that can stall web reads. Run it outside ingest and reload windows with a short `lock_timeout`.
 - **Rollback.** The columns are nullable and unused by the current web, so rollback means reverting the web deploy and leaving the columns in place. Batch `drop_column` on SQLite rebuilds `cards` and is not a safe rollback. The SQLite rollback is a backup taken before step 1.
 - **Entry id churn.** Entry ids are random UUIDs. The SQLite→Postgres reload copies them, but rebuilding `data/tournament.db` from scratch regenerates them and breaks shared `?deck` links, which then fall back to the featured deck. Accepted. Reclassification keeps the id and is handled by the KTD6 redirect.
@@ -472,14 +474,16 @@ flowchart TB
 
 ## Documentation / Operational Notes
 
-Operator runbook, added to `src/ingest/README.md` in U2. The user runs these steps against production. Each step names its environment and confirms the dialect Alembic logs (`SQLiteImpl` or `PostgresqlImpl`) plus `alembic current` before and after.
+Data flow this runbook follows: ingest writes to SQLite (`data/tournament.db`), and Neon is fed from SQLite by `scripts/migrate_tournament_to_postgres.py`. The card data is produced once, in SQLite. Neon needs only the schema change, because a reload COPYs into existing tables and does not add columns.
+
+Operator runbook, added to `src/ingest/README.md` in U2. The user runs these steps. Each Alembic step confirms the dialect it logs (`SQLiteImpl` or `PostgresqlImpl`), because `alembic/env.py` loads the repo-root `.env`, which sets `TOURNAMENT_DATABASE_URL` (Neon).
 1. Checkpoint the WAL and back up `data/tournament.db`.
-2. Migrate SQLite with `TOURNAMENT_DATABASE_URL=` set to an empty string (not unset; see "Wrong target DB").
-3. Migrate Neon (`TOURNAMENT_DATABASE_URL` set to the rw role), outside ingest and reload windows. The migration sets its own `lock_timeout`.
-4. Backfill SQLite (empty `TOURNAMENT_DATABASE_URL`): dry run first, then for real.
-5. Backfill Neon the same way.
+2. Migrate SQLite with `TOURNAMENT_DATABASE_URL=` set to an empty string (not unset, or `.env` redirects Alembic to Neon).
+3. Backfill SQLite: dry run first, then for real.
+4. Migrate Neon schema (`TOURNAMENT_DATABASE_URL` set to the rw role), outside ingest and reload windows. The migration sets its own `lock_timeout`.
+5. Fill Neon's new columns. Either run the next full reload from SQLite (the usual truncate + COPY), or run the backfill against Neon directly to skip the ~20-minute reload. Both give the same rows.
 6. Run the verification checks below on both DBs.
-7. Open the web PR preview, then deploy.
+7. Push the web branch (this opens a Vercel preview against Neon), then deploy.
 
 Verification checks, on both DBs:
 - `alembic_version` equals the new revision.
