@@ -1,6 +1,6 @@
 import {
+  deckResultLabel,
   groupMaindeck,
-  placingOrRecord,
   safeExternalHref,
   sortSideboard,
   type DeckTypeGroup,
@@ -62,7 +62,7 @@ export function DecklistView({ deck, featured }: DecklistViewProps) {
   // Scraped URLs: only http(s) reaches the href; otherwise no link.
   const sourceHref =
     safeExternalHref(entry.decklistUrl) ?? safeExternalHref(entry.event.link)
-  const placing = placingOrRecord(entry)
+  const placing = deckResultLabel(entry)
   const cardless = main.length === 0 && side.length === 0
 
   return (

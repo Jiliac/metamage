@@ -4,6 +4,7 @@ import type { DeckCardDTO, DeckSummaryDTO } from '@/datasource/types'
 import { ARCHETYPE_ENTRIES_CAP } from '@/datasource/types'
 import {
   MAX_DECKS_PAGE,
+  deckResultLabel,
   deckTypeBucket,
   decksCapLabel,
   featuredPoints,
@@ -12,7 +13,7 @@ import {
   groupMaindeck,
   isOutsideWindow,
   pickFeaturedDeck,
-  placingOrRecord,
+  recordFootnote,
   safeExternalHref,
   sliceRecentDecks,
   sortSideboard,
@@ -304,62 +305,81 @@ describe('isOutsideWindow (R11)', () => {
   })
 })
 
-describe('placingOrRecord (R2, R9)', () => {
+describe('deckResultLabel (R2, R9)', () => {
   it('rank 1 → "1st", with the full ordinal set', () => {
-    expect(placingOrRecord({ rank: 1, wins: 0, losses: 0, draws: 0 })).toBe(
+    expect(deckResultLabel({ rank: 1, wins: 0, losses: 0, draws: 0 })).toBe(
       '1st'
     )
-    expect(placingOrRecord({ rank: 2, wins: 0, losses: 0, draws: 0 })).toBe(
+    expect(deckResultLabel({ rank: 2, wins: 0, losses: 0, draws: 0 })).toBe(
       '2nd'
     )
-    expect(placingOrRecord({ rank: 3, wins: 0, losses: 0, draws: 0 })).toBe(
+    expect(deckResultLabel({ rank: 3, wins: 0, losses: 0, draws: 0 })).toBe(
       '3rd'
     )
-    expect(placingOrRecord({ rank: 4, wins: 0, losses: 0, draws: 0 })).toBe(
+    expect(deckResultLabel({ rank: 4, wins: 0, losses: 0, draws: 0 })).toBe(
       '4th'
     )
-    expect(placingOrRecord({ rank: 11, wins: 0, losses: 0, draws: 0 })).toBe(
+    expect(deckResultLabel({ rank: 11, wins: 0, losses: 0, draws: 0 })).toBe(
       '11th'
     )
-    expect(placingOrRecord({ rank: 21, wins: 0, losses: 0, draws: 0 })).toBe(
+    expect(deckResultLabel({ rank: 21, wins: 0, losses: 0, draws: 0 })).toBe(
       '21st'
     )
-    expect(placingOrRecord({ rank: 64, wins: 0, losses: 0, draws: 0 })).toBe(
+    expect(deckResultLabel({ rank: 64, wins: 0, losses: 0, draws: 0 })).toBe(
       '64th'
     )
-    expect(placingOrRecord({ rank: 111, wins: 0, losses: 0, draws: 0 })).toBe(
+    expect(deckResultLabel({ rank: 111, wins: 0, losses: 0, draws: 0 })).toBe(
       '111th'
     )
   })
 
   it('rank 0 (or null) with a record → "W-L", draws appended when nonzero', () => {
-    expect(placingOrRecord({ rank: 0, wins: 5, losses: 1, draws: 0 })).toBe(
+    expect(deckResultLabel({ rank: 0, wins: 5, losses: 1, draws: 0 })).toBe(
       '5-1'
     )
-    expect(placingOrRecord({ rank: null, wins: 3, losses: 3, draws: 1 })).toBe(
+    expect(deckResultLabel({ rank: null, wins: 3, losses: 3, draws: 1 })).toBe(
       '3-3-1'
     )
   })
 
   it('rank and record together → "placing · record"', () => {
-    expect(placingOrRecord({ rank: 1, wins: 7, losses: 0, draws: 0 })).toBe(
+    expect(deckResultLabel({ rank: 1, wins: 7, losses: 0, draws: 0 })).toBe(
       '1st · 7-0'
     )
-    expect(placingOrRecord({ rank: 2, wins: 4, losses: 2, draws: 1 })).toBe(
+    expect(deckResultLabel({ rank: 2, wins: 4, losses: 2, draws: 1 })).toBe(
       '2nd · 4-2-1'
     )
-    expect(placingOrRecord({ rank: 21, wins: 0, losses: 1, draws: 0 })).toBe(
+    expect(deckResultLabel({ rank: 21, wins: 0, losses: 1, draws: 0 })).toBe(
       '21st · 0-1'
     )
   })
 
   it('rank 0 with 0-0-0 → no label', () => {
     expect(
-      placingOrRecord({ rank: 0, wins: 0, losses: 0, draws: 0 })
+      deckResultLabel({ rank: 0, wins: 0, losses: 0, draws: 0 })
     ).toBeNull()
     expect(
-      placingOrRecord({ rank: null, wins: 0, losses: 0, draws: 0 })
+      deckResultLabel({ rank: null, wins: 0, losses: 0, draws: 0 })
     ).toBeNull()
+  })
+})
+
+describe('recordFootnote', () => {
+  it('no MTGO deck on screen → no footnote', () => {
+    expect(recordFootnote([])).toBeNull()
+    expect(recordFootnote(['MELEE', 'CARDSREALM', 'OTHER'])).toBeNull()
+  })
+
+  it('MTGO without Melee → the MTGO caveat only', () => {
+    const note = recordFootnote(['MTGO', 'CARDSREALM'])
+    expect(note).toMatch(/^MTGO win–loss records .* often partial\.$/)
+    expect(note).not.toContain('Melee')
+  })
+
+  it('MTGO with Melee → the caveat plus the Melee sentence', () => {
+    expect(recordFootnote(['MELEE', 'MTGO'])).toMatch(
+      /often partial\. Melee records are complete\.$/
+    )
   })
 })
 

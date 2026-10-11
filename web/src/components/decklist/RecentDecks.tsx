@@ -1,9 +1,9 @@
 import Link from 'next/link'
 
 import {
+  deckResultLabel,
   decksCapLabel,
   groupEntriesByEvent,
-  placingOrRecord,
   type DecksPage,
 } from '@/lib/decks'
 import { cn } from '@/lib/utils'
@@ -79,7 +79,7 @@ export function RecentDecks({
               </div>
               <ul className="grid gap-1">
                 {g.entries.map(entry => {
-                  const label = placingOrRecord(entry)
+                  const label = deckResultLabel(entry)
                   const active = entry.id === activeId
                   return (
                     <li key={entry.id}>
@@ -98,7 +98,7 @@ export function RecentDecks({
                             {entry.player}
                           </span>
                           {label && (
-                            <span className="num text-[11.5px] text-ink-3">
+                            <span className="num shrink-0 whitespace-nowrap text-[11.5px] text-ink-3">
                               {label}
                             </span>
                           )}
