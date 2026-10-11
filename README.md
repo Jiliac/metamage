@@ -166,7 +166,7 @@ Three GitHub Actions workflows (`.github/workflows/`) gate PRs by slice:
 | `ci-web.yml`    | `web/`                                                                              | ESLint + Prettier + `tsc --noEmit` + Vitest + production build (fixtures mode) |
 | `ci-ui.yml`     | `ui/`                                                                               | ESLint + Prettier + `tsc --noEmit` + production build (needs `DATABASE_URL`)   |
 
-Docs-only changes run no workflows. Builds use frozen lockfiles; Node 24 (matching the Vercel projects and the `engines` field in each `package.json`) + pnpm 11 for the JS apps, Python 3.13 via `uv sync --frozen` for the Python side. The ci-web build runs in fixtures mode, so the Postgres read path (`DATA_SOURCE=postgres`) is only exercised by the Vercel preview/production build: a red Vercel check on `metamage-web` is a real signal and should not be ignored. The ui build prerenders the 100 most recent chat sessions, so it requires a reachable Ops DB: the `OPS_DATABASE_URL` repo secret (read-only `metamage_ops_ro` role, granted via `scripts/setup_ops_pg_roles.sql`).
+On PRs each workflow runs only for its slice, so docs-only PRs run nothing. On pushes to `main`, `ci-web` and `ci-ui` run on every commit because Vercel's Deployment Checks wait on them (see below). Builds use frozen lockfiles; Node 24 (matching the Vercel projects and the `engines` field in each `package.json`) + pnpm 11 for the JS apps, Python 3.13 via `uv sync --frozen` for the Python side. The ci-web build runs in fixtures mode, so the Postgres read path (`DATA_SOURCE=postgres`) is only exercised by the Vercel preview/production build: a red Vercel check on `metamage-web` is a real signal and should not be ignored. The ui build prerenders the 100 most recent chat sessions, so it requires a reachable Ops DB: the `OPS_DATABASE_URL` repo secret (read-only `metamage_ops_ro` role, granted via `scripts/setup_ops_pg_roles.sql`).
 
 **Deployment** (Vercel Git integration — push to `main` deploys):
 
@@ -176,6 +176,10 @@ Docs-only changes run no workflows. Builds use frozen lockfiles; Node 24 (matchi
 | `metamage-ui`  | `ui/`          | `ai.metamages.com` | Ops DB (`neondb`), SELECT-only `metamage_ops_ro`        |
 
 PRs get preview deployments for each app whose slice changed — this is not Vercel's default (it builds every project on every push); each project sets an **Ignored Build Step** in its Git settings that diffs the app directory against `VERCEL_GIT_PREVIOUS_SHA` (the last successful deployment) and builds when that SHA is missing; the exact script is in `docs/plans/2026-09-28-ci-cd-deploy-web-ui-plan.md` (KTD6). Production env vars per project: `web/` needs `DATA_SOURCE=postgres`, `TOURNAMENT_DATABASE_URL`, `NEXT_PUBLIC_SITE_URL=https://metamages.com`; `ui/` needs `DATABASE_URL` and `NEXT_PUBLIC_SITE_URL=https://ai.metamages.com`. Ops-DB grants: `psql "$POSTGRES_URL" -f scripts/setup_ops_pg_roles.sql`.
+
+**CI gates production.** Each project has Deployment Checks enabled (Settings → Build and Deployment → Deployment Checks): `metamage-web` requires the `web` check and `metamage-ui` requires the `ui` check. A push to `main` still builds a production deployment, but Vercel only assigns it to the domain once that check passes on the same commit. A red check leaves the previous deployment live.
+
+**Database migrations** (`db-migrate.yml`, manual): Actions → "DB migrate (tournament)" → Run workflow from `main`. By default it does a dry run: it prints the current revision and the SQL that `alembic upgrade` would run. Tick **apply** to execute it. The workflow runs in the `tournament-db` GitHub environment, which holds `TOURNAMENT_DATABASE_WRITE_URL` (the `metamage_rw` role, which owns the tables) and only allows the `main` branch. The ops DB has no Alembic migrations (its tables come from `create_all` in `src/socialbot/server.py`).
 
 ---
 
