@@ -100,8 +100,8 @@ export const FORMAT_ID_SQL = (formatName: string) => db()<FormatRow[]>`
 // The latest POPULATED calendar month for a format: the month of the newest
 // tournament that has at least one match row, as [first day, last day]. This
 // mirrors FixtureDataSource.getLatestWindow (windows are calendar months; the
-// latest one with kpis.matches > 0 wins) and `defaultWindow`'s month shape, so
-// the landing page's empty-default fallback lands on ONE month, never the
+// latest one with kpis.matches > 0 wins), so the landing page's
+// empty-default fallback lands on ONE month, never the
 // format's whole history. Both columns are NULL when the format has no
 // match-having tournament at all (date_trunc(NULL) is NULL) → caller returns
 // null. Format match is case-insensitive, consistent with FORMAT_ID_SQL.

@@ -7,15 +7,12 @@ import {
 } from '@/components/ui/popover'
 import {
   asIsoDate,
-  DEFAULT_WINDOW_CHIP,
-  DEFAULT_WINDOW_LABEL,
-  defaultWindow,
   expandPreset,
   isValidIsoDate,
-  matchWindowChip,
+  matchPreset,
   PRESETS,
   PRESET_LABELS,
-  type WindowChip,
+  type Preset,
 } from '@/lib/params'
 import { cn } from '@/lib/utils'
 import { useMetaParams } from '@/hooks/useMetaParams'
@@ -65,7 +62,7 @@ const dateInputClass =
 
 export function WindowPicker() {
   const { query, setParams } = useMetaParams()
-  const activeChip: WindowChip | undefined = matchWindowChip(query)
+  const activeChip: Preset | undefined = matchPreset(query)
 
   return (
     <Popover>
@@ -93,21 +90,6 @@ export function WindowPicker() {
               </span>
             </p>
             <div className="flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                aria-pressed={activeChip === DEFAULT_WINDOW_CHIP}
-                className={cn(
-                  knobClass,
-                  chipClass,
-                  activeChip === DEFAULT_WINDOW_CHIP && chipActiveClass
-                )}
-                onClick={() => {
-                  const w = defaultWindow()
-                  setParams({ start: w.start, end: w.end })
-                }}
-              >
-                {DEFAULT_WINDOW_LABEL}
-              </button>
               {PRESETS.map(p => (
                 <button
                   key={p}
