@@ -21,10 +21,12 @@ export type KpiStatProps = {
 
 /** One KPI tile. Compose several inside <KpiStatGroup> for the joined grid. */
 export function KpiStat({ label, value, format, className }: KpiStatProps) {
-  const display =
-    typeof value === 'number'
-      ? (format ?? ((n: number) => n.toLocaleString('en-US')))(value)
-      : value
+  // Figures are mono with tabular digits; a name (a string value) is a word,
+  // so it takes the display face instead (§9: mono is for measurement).
+  const isFigure = typeof value === 'number'
+  const display = isFigure
+    ? (format ?? ((n: number) => n.toLocaleString('en-US')))(value)
+    : value
   return (
     <div
       className={cn(
@@ -32,10 +34,17 @@ export function KpiStat({ label, value, format, className }: KpiStatProps) {
         className
       )}
     >
-      <div className="num text-ink text-[26px] leading-none font-semibold tracking-[-0.01em]">
+      <div
+        className={cn(
+          'text-ink text-[26px] leading-none font-semibold',
+          isFigure
+            ? 'num tracking-[-0.01em]'
+            : 'font-display truncate font-bold'
+        )}
+      >
         {display}
       </div>
-      <div className="text-ink-3 mt-1.5 text-[11.5px] tracking-[0.14em] uppercase max-[420px]:text-[10px] max-[420px]:tracking-[0.08em]">
+      <div className="text-ink-3 mt-1.5 text-[11.5px] tracking-[0.14em] uppercase max-[420px]:text-[11px] max-[420px]:tracking-[0.06em]">
         {label}
       </div>
     </div>

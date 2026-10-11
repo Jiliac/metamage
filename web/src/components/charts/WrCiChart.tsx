@@ -119,7 +119,7 @@ export function WrCiChart({ rows, className }: WrCiChartProps) {
           {ticks.map(t => (
             <span
               key={t}
-              className="data absolute -translate-x-1/2 text-[10px] text-ink-3"
+              className="data absolute -translate-x-1/2 text-[11px] text-ink-3"
               style={{ left: `${sx(t / 100)}%` }}
             >
               {t}%

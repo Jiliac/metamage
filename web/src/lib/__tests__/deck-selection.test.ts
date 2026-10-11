@@ -34,6 +34,7 @@ const query: MetaQuery = {
   includeArchetypes: [],
   hideBuckets: true,
   weight: 'match',
+  platform: 'all',
 }
 
 const summary = (id: string, date = '2026-09-20'): DeckSummaryDTO => ({

@@ -9,8 +9,8 @@ on:
     branches: [main]
   pull_request:
     paths:
-      - 'web/**'
-      - '.github/workflows/ci-web.yml'
+      - "web/**"
+      - ".github/workflows/ci-web.yml"
 
 permissions:
   contents: read

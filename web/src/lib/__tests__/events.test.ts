@@ -13,6 +13,8 @@ import {
   isEventId,
   placingLabel,
   recordLabel,
+  rankStandings,
+  isPartialRecordSource,
   sortStandings,
 } from '@/lib/events'
 import { asIsoDate, parseMetaQuery } from '@/lib/params'
@@ -304,5 +306,105 @@ describe('standingLink', () => {
     expect(
       standingLink('modern', query, standing({ hasDecklist: false }), day, now)
     ).toBeNull()
+  })
+})
+
+describe('rankStandings', () => {
+  it('keeps published placings as they are', () => {
+    const out = rankStandings([
+      standing({ entryId: 'b', rank: 2 }),
+      standing({ entryId: 'a', rank: 1 }),
+    ])
+    expect(out.map(r => [r.standing.entryId, r.place, r.derived])).toEqual([
+      ['a', 1, false],
+      ['b', 2, false],
+    ])
+  })
+
+  it('derives competition ranks from match points when none are published', () => {
+    const out = rankStandings([
+      standing({ entryId: 'c', wins: 4, losses: 1, player: 'c' }),
+      standing({ entryId: 'a', wins: 5, losses: 0, player: 'a' }),
+      standing({ entryId: 'd', wins: 4, losses: 1, player: 'd' }),
+      standing({ entryId: 'e', wins: 4, losses: 2, player: 'e' }),
+      standing({ entryId: 'f', wins: 3, losses: 1, draws: 1, player: 'f' }),
+    ])
+    expect(out.map(r => [r.standing.entryId, r.place, r.derived])).toEqual([
+      ['a', 1, true],
+      ['c', 2, true],
+      ['d', 2, true],
+      ['e', 4, true],
+      ['f', 5, true],
+    ])
+  })
+
+  it('numbers unranked entries after the published ones', () => {
+    const out = rankStandings([
+      standing({ entryId: 'x', wins: 9 }),
+      standing({ entryId: 'a', rank: 1 }),
+      standing({ entryId: 'b', rank: 2 }),
+    ])
+    expect(out.map(r => [r.standing.entryId, r.place, r.derived])).toEqual([
+      ['a', 1, false],
+      ['b', 2, false],
+      ['x', 3, true],
+    ])
+  })
+
+  it('does not tie records whose draws differ', () => {
+    // 13 points and 1 loss each — only the draws separate them.
+    const out = rankStandings([
+      standing({ entryId: 'd', wins: 3, losses: 1, draws: 4, player: 'd' }),
+      standing({ entryId: 'c', wins: 4, losses: 1, draws: 1, player: 'c' }),
+    ])
+    expect(out.map(r => [r.standing.entryId, r.place, r.derived])).toEqual([
+      ['c', 1, true],
+      ['d', 2, true],
+    ])
+  })
+
+  it('starts derived places above a sparse published tail', () => {
+    const out = rankStandings([
+      standing({ entryId: 'a', rank: 1 }),
+      standing({ entryId: 'b', rank: 2 }),
+      standing({ entryId: 'z', rank: 10 }),
+      standing({ entryId: 'x', wins: 9, player: 'x' }),
+      standing({ entryId: 'y', wins: 5, player: 'y' }),
+    ])
+    expect(out.map(r => [r.standing.entryId, r.place, r.derived])).toEqual([
+      ['a', 1, false],
+      ['b', 2, false],
+      ['z', 10, false],
+      ['x', 11, true],
+      ['y', 12, true],
+    ])
+  })
+
+  it('skips a derived place past the last published rank in a gap', () => {
+    const out = rankStandings([
+      standing({ entryId: 'a', rank: 1 }),
+      standing({ entryId: 'z', rank: 3 }),
+      standing({ entryId: 'x', wins: 9, player: 'x' }),
+    ])
+    expect(out.map(r => [r.standing.entryId, r.place, r.derived])).toEqual([
+      ['a', 1, false],
+      ['z', 3, false],
+      ['x', 4, true],
+    ])
+  })
+
+  it('returns a new array and leaves the input untouched', () => {
+    const input = [standing({ entryId: 'b', rank: 2 }), standing({ rank: 1 })]
+    const copy = [...input]
+    rankStandings(input)
+    expect(input).toEqual(copy)
+  })
+})
+
+describe('isPartialRecordSource', () => {
+  it('flags only MTGO, whose records skip unpublished decks', () => {
+    expect(isPartialRecordSource('MTGO')).toBe(true)
+    expect(isPartialRecordSource('MELEE')).toBe(false)
+    expect(isPartialRecordSource('CARDSREALM')).toBe(false)
   })
 })

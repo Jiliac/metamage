@@ -19,6 +19,7 @@ import type {
   MetaQuery,
   MetaReportDTO,
   MetaSort,
+  Platform,
   SourceDTO,
   TournamentDetailDTO,
   TournamentDTO,
@@ -219,9 +220,10 @@ export class PostgresDataSource implements MetaDataSource {
   /** The latest populated calendar month (see LATEST_WINDOW_SQL), or null
    *  when the format has no match-having tournament. */
   async getLatestWindow(
-    format: FormatSlug
+    format: FormatSlug,
+    platform: Platform = 'all'
   ): Promise<{ start: IsoDate; end: IsoDate } | null> {
-    const rows = await LATEST_WINDOW_SQL(String(format))
+    const rows = await LATEST_WINDOW_SQL(String(format), platform)
     const row = rows[0]
     if (!row?.month_start || !row?.month_end) return null
     return { start: asIso(row.month_start), end: asIso(row.month_end) }
@@ -251,16 +253,23 @@ export class PostgresDataSource implements MetaDataSource {
         kpis: { tournaments: 0, entries: 0, matches: 0 },
         rows: [],
         other: null,
+        floor: { belowFloorCount: 0, unknownShare: null, conflictShare: null },
         generatedAt: new Date().toISOString(),
       }
     }
     const { kpi, intrinsics } = await this.windowData(formatId, q)
-    const { rows, other } = selectReportRows(intrinsics, kpi.matches, q, sort)
+    const { rows, other, floor } = selectReportRows(
+      intrinsics,
+      kpi.matches,
+      q,
+      sort
+    )
     return {
       window: { start: q.start, end: q.end },
       kpis: kpi,
       rows,
       other,
+      floor,
       generatedAt: new Date().toISOString(),
     }
   }
@@ -352,7 +361,13 @@ export class PostgresDataSource implements MetaDataSource {
     const target = await this.resolveArchetypeRow(formatId, String(q.slug))
     if (!target) return { total: 0, entries: [] }
     return mapEntryListRows(
-      await ARCHETYPE_ENTRIES_SQL(formatId, q.start, q.end, target.id)
+      await ARCHETYPE_ENTRIES_SQL(
+        formatId,
+        q.start,
+        q.end,
+        q.platform,
+        target.id
+      )
     )
   }
 
@@ -450,14 +465,14 @@ export class PostgresDataSource implements MetaDataSource {
   async getTournaments(q: MetaQuery): Promise<TournamentDTO[]> {
     const formatId = await this.formatFilterId(String(q.format))
     if (formatId === undefined) return []
-    const rows = await TOURNAMENTS_SQL(formatId, q.start, q.end)
+    const rows = await TOURNAMENTS_SQL(formatId, q.start, q.end, q.platform)
     return rows.map(tournamentDto)
   }
 
   async getSources(q: MetaQuery): Promise<SourceDTO[]> {
     const formatId = await this.formatFilterId(String(q.format))
     if (formatId === undefined) return []
-    const rows = await SOURCES_SQL(formatId, q.start, q.end)
+    const rows = await SOURCES_SQL(formatId, q.start, q.end, q.platform)
     return rows.map(r => ({
       source: r.source as SourceDTO['source'],
       tournaments: r.tournaments,
@@ -537,7 +552,7 @@ export class PostgresDataSource implements MetaDataSource {
   }
 
   private async kpis(formatId: string, q: MetaQuery): Promise<WindowKpisDTO> {
-    const rows = await loadKpi(formatId, q.start, q.end)
+    const rows = await loadKpi(formatId, q.start, q.end, q.platform)
     return {
       tournaments: rows[0]?.tournaments ?? 0,
       entries: rows[0]?.entries ?? 0,
@@ -552,7 +567,7 @@ export class PostgresDataSource implements MetaDataSource {
   ): Promise<WindowData> {
     const [kpi, playerRows, meta] = await Promise.all([
       this.kpis(formatId, q),
-      loadPlayerRecords(formatId, q.start, q.end),
+      loadPlayerRecords(formatId, q.start, q.end, q.platform),
       this.archetypeMeta(formatId),
     ])
     const playersByArch = groupBy(playerRows, r => r.archetype_id)
@@ -572,7 +587,7 @@ export class PostgresDataSource implements MetaDataSource {
     formatId: string,
     q: MetaQuery
   ): Promise<MatchupRow[]> {
-    return loadMatchups(formatId, q.start, q.end)
+    return loadMatchups(formatId, q.start, q.end, q.platform)
   }
 
   private async cardAdoption(
@@ -581,9 +596,23 @@ export class PostgresDataSource implements MetaDataSource {
     archetypeId: string
   ): Promise<{ main: CardAdoptionDTO[]; side: CardAdoptionDTO[] }> {
     const [mainRows, sideRows, deckCount] = await Promise.all([
-      CARD_ADOPTION_SQL(formatId, q.start, q.end, archetypeId, 'MAIN'),
-      CARD_ADOPTION_SQL(formatId, q.start, q.end, archetypeId, 'SIDE'),
-      DECK_COUNT_SQL(formatId, q.start, q.end, archetypeId),
+      CARD_ADOPTION_SQL(
+        formatId,
+        q.start,
+        q.end,
+        q.platform,
+        archetypeId,
+        'MAIN'
+      ),
+      CARD_ADOPTION_SQL(
+        formatId,
+        q.start,
+        q.end,
+        q.platform,
+        archetypeId,
+        'SIDE'
+      ),
+      DECK_COUNT_SQL(formatId, q.start, q.end, q.platform, archetypeId),
     ])
     const total = deckCount[0]?.decks ?? 0
     return {
@@ -597,7 +626,13 @@ export class PostgresDataSource implements MetaDataSource {
     q: MetaQuery,
     archetypeId: string
   ): Promise<TrendPointDTO[]> {
-    const rows = await TREND_SQL(formatId, q.start, q.end, archetypeId)
+    const rows = await TREND_SQL(
+      formatId,
+      q.start,
+      q.end,
+      q.platform,
+      archetypeId
+    )
     return rows.map(r => {
       const games = r.wins + r.losses + r.draws
       return {

@@ -9,6 +9,9 @@ export type IsoDate = string & { readonly __brand: 'IsoDate' } // 'YYYY-MM-DD'
 // `?sort=tier` URLs fall back to the default in parseSort.)
 export type MetaSort = 'presence' | 'wrlo'
 
+/** Where the events were played: Magic Online, tabletop, or both. */
+export type Platform = 'all' | 'online' | 'paper'
+
 // ---- The lens: single source of truth, parsed from searchParams ----
 export type MetaQuery = {
   format: FormatSlug
@@ -19,6 +22,7 @@ export type MetaQuery = {
   includeArchetypes: ArchetypeSlug[] // forced-in small archetypes
   hideBuckets: boolean // drop unknown/conflict
   weight: 'match' | 'entry' // presence weighting
+  platform: Platform // event filter by source (see @/datasource/platform)
 }
 
 export type FormatDTO = {
@@ -72,6 +76,17 @@ export type MetaReportDTO = {
   kpis: WindowKpisDTO
   rows: ArchetypeRowDTO[] // sorted by MetaQuery.sort
   other: { share: number; matches: number } | null // collapsed tail
+  /** The honest-buckets strip's figures, computed over the FULL intrinsic
+   *  field — never topN-capped — so sub-floor archetypes ranked past the topN
+   *  are still counted and the bucket shares denominate against the whole
+   *  window. */
+  floor: {
+    /** Non-bucket archetypes under the match floor that no `add=` rescued. */
+    belowFloorCount: number
+    /** Window share of the Unknown/Conflict buckets; null when absent. */
+    unknownShare: number | null
+    conflictShare: number | null
+  }
   generatedAt: string
 }
 
@@ -279,9 +294,11 @@ export interface MetaDataSource {
   listFormats(): Promise<FormatDTO[]>
   /** The most-recent window (by end date) that actually has data, or null.
    *  Lets the default landing fall back to the latest populated window instead
-   *  of blanking once the live-clock month has no seeded/ingested window. */
+   *  of blanking once the live-clock month has no seeded/ingested window.
+   *  `platform` restricts "has data" to that platform's events. */
   getLatestWindow(
-    format: FormatSlug
+    format: FormatSlug,
+    platform?: Platform
   ): Promise<{ start: IsoDate; end: IsoDate } | null>
   getMetaReport(q: MetaQuery): Promise<MetaReportDTO>
   getArchetypeDetail(

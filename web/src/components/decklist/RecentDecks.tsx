@@ -9,7 +9,7 @@ import {
 import { cn } from '@/lib/utils'
 
 import { DeckLink } from './DeckNav'
-import { shortDate } from './DecklistView'
+import { shortDate } from '@/lib/dates'
 
 // ---------------------------------------------------------------------------
 // RecentDecks — the archetype's recent-decks column (R9/R12). Rows are
@@ -22,13 +22,13 @@ import { shortDate } from './DecklistView'
 // ---------------------------------------------------------------------------
 
 const FEATURED_TAG = (
-  <span className="inline-block shrink-0 border border-gold-soft px-1.5 py-px text-[10px] font-bold tracking-[0.08em] text-gold">
+  <span className="inline-block shrink-0 border border-gold-soft px-1.5 py-px text-[11px] font-bold tracking-[0.08em] text-gold">
     Featured
   </span>
 )
 
 const NO_LIST_TAG = (
-  <span className="inline-block shrink-0 border border-line px-1.5 py-px text-[10px] font-bold tracking-[0.08em] text-ink-3">
+  <span className="inline-block shrink-0 border border-line px-1.5 py-px text-[11px] font-bold tracking-[0.08em] text-ink-3">
     no list published
   </span>
 )
@@ -60,7 +60,9 @@ export function RecentDecks({
     <div
       className={cn('border border-line bg-surface shadow-ledger', className)}
     >
-      <p className="eyebrow border-b border-line px-4 py-3">Recent decks</p>
+      {/* A real h2: the per-event h3s below sit under it, so the outline runs
+          h1 (archetype) → h2 → h3 with no skipped level. */}
+      <h2 className="eyebrow border-b border-line px-4 py-3">Recent decks</h2>
       {groups.length === 0 ? (
         <p className="px-4 py-6 text-[13px] text-ink-3">
           No decks recorded for this window.

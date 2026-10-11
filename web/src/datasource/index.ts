@@ -20,6 +20,7 @@ import type {
   TournamentDetailDTO,
   TournamentDTO,
   TrendPointDTO,
+  Platform,
 } from '@/datasource/types'
 import { FixtureDataSource } from '@/datasource/fixtures'
 import { PostgresDataSource } from '@/datasource/postgres'
@@ -130,8 +131,11 @@ function withCache(inner: MetaDataSource): MetaDataSource {
     ),
 
     getLatestWindow: unstable_cache(
-      (format: FormatSlug): Promise<{ start: IsoDate; end: IsoDate } | null> =>
-        inner.getLatestWindow(format),
+      (
+        format: FormatSlug,
+        platform: Platform = 'all'
+      ): Promise<{ start: IsoDate; end: IsoDate } | null> =>
+        inner.getLatestWindow(format, platform),
       ['getLatestWindow'],
       { revalidate: HOUR, tags: ['meta-report'] }
     ),

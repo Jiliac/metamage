@@ -5,6 +5,7 @@ import type {
   ArchetypeDetailDTO,
   ArchetypeRowDTO,
   CardAdoptionDTO,
+  MetaChangeDTO,
   MetaQuery,
 } from '@/datasource/types'
 import type { DeckSelection } from '@/lib/deck-selection'
@@ -17,6 +18,10 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { LedgerRow, LEDGER_DL_CLASS } from '@/components/LedgerRow'
+import { LowSampleNotice } from '@/components/LowSampleNotice'
+import { WIDE_CI } from '@/lib/stats'
+import { int, pct1 } from '@/lib/format'
 import { ManaPips } from '@/components/ManaPips'
 import {
   DeckDim,
@@ -50,8 +55,6 @@ export function readTab(sp: SearchParams): TabKey {
     : 'decklists'
 }
 
-const pct1 = (x: number) => `${(x * 100).toFixed(1)}%`
-
 function tierLabel(tier: number | null): string | null {
   // Display bands 1-based (best = T1) to match the spike + MTG convention; the
   // stored band stays 0-based for the tier math (§9, no "T0").
@@ -63,23 +66,26 @@ type Selection = Extract<DeckSelection, { kind: 'ok' }>
 // ---- Header ----
 
 export function ArchetypeHeader({
-  format,
+  fmtName,
+  window,
   name,
   color,
   summary,
 }: {
-  format: string
+  fmtName: string
+  /** The lens window as the eyebrow prints it (`windowLabel`). */
+  window: string
   name: string
   color: string | null
   /** Null in the deck-only view (no window data for the archetype). */
   summary: ArchetypeRowDTO | null
 }) {
   const tier = summary ? tierLabel(summary.tier) : null
+  const thin = summary !== null && summary.wrHi - summary.wrLo >= WIDE_CI
   return (
-    <header className="mt-6">
+    <header className="mt-10">
       <p className="eyebrow mb-1.5">
-        Archetype · {format[0]?.toUpperCase()}
-        {format.slice(1)}
+        {fmtName} · {window}
       </p>
       <div className="flex flex-wrap items-center gap-3">
         <ManaPips colors={color} size={17} />
@@ -87,18 +93,44 @@ export function ArchetypeHeader({
           {name}
         </h1>
         {tier && (
-          <span className="inline-block border border-gold-soft px-2 py-0.5 text-[10.5px] font-bold tracking-[0.08em] text-gold">
+          <span
+            className="inline-block border border-gold-soft px-2 py-0.5 text-[11px] font-bold tracking-[0.08em] text-gold"
+            title="Tier band from the win rate's lower bound"
+          >
             {tier}
           </span>
         )}
       </div>
       {summary ? (
-        <p className="mt-2 text-[13.5px] text-ink-2">
-          <span className="data text-ink">{pct1(summary.wr)}</span> win rate ·{' '}
-          <span className="data">{`${summary.wins}-${summary.losses}-${summary.draws}`}</span>{' '}
-          · <span className="data">{summary.matches}</span> matches ·{' '}
-          <span className="data">{pct1(summary.share)}</span> of the meta
-        </p>
+        <>
+          {/* The headline ledger (§9): win rate with its interval, share with
+              its rank, and the record, each a labelled row. */}
+          <dl className={LEDGER_DL_CLASS}>
+            <LedgerRow label="Win rate">
+              <b className="num text-ink">{pct1(summary.wr)}</b> · 95% CI{' '}
+              <span className="num">
+                {(summary.wrLo * 100).toFixed(1)}–{pct1(summary.wrHi)}
+              </span>{' '}
+              · <span className="num">{int(summary.matches)}</span> matches
+            </LedgerRow>
+            <LedgerRow label="Share">
+              <b className="num text-ink">{pct1(summary.share)}</b> of all
+              matches · rank{' '}
+              <span className="num">#{summary.presenceRank}</span> ·{' '}
+              <span className="num">{int(summary.decks)}</span> deck entries
+            </LedgerRow>
+            <LedgerRow label="Record">
+              <span className="num text-ink">
+                {summary.wins}–{summary.losses}
+                {summary.draws > 0 ? `–${summary.draws}` : ''}
+              </span>{' '}
+              · <span className="num">{int(summary.players)}</span> players
+            </LedgerRow>
+          </dl>
+          {thin && (
+            <LowSampleNotice matches={summary.matches} className="mt-3" />
+          )}
+        </>
       ) : (
         <p className="mt-2 text-[13.5px] text-ink-2">
           No matches in the current window.
@@ -110,54 +142,101 @@ export function ArchetypeHeader({
 
 // ---- Tabs ----
 
+const TAB_LABELS: Record<TabKey, string> = {
+  decklists: 'Decklists',
+  matchups: 'Matchups',
+  trends: 'Trends',
+  performance: 'Performance',
+}
+
+/** The eyebrow → H2 → one-line description every tab panel opens with (§9
+ *  Titled Section Rule: density is permitted, untitled density is not). */
+function TabHeading({
+  eyebrow,
+  title,
+  children,
+}: {
+  eyebrow: string
+  title: string
+  children: ReactNode
+}) {
+  return (
+    <div className="mb-4">
+      <p className="eyebrow mb-1.5">{eyebrow}</p>
+      <h2 className="font-display text-[23px] font-bold">{title}</h2>
+      <p className="mt-0.5 max-w-[64ch] text-[13.5px] text-ink-2">{children}</p>
+    </div>
+  )
+}
+
 export function ArchetypeTabs({
   tab,
   tabHref,
   detail,
+  changes,
+  fmtName,
   decklists,
 }: {
   tab: TabKey
   tabHref: (t: TabKey) => string
   detail: ArchetypeDetailDTO
+  /** The format's bans and set releases, drawn on the trend chart. */
+  changes: MetaChangeDTO[]
+  fmtName: string
   decklists: ReactNode
 }) {
+  const name = detail.archetype.name
   // Order by match volume — the user asked for "matchups sorted by number of
   // matches"; wr falls back as the tiebreak for equal-volume pairs.
   const nonMirror = detail.matchups
     .filter(m => !m.isMirror)
     .sort((a, b) => b.games - a.games || b.wr - a.wr)
+  const weeks = detail.trends.length
   return (
     <Tabs defaultValue={tab} className="mt-8">
-      <TabsList>
+      <TabsList aria-label={`${name} views`}>
         {TABS.map(t => (
           // asChild → the trigger IS the link, so switching tabs rewrites the
           // URL (?tab) and the RSC re-renders with the new active panel (§2).
-          <TabsTrigger key={t} value={t} asChild className="capitalize">
-            <Link href={tabHref(t)}>{t}</Link>
+          <TabsTrigger key={t} value={t} asChild>
+            <Link href={tabHref(t)}>{TAB_LABELS[t]}</Link>
           </TabsTrigger>
         ))}
       </TabsList>
 
       {/* DECKLISTS — featured deck (2/3) + recent-decks column (1/3, R16) */}
-      <TabsContent value="decklists" className="mt-4">
+      <TabsContent value="decklists" className="mt-6">
         {decklists}
       </TabsContent>
 
       {/* MATCHUPS — this row vs all (shared MatchupList, games-ordered) */}
-      <TabsContent value="matchups" className="mt-4">
+      <TabsContent value="matchups" className="mt-6">
+        <TabHeading eyebrow="Matchups" title={`${name} against the field`}>
+          Win rate against each opponent in the window, most-played pairings
+          first. The 95% interval sits under each figure; a dash means fewer
+          than five matches.
+        </TabHeading>
         <MatchupList cells={nonMirror} />
       </TabsContent>
 
       {/* TRENDS */}
-      <TabsContent value="trends" className="mt-4">
-        <div className="border border-line bg-surface p-4 shadow-ledger">
-          <TrendChart trends={detail.trends} />
-        </div>
+      <TabsContent value="trends" className="mt-6">
+        <TabHeading eyebrow="Trends" title="Presence and win rate by week">
+          Weekly share of {fmtName} matches and win rate over the window
+          {weeks > 0 ? ` (${weeks} week${weeks === 1 ? '' : 's'})` : ''}. A gap
+          in the win-rate line is a week with no games.
+        </TabHeading>
+        <TrendChart trends={detail.trends} changes={changes} />
       </TabsContent>
 
       {/* PERFORMANCE */}
-      <TabsContent value="performance" className="mt-4">
-        <div className="border border-line bg-surface p-4 shadow-ledger">
+      <TabsContent value="performance" className="mt-6">
+        <TabHeading eyebrow="Performance" title="Win rate with its interval">
+          The point is the win rate; the bar is the 95% confidence interval,
+          clustered by player. Colour marks the side of 50% the interval
+          supports.
+        </TabHeading>
+        <div className="border border-line bg-surface px-4 py-3 shadow-ledger">
           <WrCiChart rows={[detail.summary]} />
         </div>
       </TabsContent>
@@ -223,8 +302,10 @@ export function DecklistsTab({
         {/* Recent decks. On mobile they collapse into the "Other decks"
             control above the deck (R16); keyed on the shown deck id so a pick
             closes it (R17). On desktop the list shows directly. */}
+        {/* On desktop the column pins and scrolls inside itself, so a
+            50-row page never leaves the deck beside an empty gutter. */}
         {recentPage.visible.length > 0 ? (
-          <aside className="order-1 min-w-0 md:order-2">
+          <aside className="order-1 min-w-0 md:sticky md:top-6 md:order-2 md:max-h-[calc(100vh-3rem)] md:self-start md:overflow-y-auto">
             <OtherDecksControl
               key={deck?.entry.id ?? 'featured'}
               count={recentPage.shown}
@@ -265,16 +346,18 @@ export function DecklistsTab({
             )}
           </DeckDim>
         </div>
-
-        {detail && (
-          <CardBreakdown main={detail.mainCards} side={detail.sideCards} />
-        )}
       </div>
 
       {/* One provenance footnote per tab, only when an MTGO event is on
           screen: MTGO records are partial (matches vs unpublished decks are
           not stored). */}
       {footnote && <p className="mt-2 text-[12px] text-ink-3">{footnote}</p>}
+
+      {/* Outside the deck grid on purpose: the sticky recent-decks column is
+          bounded by its grid, so a breakdown inside it got painted over. */}
+      {detail && (
+        <CardBreakdown main={detail.mainCards} side={detail.sideCards} />
+      )}
     </DeckNavProvider>
   )
 }
@@ -305,7 +388,7 @@ function DeckNotes({ selection }: { selection: Selection }) {
 }
 
 /** Card breakdown — the aggregate tables, collapsed by default and full
- *  width below (R13/R16). */
+ *  width below the deck grid (R13/R16). */
 function CardBreakdown({
   main,
   side,
@@ -314,7 +397,7 @@ function CardBreakdown({
   side: CardAdoptionDTO[]
 }) {
   return (
-    <Collapsible defaultOpen={false} className="order-3 min-w-0 md:col-span-3">
+    <Collapsible defaultOpen={false} className="mt-6 min-w-0">
       <CollapsibleTrigger asChild>
         <button
           type="button"

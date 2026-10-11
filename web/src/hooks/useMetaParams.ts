@@ -13,8 +13,11 @@ import type {
 import {
   asFormatSlug,
   buildHref,
+  parseDeckId,
+  parseDecksPage,
   parseMatrixTopN,
   parseMetaQuery,
+  parsePage,
   parseRow,
   parseSort,
 } from '@/lib/params'
@@ -31,6 +34,8 @@ import { capture } from '@/lib/analytics'
 // `/changes`, …) is preserved across param changes so a knob edit never bounces
 // the user off their current view. `sort` (?sort) and `matrixTopN` (?n) live
 // outside the `MetaQuery` object but are round-tripped so they survive too.
+// Route extras owned by specific surfaces (?page standings, ?tab/?deck/?decks
+// archetype) are round-tripped the same way, so a knob edit never drops them.
 //
 // NOTE: this reads `useSearchParams`, which opts a route into client rendering
 // unless the consumer is wrapped in <Suspense>. WP5/WP7 own that boundary at the
@@ -51,6 +56,7 @@ export type MetaParamsPatch = Partial<
     | 'includeArchetypes'
     | 'hideBuckets'
     | 'weight'
+    | 'platform'
   >
 > & {
   format?: FormatSlug | string
@@ -114,6 +120,15 @@ export function useMetaParams(
       const curSort = parseSort(searchParams)
       const curMatrixTopN = parseMatrixTopN(searchParams)
       const curRow = parseRow(searchParams, order)
+      // Route extras round-tripped so a lens change never drops them. Absent
+      // params parse to their default and `buildHref` omits defaults, so this
+      // is a no-op on routes that don't carry them. `tab` rides verbatim: the
+      // archetype page validates it (readTab) and unknown values fall back to
+      // the default tab, so re-emitting what came in never changes a render.
+      const curPage = parsePage(searchParams)
+      const curTab = searchParams.get('tab') ?? undefined
+      const curDeck = parseDeckId(searchParams.get('deck') ?? undefined)
+      const curDecks = parseDecksPage(searchParams)
 
       const nextFormat = patch.format ?? format
       const nextQuery: MetaQuery = {
@@ -125,6 +140,7 @@ export function useMetaParams(
         includeArchetypes: patch.includeArchetypes ?? current.includeArchetypes,
         hideBuckets: patch.hideBuckets ?? current.hideBuckets,
         weight: patch.weight ?? current.weight,
+        platform: patch.platform ?? current.platform,
       }
 
       const href = buildHref(nextFormat, nextQuery, {
@@ -133,6 +149,10 @@ export function useMetaParams(
         matrixTopN: patch.matrixTopN ?? curMatrixTopN,
         row: patch.row ?? curRow,
         matrixOrder: order,
+        page: curPage,
+        tab: curTab,
+        deck: curDeck,
+        decks: curDecks,
       })
 
       // Same-path patches hold the scroll position so a knob/selector change

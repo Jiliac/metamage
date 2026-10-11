@@ -7,6 +7,7 @@ import type {
   MatrixOrderEntryDTO,
   MetaQuery,
   MetaSort,
+  Platform,
 } from '@/datasource/types'
 import { MAX_DECKS_PAGE } from '@/lib/decks'
 
@@ -30,6 +31,7 @@ export const DEFAULTS = {
   weight: 'match',
   hideBuckets: true, // ?buckets=hide
   sort: 'presence',
+  platform: 'all', // ?platform
 } as const satisfies {
   topN: number
   matrixTopN: number
@@ -37,6 +39,7 @@ export const DEFAULTS = {
   weight: MetaQuery['weight']
   hideBuckets: boolean
   sort: MetaSort
+  platform: Platform
 }
 
 const CLAMP = {
@@ -51,6 +54,9 @@ const weightSchema = z.enum(['match', 'entry']).catch(DEFAULTS.weight)
 const bucketsSchema = z.enum(['hide', 'show']).catch('hide')
 // Legacy `?sort=tier` (tier column removed) falls through `.catch` → default.
 const sortSchema = z.enum(['presence', 'wrlo']).catch(DEFAULTS.sort)
+const platformSchema = z
+  .enum(['all', 'online', 'paper'])
+  .catch(DEFAULTS.platform)
 
 // ---------------------------------------------------------------------------
 // searchParams reader — accepts either a URLSearchParams (client) or the plain
@@ -272,6 +278,9 @@ export function parseMetaQuery(
     hideBuckets:
       bucketsSchema.parse(readParam(sp, 'buckets') ?? 'hide') !== 'show',
     weight: weightSchema.parse(readParam(sp, 'weight') ?? DEFAULTS.weight),
+    platform: platformSchema.parse(
+      readParam(sp, 'platform') ?? DEFAULTS.platform
+    ),
   }
 }
 
@@ -338,6 +347,15 @@ export function parseDecksPage(sp: SearchParamsInput): number {
   return intField(readParam(sp, 'decks'), 1, 1, MAX_DECKS_PAGE)
 }
 
+/**
+ * `?page=<n>`: a 1-based page of a long server-rendered list (the event
+ * standings). 0, negative, junk and blank clamp to 1; the list's own slicer
+ * clamps anything past its last page, so no upper bound is needed here.
+ */
+export function parsePage(sp: SearchParamsInput): number {
+  return intField(readParam(sp, 'page'), 1, 1, 100_000)
+}
+
 export type BuildHrefOpts = {
   /** Appended after `/meta/{format}`, e.g. `/matrix` or `/archetype/{slug}`. */
   path?: string
@@ -360,6 +378,9 @@ export type BuildHrefOpts = {
   /** Recent-decks page (`?decks`, KTD8). 1 is the default → omitted;
    *  the parsed value is clamped by `parseDecksPage`. */
   decks?: number
+  /** Page of a long list (`?page`, the event standings). 1 is the default →
+   *  omitted; larger pages serialize verbatim and `parsePage` reads them. */
+  page?: number
   /** Injected clock so the window-omission check is testable. */
   now?: Date
 }
@@ -387,6 +408,9 @@ export function buildHref(
     params.set('min', String(query.minMatches))
   }
   if (query.weight !== DEFAULTS.weight) params.set('weight', query.weight)
+  if (query.platform !== DEFAULTS.platform) {
+    params.set('platform', query.platform)
+  }
   if (query.hideBuckets !== DEFAULTS.hideBuckets) {
     params.set('buckets', query.hideBuckets ? 'hide' : 'show')
   }
@@ -413,6 +437,11 @@ export function buildHref(
   // clean (KTD8). Larger pages serialize verbatim.
   if (opts.decks !== undefined && opts.decks > 1) {
     params.set('decks', String(opts.decks))
+  }
+  // `?page` rides last: the standings page is the most local piece of state
+  // and every other param keeps its place when it changes.
+  if (opts.page !== undefined && opts.page > 1) {
+    params.set('page', String(opts.page))
   }
 
   const qs = params.toString()

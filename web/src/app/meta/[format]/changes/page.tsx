@@ -98,10 +98,10 @@ export default async function ChangesPage({
       </Suspense>
 
       <section className="mt-10">
-        <p className="eyebrow mb-1.5">The record</p>
-        <h2 className="font-display text-[clamp(24px,4vw,34px)] font-bold">
+        <p className="eyebrow mb-1.5">Timeline</p>
+        <h1 className="font-display text-[clamp(24px,4vw,34px)] font-bold">
           {fmtName} bans &amp; releases
-        </h2>
+        </h1>
         <p className="mt-0.5 max-w-[65ch] text-[13.5px] text-ink-2">
           Every ban and set release that moved the format. These mark the
           boundaries between metagames — read any window against the change that
@@ -139,18 +139,18 @@ function TimelineEntry({ change }: { change: MetaChangeDTO }) {
     <li className="relative py-4 pl-6">
       <span
         className="absolute top-[22px] -left-[5px] h-2.5 w-2.5 rounded-full"
-        style={{ background: isBan ? 'var(--bad)' : 'var(--gold)' }}
+        style={{ background: isBan ? 'var(--ink)' : 'var(--gold)' }}
         aria-hidden
       />
       <div className="flex flex-wrap items-baseline gap-3">
-        <time className="data text-[12.5px] text-ink-3">
+        <time dateTime={change.date} className="data text-[12.5px] text-ink-3">
           {longDate(change.date)}
         </time>
         <span
-          className="inline-block border px-2 py-0.5 text-[10px] font-bold tracking-[0.08em] uppercase"
+          className="inline-block border px-2 py-0.5 text-[11px] font-bold tracking-[0.08em] uppercase"
           style={{
-            borderColor: isBan ? 'var(--bad)' : 'var(--gold-soft)',
-            color: isBan ? 'var(--bad)' : 'var(--gold)',
+            borderColor: isBan ? 'var(--ink)' : 'var(--gold-soft)',
+            color: isBan ? 'var(--ink)' : 'var(--gold)',
           }}
         >
           {isBan ? 'Ban' : 'Set release'}

@@ -146,6 +146,13 @@ export function winrateCi(clusters: WLD[], z: number = 1.96): CiResult {
   return { ...binomialCi(successes, games, z), method: 'binomial' }
 }
 
+// ---- The thin-window threshold ---------------------------------------------
+
+/** A 95% interval ten points wide or more (±5) is the honest signal of a thin
+ *  window: hedge the headline rather than hide it. Shared by the overview
+ *  landing and the archetype header so both hedge on the same floor. */
+export const WIDE_CI = 0.1
+
 // ---- Tier bands ------------------------------------------------------------
 
 /**

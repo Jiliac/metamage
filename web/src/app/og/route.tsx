@@ -3,6 +3,7 @@ import { getDataSource } from '@/datasource'
 import { DEFAULT_FORMAT } from '@/datasource/format-order'
 import type { ArchetypeRowDTO, FormatDTO } from '@/datasource/types'
 import { asArchetypeSlug, parseMatrixTopN, parseMetaQuery } from '@/lib/params'
+import { shortDate } from '@/lib/dates'
 import { toManaColors, type ManaColor } from '@/components/ManaPips'
 
 // ---------------------------------------------------------------------------
@@ -66,22 +67,8 @@ const WUBRG =
 const SERIF = 'Georgia, "Times New Roman", ui-serif, serif'
 const MONO = 'ui-monospace, "SF Mono", Menlo, monospace'
 
-const MONTHS = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-] // prettier-ignore
-
 const fmtInt = (n: number): string => n.toLocaleString('en-US')
 const fmtPct = (x: number, d = 1): string => `${(x * 100).toFixed(d)}%`
-
-function dayLabel(iso: string): string {
-  const [, m, d] = iso.split('-').map(Number)
-  return `${MONTHS[(m ?? 1) - 1]} ${d}`
-}
-
-function windowLabel(start: string, end: string): string {
-  return `${dayLabel(start)} – ${dayLabel(end)}, ${end.slice(0, 4)}`
-}
 
 function wrColor(wr: number): string {
   if (wr > 0.5) return C.good
@@ -443,7 +430,9 @@ export async function GET(req: Request): Promise<ImageResponse> {
     }
 
     const report = await ds.getMetaReport(q)
-    const windowText = windowLabel(report.window.start, report.window.end)
+    const windowText = `${shortDate(report.window.start)} – ${shortDate(
+      report.window.end
+    )}, ${report.window.end.slice(0, 4)}`
     const kpiTiles: Tile[] = [
       { v: fmtInt(report.kpis.tournaments), l: 'Tournaments' },
       { v: fmtInt(report.kpis.entries), l: 'Decks' },

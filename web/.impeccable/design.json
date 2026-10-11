@@ -1,0 +1,902 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-11T10:49:30.143Z",
+  "title": "Design System: MetaMage",
+  "extensions": {
+    "colorMeta": {
+      "parchment": {
+        "role": "neutral",
+        "displayName": "Parchment",
+        "theme": "light",
+        "cssVariable": "--bg",
+        "canonical": "oklch(94.1% 0.021 88.7)",
+        "tonalRamp": [
+          "oklch(15% 0.021 88.7)",
+          "oklch(26% 0.021 88.7)",
+          "oklch(38% 0.021 88.7)",
+          "oklch(50% 0.021 88.7)",
+          "oklch(62% 0.021 88.7)",
+          "oklch(74% 0.021 88.7)",
+          "oklch(85% 0.021 88.7)",
+          "oklch(95% 0.021 88.7)"
+        ]
+      },
+      "vellum-surface-light": {
+        "role": "neutral",
+        "displayName": "Vellum Surface",
+        "theme": "light",
+        "cssVariable": "--surface",
+        "canonical": "oklch(97% 0.016 91.6)",
+        "tonalRamp": [
+          "oklch(15% 0.016 91.6)",
+          "oklch(26% 0.016 91.6)",
+          "oklch(38% 0.016 91.6)",
+          "oklch(50% 0.016 91.6)",
+          "oklch(62% 0.016 91.6)",
+          "oklch(74% 0.016 91.6)",
+          "oklch(85% 0.016 91.6)",
+          "oklch(95% 0.016 91.6)"
+        ]
+      },
+      "parchment-raised-light": {
+        "role": "neutral",
+        "displayName": "Parchment Raised",
+        "theme": "light",
+        "cssVariable": "--raised",
+        "canonical": "oklch(92.2% 0.029 91.7)",
+        "tonalRamp": [
+          "oklch(15% 0.029 91.7)",
+          "oklch(26% 0.029 91.7)",
+          "oklch(38% 0.029 91.7)",
+          "oklch(50% 0.029 91.7)",
+          "oklch(62% 0.029 91.7)",
+          "oklch(74% 0.029 91.7)",
+          "oklch(85% 0.029 91.7)",
+          "oklch(95% 0.029 91.7)"
+        ]
+      },
+      "hairline-light": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "theme": "light",
+        "cssVariable": "--line",
+        "canonical": "oklch(86.5% 0.037 89.5)",
+        "tonalRamp": [
+          "oklch(15% 0.037 89.5)",
+          "oklch(26% 0.037 89.5)",
+          "oklch(38% 0.037 89.5)",
+          "oklch(50% 0.037 89.5)",
+          "oklch(62% 0.037 89.5)",
+          "oklch(74% 0.037 89.5)",
+          "oklch(85% 0.037 89.5)",
+          "oklch(95% 0.037 89.5)"
+        ]
+      },
+      "hairline-strong-light": {
+        "role": "neutral",
+        "displayName": "Hairline Strong",
+        "theme": "light",
+        "cssVariable": "--line-strong",
+        "canonical": "oklch(78.4% 0.053 91.4)",
+        "tonalRamp": [
+          "oklch(15% 0.053 91.4)",
+          "oklch(26% 0.053 91.4)",
+          "oklch(38% 0.053 91.4)",
+          "oklch(50% 0.053 91.4)",
+          "oklch(62% 0.053 91.4)",
+          "oklch(74% 0.053 91.4)",
+          "oklch(85% 0.053 91.4)",
+          "oklch(95% 0.053 91.4)"
+        ]
+      },
+      "ledger-ink-light": {
+        "role": "neutral",
+        "displayName": "Ledger Ink",
+        "theme": "light",
+        "cssVariable": "--ink",
+        "canonical": "oklch(26.2% 0.022 88)",
+        "tonalRamp": [
+          "oklch(15% 0.022 88)",
+          "oklch(26% 0.022 88)",
+          "oklch(38% 0.022 88)",
+          "oklch(50% 0.022 88)",
+          "oklch(62% 0.022 88)",
+          "oklch(74% 0.022 88)",
+          "oklch(85% 0.022 88)",
+          "oklch(95% 0.022 88)"
+        ]
+      },
+      "ledger-ink-2-light": {
+        "role": "neutral",
+        "displayName": "Ledger Ink 2",
+        "theme": "light",
+        "cssVariable": "--ink-2",
+        "canonical": "oklch(45.8% 0.035 90.4)",
+        "tonalRamp": [
+          "oklch(15% 0.035 90.4)",
+          "oklch(26% 0.035 90.4)",
+          "oklch(38% 0.035 90.4)",
+          "oklch(50% 0.035 90.4)",
+          "oklch(62% 0.035 90.4)",
+          "oklch(74% 0.035 90.4)",
+          "oklch(85% 0.035 90.4)",
+          "oklch(95% 0.035 90.4)"
+        ]
+      },
+      "ledger-ink-3-light": {
+        "role": "neutral",
+        "displayName": "Ledger Ink 3",
+        "theme": "light",
+        "cssVariable": "--ink-3",
+        "canonical": "oklch(49.1% 0.042 90.1)",
+        "tonalRamp": [
+          "oklch(15% 0.042 90.1)",
+          "oklch(26% 0.042 90.1)",
+          "oklch(38% 0.042 90.1)",
+          "oklch(50% 0.042 90.1)",
+          "oklch(62% 0.042 90.1)",
+          "oklch(74% 0.042 90.1)",
+          "oklch(85% 0.042 90.1)",
+          "oklch(95% 0.042 90.1)"
+        ]
+      },
+      "bronze-gold-light": {
+        "role": "primary",
+        "displayName": "Bronze Gold",
+        "theme": "light",
+        "cssVariable": "--gold",
+        "canonical": "oklch(49.8% 0.089 84.8)",
+        "tonalRamp": [
+          "oklch(15% 0.089 84.8)",
+          "oklch(26% 0.089 84.8)",
+          "oklch(38% 0.089 84.8)",
+          "oklch(50% 0.089 84.8)",
+          "oklch(62% 0.089 84.8)",
+          "oklch(74% 0.089 84.8)",
+          "oklch(85% 0.089 84.8)",
+          "oklch(95% 0.089 84.8)"
+        ]
+      },
+      "bronze-gold-soft-light": {
+        "role": "primary",
+        "displayName": "Bronze Gold Soft",
+        "theme": "light",
+        "cssVariable": "--gold-soft",
+        "canonical": "oklch(67.6% 0.096 84.1)",
+        "tonalRamp": [
+          "oklch(15% 0.096 84.1)",
+          "oklch(26% 0.096 84.1)",
+          "oklch(38% 0.096 84.1)",
+          "oklch(50% 0.096 84.1)",
+          "oklch(62% 0.096 84.1)",
+          "oklch(74% 0.096 84.1)",
+          "oklch(85% 0.096 84.1)",
+          "oklch(95% 0.096 84.1)"
+        ]
+      },
+      "gold-wash-light": {
+        "role": "primary",
+        "displayName": "Gold Wash",
+        "theme": "light",
+        "cssVariable": "--gold-wash",
+        "canonical": "rgba(122, 94, 28, 0.1)",
+        "tonalRamp": [
+          "oklch(15% 0.098 85.2)",
+          "oklch(26% 0.098 85.2)",
+          "oklch(38% 0.098 85.2)",
+          "oklch(50% 0.098 85.2)",
+          "oklch(62% 0.098 85.2)",
+          "oklch(74% 0.098 85.2)",
+          "oklch(85% 0.098 85.2)",
+          "oklch(95% 0.098 85.2)"
+        ]
+      },
+      "favoured-teal-light": {
+        "role": "secondary",
+        "displayName": "Favoured Teal",
+        "theme": "light",
+        "cssVariable": "--good",
+        "canonical": "oklch(48.5% 0.089 174.9)",
+        "tonalRamp": [
+          "oklch(15% 0.089 174.9)",
+          "oklch(26% 0.089 174.9)",
+          "oklch(38% 0.089 174.9)",
+          "oklch(50% 0.089 174.9)",
+          "oklch(62% 0.089 174.9)",
+          "oklch(74% 0.089 174.9)",
+          "oklch(85% 0.089 174.9)",
+          "oklch(95% 0.089 174.9)"
+        ]
+      },
+      "unfavoured-rose-light": {
+        "role": "secondary",
+        "displayName": "Unfavoured Rose",
+        "theme": "light",
+        "cssVariable": "--bad",
+        "canonical": "oklch(52.7% 0.155 5.5)",
+        "tonalRamp": [
+          "oklch(15% 0.155 5.5)",
+          "oklch(26% 0.155 5.5)",
+          "oklch(38% 0.155 5.5)",
+          "oklch(50% 0.155 5.5)",
+          "oklch(62% 0.155 5.5)",
+          "oklch(74% 0.155 5.5)",
+          "oklch(85% 0.155 5.5)",
+          "oklch(95% 0.155 5.5)"
+        ]
+      },
+      "neutral-mid-light": {
+        "role": "secondary",
+        "displayName": "Neutral Mid",
+        "theme": "light",
+        "cssVariable": "--mid",
+        "canonical": "oklch(61.6% 0.026 93.5)",
+        "tonalRamp": [
+          "oklch(15% 0.026 93.5)",
+          "oklch(26% 0.026 93.5)",
+          "oklch(38% 0.026 93.5)",
+          "oklch(50% 0.026 93.5)",
+          "oklch(62% 0.026 93.5)",
+          "oklch(74% 0.026 93.5)",
+          "oklch(85% 0.026 93.5)",
+          "oklch(95% 0.026 93.5)"
+        ]
+      },
+      "reference-blue-light": {
+        "role": "secondary",
+        "displayName": "Reference Blue",
+        "theme": "light",
+        "cssVariable": "--ref",
+        "canonical": "oklch(66.8% 0.057 254.6)",
+        "tonalRamp": [
+          "oklch(15% 0.057 254.6)",
+          "oklch(26% 0.057 254.6)",
+          "oklch(38% 0.057 254.6)",
+          "oklch(50% 0.057 254.6)",
+          "oklch(62% 0.057 254.6)",
+          "oklch(74% 0.057 254.6)",
+          "oklch(85% 0.057 254.6)",
+          "oklch(95% 0.057 254.6)"
+        ]
+      },
+      "arena-bronze": {
+        "role": "neutral",
+        "displayName": "Arena Bronze",
+        "theme": "dark",
+        "cssVariable": "--bg",
+        "canonical": "oklch(18.8% 0.011 80.5)",
+        "tonalRamp": [
+          "oklch(15% 0.011 80.5)",
+          "oklch(26% 0.011 80.5)",
+          "oklch(38% 0.011 80.5)",
+          "oklch(50% 0.011 80.5)",
+          "oklch(62% 0.011 80.5)",
+          "oklch(74% 0.011 80.5)",
+          "oklch(85% 0.011 80.5)",
+          "oklch(95% 0.011 80.5)"
+        ]
+      },
+      "bronze-surface-dark": {
+        "role": "neutral",
+        "displayName": "Bronze Surface",
+        "theme": "dark",
+        "cssVariable": "--surface",
+        "canonical": "oklch(22% 0.014 81.6)",
+        "tonalRamp": [
+          "oklch(15% 0.014 81.6)",
+          "oklch(26% 0.014 81.6)",
+          "oklch(38% 0.014 81.6)",
+          "oklch(50% 0.014 81.6)",
+          "oklch(62% 0.014 81.6)",
+          "oklch(74% 0.014 81.6)",
+          "oklch(85% 0.014 81.6)",
+          "oklch(95% 0.014 81.6)"
+        ]
+      },
+      "bronze-raised-dark": {
+        "role": "neutral",
+        "displayName": "Bronze Raised",
+        "theme": "dark",
+        "cssVariable": "--raised",
+        "canonical": "oklch(25.5% 0.023 84.3)",
+        "tonalRamp": [
+          "oklch(15% 0.023 84.3)",
+          "oklch(26% 0.023 84.3)",
+          "oklch(38% 0.023 84.3)",
+          "oklch(50% 0.023 84.3)",
+          "oklch(62% 0.023 84.3)",
+          "oklch(74% 0.023 84.3)",
+          "oklch(85% 0.023 84.3)",
+          "oklch(95% 0.023 84.3)"
+        ]
+      },
+      "hairline-dark": {
+        "role": "neutral",
+        "displayName": "Hairline (dark)",
+        "theme": "dark",
+        "cssVariable": "--line",
+        "canonical": "oklch(31.1% 0.031 89.2)",
+        "tonalRamp": [
+          "oklch(15% 0.031 89.2)",
+          "oklch(26% 0.031 89.2)",
+          "oklch(38% 0.031 89.2)",
+          "oklch(50% 0.031 89.2)",
+          "oklch(62% 0.031 89.2)",
+          "oklch(74% 0.031 89.2)",
+          "oklch(85% 0.031 89.2)",
+          "oklch(95% 0.031 89.2)"
+        ]
+      },
+      "hairline-strong-dark": {
+        "role": "neutral",
+        "displayName": "Hairline Strong (dark)",
+        "theme": "dark",
+        "cssVariable": "--line-strong",
+        "canonical": "oklch(38.4% 0.04 85.9)",
+        "tonalRamp": [
+          "oklch(15% 0.04 85.9)",
+          "oklch(26% 0.04 85.9)",
+          "oklch(38% 0.04 85.9)",
+          "oklch(50% 0.04 85.9)",
+          "oklch(62% 0.04 85.9)",
+          "oklch(74% 0.04 85.9)",
+          "oklch(85% 0.04 85.9)",
+          "oklch(95% 0.04 85.9)"
+        ]
+      },
+      "ledger-ink-dark": {
+        "role": "neutral",
+        "displayName": "Ledger Ink (dark)",
+        "theme": "dark",
+        "cssVariable": "--ink",
+        "canonical": "oklch(91.6% 0.029 91.7)",
+        "tonalRamp": [
+          "oklch(15% 0.029 91.7)",
+          "oklch(26% 0.029 91.7)",
+          "oklch(38% 0.029 91.7)",
+          "oklch(50% 0.029 91.7)",
+          "oklch(62% 0.029 91.7)",
+          "oklch(74% 0.029 91.7)",
+          "oklch(85% 0.029 91.7)",
+          "oklch(95% 0.029 91.7)"
+        ]
+      },
+      "ledger-ink-2-dark": {
+        "role": "neutral",
+        "displayName": "Ledger Ink 2 (dark)",
+        "theme": "dark",
+        "cssVariable": "--ink-2",
+        "canonical": "oklch(70.4% 0.038 89.5)",
+        "tonalRamp": [
+          "oklch(15% 0.038 89.5)",
+          "oklch(26% 0.038 89.5)",
+          "oklch(38% 0.038 89.5)",
+          "oklch(50% 0.038 89.5)",
+          "oklch(62% 0.038 89.5)",
+          "oklch(74% 0.038 89.5)",
+          "oklch(85% 0.038 89.5)",
+          "oklch(95% 0.038 89.5)"
+        ]
+      },
+      "ledger-ink-3-dark": {
+        "role": "neutral",
+        "displayName": "Ledger Ink 3 (dark)",
+        "theme": "dark",
+        "cssVariable": "--ink-3",
+        "canonical": "oklch(65.8% 0.037 90.6)",
+        "tonalRamp": [
+          "oklch(15% 0.037 90.6)",
+          "oklch(26% 0.037 90.6)",
+          "oklch(38% 0.037 90.6)",
+          "oklch(50% 0.037 90.6)",
+          "oklch(62% 0.037 90.6)",
+          "oklch(74% 0.037 90.6)",
+          "oklch(85% 0.037 90.6)",
+          "oklch(95% 0.037 90.6)"
+        ]
+      },
+      "bronze-gold-dark": {
+        "role": "primary",
+        "displayName": "Bronze Gold (dark)",
+        "theme": "dark",
+        "cssVariable": "--gold",
+        "canonical": "oklch(74.4% 0.109 87.9)",
+        "tonalRamp": [
+          "oklch(15% 0.109 87.9)",
+          "oklch(26% 0.109 87.9)",
+          "oklch(38% 0.109 87.9)",
+          "oklch(50% 0.109 87.9)",
+          "oklch(62% 0.109 87.9)",
+          "oklch(74% 0.109 87.9)",
+          "oklch(85% 0.109 87.9)",
+          "oklch(95% 0.109 87.9)"
+        ]
+      },
+      "bronze-gold-soft-dark": {
+        "role": "primary",
+        "displayName": "Bronze Gold Soft (dark)",
+        "theme": "dark",
+        "cssVariable": "--gold-soft",
+        "canonical": "oklch(60.8% 0.089 89.3)",
+        "tonalRamp": [
+          "oklch(15% 0.089 89.3)",
+          "oklch(26% 0.089 89.3)",
+          "oklch(38% 0.089 89.3)",
+          "oklch(50% 0.089 89.3)",
+          "oklch(62% 0.089 89.3)",
+          "oklch(74% 0.089 89.3)",
+          "oklch(85% 0.089 89.3)",
+          "oklch(95% 0.089 89.3)"
+        ]
+      },
+      "gold-wash-dark": {
+        "role": "primary",
+        "displayName": "Gold Wash (dark)",
+        "theme": "dark",
+        "cssVariable": "--gold-wash",
+        "canonical": "rgba(201, 168, 85, 0.09)",
+        "tonalRamp": [
+          "oklch(15% 0.109 87.9)",
+          "oklch(26% 0.109 87.9)",
+          "oklch(38% 0.109 87.9)",
+          "oklch(50% 0.109 87.9)",
+          "oklch(62% 0.109 87.9)",
+          "oklch(74% 0.109 87.9)",
+          "oklch(85% 0.109 87.9)",
+          "oklch(95% 0.109 87.9)"
+        ]
+      },
+      "favoured-teal-dark": {
+        "role": "secondary",
+        "displayName": "Favoured Teal (dark)",
+        "theme": "dark",
+        "cssVariable": "--good",
+        "canonical": "oklch(63.4% 0.101 182.1)",
+        "tonalRamp": [
+          "oklch(15% 0.101 182.1)",
+          "oklch(26% 0.101 182.1)",
+          "oklch(38% 0.101 182.1)",
+          "oklch(50% 0.101 182.1)",
+          "oklch(62% 0.101 182.1)",
+          "oklch(74% 0.101 182.1)",
+          "oklch(85% 0.101 182.1)",
+          "oklch(95% 0.101 182.1)"
+        ]
+      },
+      "unfavoured-rose-dark": {
+        "role": "secondary",
+        "displayName": "Unfavoured Rose (dark)",
+        "theme": "dark",
+        "cssVariable": "--bad",
+        "canonical": "oklch(63.1% 0.157 4.3)",
+        "tonalRamp": [
+          "oklch(15% 0.157 4.3)",
+          "oklch(26% 0.157 4.3)",
+          "oklch(38% 0.157 4.3)",
+          "oklch(50% 0.157 4.3)",
+          "oklch(62% 0.157 4.3)",
+          "oklch(74% 0.157 4.3)",
+          "oklch(85% 0.157 4.3)",
+          "oklch(95% 0.157 4.3)"
+        ]
+      },
+      "neutral-mid-dark": {
+        "role": "secondary",
+        "displayName": "Neutral Mid (dark)",
+        "theme": "dark",
+        "cssVariable": "--mid",
+        "canonical": "oklch(55.4% 0.022 273)",
+        "tonalRamp": [
+          "oklch(15% 0.022 273)",
+          "oklch(26% 0.022 273)",
+          "oklch(38% 0.022 273)",
+          "oklch(50% 0.022 273)",
+          "oklch(62% 0.022 273)",
+          "oklch(74% 0.022 273)",
+          "oklch(85% 0.022 273)",
+          "oklch(95% 0.022 273)"
+        ]
+      },
+      "reference-blue-dark": {
+        "role": "secondary",
+        "displayName": "Reference Blue (dark)",
+        "theme": "dark",
+        "cssVariable": "--ref",
+        "canonical": "oklch(58.5% 0.071 255.1)",
+        "tonalRamp": [
+          "oklch(15% 0.071 255.1)",
+          "oklch(26% 0.071 255.1)",
+          "oklch(38% 0.071 255.1)",
+          "oklch(50% 0.071 255.1)",
+          "oklch(62% 0.071 255.1)",
+          "oklch(74% 0.071 255.1)",
+          "oklch(85% 0.071 255.1)",
+          "oklch(95% 0.071 255.1)"
+        ]
+      },
+      "chip-white": {
+        "role": "tertiary",
+        "displayName": "Chip White",
+        "theme": "both",
+        "cssVariable": "--chip-w",
+        "canonical": "oklch(95% 0.045 100.3)",
+        "tonalRamp": [
+          "oklch(15% 0.045 100.3)",
+          "oklch(26% 0.045 100.3)",
+          "oklch(38% 0.045 100.3)",
+          "oklch(50% 0.045 100.3)",
+          "oklch(62% 0.045 100.3)",
+          "oklch(74% 0.045 100.3)",
+          "oklch(85% 0.045 100.3)",
+          "oklch(95% 0.045 100.3)"
+        ]
+      },
+      "chip-blue": {
+        "role": "tertiary",
+        "displayName": "Chip Blue",
+        "theme": "both",
+        "cssVariable": "--chip-u",
+        "canonical": "oklch(85.8% 0.056 229.3)",
+        "tonalRamp": [
+          "oklch(15% 0.056 229.3)",
+          "oklch(26% 0.056 229.3)",
+          "oklch(38% 0.056 229.3)",
+          "oklch(50% 0.056 229.3)",
+          "oklch(62% 0.056 229.3)",
+          "oklch(74% 0.056 229.3)",
+          "oklch(85% 0.056 229.3)",
+          "oklch(95% 0.056 229.3)"
+        ]
+      },
+      "chip-black": {
+        "role": "tertiary",
+        "displayName": "Chip Black",
+        "theme": "both",
+        "cssVariable": "--chip-b",
+        "canonical": "oklch(82.8% 0.01 58.2)",
+        "tonalRamp": [
+          "oklch(15% 0.01 58.2)",
+          "oklch(26% 0.01 58.2)",
+          "oklch(38% 0.01 58.2)",
+          "oklch(50% 0.01 58.2)",
+          "oklch(62% 0.01 58.2)",
+          "oklch(74% 0.01 58.2)",
+          "oklch(85% 0.01 58.2)",
+          "oklch(95% 0.01 58.2)"
+        ]
+      },
+      "chip-red": {
+        "role": "tertiary",
+        "displayName": "Chip Red",
+        "theme": "both",
+        "cssVariable": "--chip-r",
+        "canonical": "oklch(79.7% 0.099 39.4)",
+        "tonalRamp": [
+          "oklch(15% 0.099 39.4)",
+          "oklch(26% 0.099 39.4)",
+          "oklch(38% 0.099 39.4)",
+          "oklch(50% 0.099 39.4)",
+          "oklch(62% 0.099 39.4)",
+          "oklch(74% 0.099 39.4)",
+          "oklch(85% 0.099 39.4)",
+          "oklch(95% 0.099 39.4)"
+        ]
+      },
+      "chip-green": {
+        "role": "tertiary",
+        "displayName": "Chip Green",
+        "theme": "both",
+        "cssVariable": "--chip-g",
+        "canonical": "oklch(81.8% 0.078 155.4)",
+        "tonalRamp": [
+          "oklch(15% 0.078 155.4)",
+          "oklch(26% 0.078 155.4)",
+          "oklch(38% 0.078 155.4)",
+          "oklch(50% 0.078 155.4)",
+          "oklch(62% 0.078 155.4)",
+          "oklch(74% 0.078 155.4)",
+          "oklch(85% 0.078 155.4)",
+          "oklch(95% 0.078 155.4)"
+        ]
+      },
+      "chip-ink": {
+        "role": "tertiary",
+        "displayName": "Chip Ink",
+        "theme": "both",
+        "cssVariable": "--chip-ink",
+        "canonical": "oklch(17.8% 0.007 17.8)",
+        "tonalRamp": [
+          "oklch(15% 0.007 17.8)",
+          "oklch(26% 0.007 17.8)",
+          "oklch(38% 0.007 17.8)",
+          "oklch(50% 0.007 17.8)",
+          "oklch(62% 0.007 17.8)",
+          "oklch(74% 0.007 17.8)",
+          "oklch(85% 0.007 17.8)",
+          "oklch(95% 0.007 17.8)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Page H1: the one-glance editorial sentence over the data. Scales down per page (clamp 26–38px on archetype, 24–34px on tournaments/matrix/changes)."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section H2 and EmptyState title (23px); brand mark and decklist event names at 22px."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Archetype name on a deck tile. Names in tables/lists use body 13.5px semibold instead."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Base prose at 15px/1.5; the lede at 15.5px capped at 58ch; dense surfaces at 13.5px."
+      },
+      "control": {
+        "displayName": "Control",
+        "purpose": "Knobs, chips and CTAs at 13px with 0.02em tracking; nav links at 13.5px/0.04em."
+      },
+      "label": {
+        "displayName": "Label (eyebrow)",
+        "purpose": "Gold tracked uppercase eyebrow above every headline. Siblings in ink: table heads 11px/0.13em, KPI captions 11.5px/0.14em, badges 10.5px/0.08em."
+      },
+      "data": {
+        "displayName": "Data (mono)",
+        "purpose": "Every comparable number with tabular figures: win rates, records, shares, CIs, dates. KPI figure 26px/600; intervals 11.5–12.5px; matrix records 10px."
+      }
+    },
+    "shadows": [
+      {
+        "name": "ledger-ambient-light",
+        "value": "0 1px 0 rgba(41, 36, 24, 0.06), 0 10px 30px -18px rgba(41, 36, 24, 0.35)",
+        "purpose": "The single --shadow token in the parchment theme; deck tiles, data panels, EmptyState."
+      },
+      {
+        "name": "ledger-ambient-dark",
+        "value": "0 1px 0 rgba(0, 0, 0, 0.3), 0 16px 44px -20px rgba(0, 0, 0, 0.75)",
+        "purpose": "The same --shadow token in Arena bronze."
+      },
+      {
+        "name": "art-scrim",
+        "value": "inset 0 -34px 30px -20px rgba(10, 8, 4, 0.66)",
+        "purpose": "Bottom shade over deck tile art so pips and the edge read over bright plates."
+      },
+      {
+        "name": "matrix-highlight-ring",
+        "value": "0 0 0 1.5px var(--gold)",
+        "purpose": "Cross-highlight ring on hovered matrix row/column cells (with scale 1.04)."
+      },
+      {
+        "name": "pip-bevel",
+        "value": "inset -1px -1.5px 0 rgba(0, 0, 0, 0.28), inset 0 0 0 0.5px rgba(0, 0, 0, 0.18)",
+        "purpose": "Printed-cardboard bevel on every mana pip."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Tailwind default easing for colour/border transitions on knobs, nav links, table rows."
+      },
+      {
+        "name": "duration-standard",
+        "value": "150ms",
+        "purpose": "Default transition length for colour, border and transform changes."
+      },
+      {
+        "name": "tile-lift",
+        "value": "transform 150ms ease-out, border-color 150ms ease-out",
+        "purpose": "Deck tile hover: translateY(-3px) and border to gold."
+      },
+      {
+        "name": "matrix-highlight",
+        "value": "transform 150ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Matrix cross-highlight scale(1.04) on hover."
+      },
+      {
+        "name": "overlay-enter",
+        "value": "fade-in-0 zoom-in-95 (tw-animate-css, 150ms)",
+        "purpose": "Popover and tooltip open/close; tooltip delay 120ms."
+      },
+      {
+        "name": "ledger-spin",
+        "value": "rotate 0.8s linear infinite",
+        "purpose": "Loading ring; disabled under prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "kpi-compact",
+        "value": "420px",
+        "purpose": "At or below: KPI tiles compact padding and caption."
+      },
+      {
+        "name": "sm",
+        "value": "640px",
+        "purpose": "Table art thumbs appear."
+      },
+      {
+        "name": "md",
+        "value": "768px",
+        "purpose": "Desktop header row, two-column headline/KPI grid, share and CI table columns, 28px container padding; below it 44px touch targets."
+      },
+      {
+        "name": "matrix",
+        "value": "(min-width: 880px) and (hover: hover) and (pointer: fine)",
+        "purpose": "The only seam at which the N×N matchup grid renders; otherwise the matchup list."
+      },
+      {
+        "name": "lg",
+        "value": "1024px",
+        "purpose": "Minor layout widening on secondary pages."
+      },
+      {
+        "name": "container",
+        "value": "1280px",
+        "purpose": "Maximum content width."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Lens knob",
+      "kind": "button",
+      "refersTo": "knob",
+      "description": "The default LensBar control: outlined, transparent, secondary ink. Hover strengthens the hairline and ink; focus is the gold outline.",
+      "html": "<button class=\"ds-knob\" type=\"button\">Last 30 days</button>",
+      "css": ".ds-knob { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: transparent; color: var(--ink-2); font-family: 'Avenir Next', Avenir, 'Segoe UI', system-ui, sans-serif; font-size: 13px; letter-spacing: 0.02em; padding: 5px 12px; border-radius: 0; cursor: pointer; transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1), border-color 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-knob:hover { border-color: var(--line-strong); color: var(--ink); } .ds-knob:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; } .ds-knob:disabled { cursor: not-allowed; opacity: 0.5; }"
+    },
+    {
+      "name": "Format chip, active",
+      "kind": "chip",
+      "refersTo": "chip-active",
+      "description": "The pressed format chip: gold fill, gold border, ground-coloured semibold text. Gold here is structure (the active lens), never a value.",
+      "html": "<span class=\"ds-chip-row\"><button class=\"ds-chip ds-chip-active\" type=\"button\" aria-pressed=\"true\">Modern</button><button class=\"ds-chip\" type=\"button\" aria-pressed=\"false\">Pauper</button><button class=\"ds-chip\" type=\"button\" aria-pressed=\"false\">Standard</button></span>",
+      "css": ".ds-chip-row { display: inline-flex; gap: 2px; } .ds-chip { display: inline-flex; align-items: center; border: 1px solid var(--line); background: transparent; color: var(--ink-2); font-family: 'Avenir Next', Avenir, 'Segoe UI', system-ui, sans-serif; font-size: 13px; letter-spacing: 0.02em; padding: 5px 12px; border-radius: 0; cursor: pointer; transition: color 150ms, border-color 150ms; } .ds-chip:hover { border-color: var(--line-strong); color: var(--ink); } .ds-chip:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; } .ds-chip-active, .ds-chip-active:hover { background: var(--gold); border-color: var(--gold); color: var(--bg); font-weight: 600; }"
+    },
+    {
+      "name": "Gold CTA (Share this view)",
+      "kind": "button",
+      "refersTo": "button-gold",
+      "description": "Gold-text, gold-soft-bordered action used for Share, \"Widen the window\" and archetype-adder chips. Hover washes the background in gold.",
+      "html": "<button class=\"ds-btn-gold\" type=\"button\">Share this view</button>",
+      "css": ".ds-btn-gold { display: inline-flex; align-items: center; border: 1px solid var(--gold-soft); background: transparent; color: var(--gold); font-family: 'Avenir Next', Avenir, 'Segoe UI', system-ui, sans-serif; font-size: 13px; letter-spacing: 0.02em; padding: 6px 12px; border-radius: 0; cursor: pointer; transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-gold:hover { background: var(--gold-wash); color: var(--gold); } .ds-btn-gold:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }"
+    },
+    {
+      "name": "Header navigation",
+      "kind": "nav",
+      "refersTo": "nav-link",
+      "description": "Brand with gold \"Mage\", tracked nav links with a gold active underline, a square hairline theme toggle, and the WUBRG hairline closing the header.",
+      "html": "<div class=\"ds-nav\"><div class=\"ds-nav-row\"><a class=\"ds-brand\" href=\"#\">Meta<span>Mage</span></a><nav class=\"ds-nav-links\" aria-label=\"Primary\"><a class=\"ds-nav-link ds-nav-link-active\" href=\"#\" aria-current=\"page\">Meta</a><a class=\"ds-nav-link\" href=\"#\">Matchups</a><a class=\"ds-nav-link\" href=\"#\">Changes</a><a class=\"ds-nav-link\" href=\"#\">Tournaments</a><button class=\"ds-nav-icon\" type=\"button\" aria-label=\"Toggle color theme\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z\"/></svg></button></nav></div><hr class=\"ds-wubrg-rule\"></div>",
+      "css": ".ds-nav { background: var(--bg); } .ds-nav-row { display: flex; align-items: baseline; gap: 28px; padding: 24px 0 16px; } .ds-brand { font-family: Newsreader, 'Newsreader Fallback', Optima, Candara, 'Segoe UI', system-ui, sans-serif; font-size: 22px; font-weight: 700; letter-spacing: 0.02em; color: var(--ink); text-decoration: none; } .ds-brand span { color: var(--gold); } .ds-nav-links { margin-left: auto; display: flex; align-items: center; gap: 22px; } .ds-nav-link { font-family: 'Avenir Next', Avenir, 'Segoe UI', system-ui, sans-serif; font-size: 13.5px; letter-spacing: 0.04em; color: var(--ink-2); text-decoration: none; padding: 2px 0; border-bottom: 2px solid transparent; transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-nav-link:hover { color: var(--ink); } .ds-nav-link-active { color: var(--gold); border-bottom-color: var(--gold); } .ds-nav-link:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; } .ds-nav-icon { display: inline-grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--line); background: transparent; color: var(--ink-2); border-radius: 0; cursor: pointer; transition: color 150ms, border-color 150ms; } .ds-nav-icon:hover { border-color: var(--line-strong); color: var(--ink); } .ds-nav-icon:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; } .ds-wubrg-rule { height: 2.5px; border: none; margin: 0; opacity: 0.85; background: linear-gradient(90deg, transparent, var(--chip-w) 8%, var(--chip-u) 30%, var(--chip-b) 50%, var(--chip-r) 70%, var(--chip-g) 92%, transparent); }"
+    },
+    {
+      "name": "Headline pattern",
+      "kind": "custom",
+      "refersTo": "panel",
+      "description": "The ledger stack that opens every page: gold eyebrow, Newsreader display headline (bold archetype name, regular-weight clause in secondary ink), and a definition list of labelled figures with their 95% interval.",
+      "html": "<div class=\"ds-headline\"><p class=\"ds-eyebrow\">The Ledger · Modern · Last 30 days</p><h1 class=\"ds-h1\">Boros Energy holds the room.<br><span>And winning the room too.</span></h1><p class=\"ds-lede\"><b>Boros Energy</b> is the most-played deck at <b>14.2%</b> of all matches — winning <b>53.1%</b> of them.</p></div>",
+      "css": ".ds-headline { max-width: 64ch; color: var(--ink); } .ds-eyebrow { margin: 0 0 6px; font-family: 'Avenir Next', Avenir, 'Segoe UI', system-ui, sans-serif; font-size: 11.5px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); } .ds-h1 { margin: 0; font-family: Newsreader, 'Newsreader Fallback', Optima, Candara, 'Segoe UI', system-ui, sans-serif; font-size: clamp(30px, 4.5vw, 44px); font-weight: 700; line-height: 1.08; text-wrap: balance; color: var(--ink); } .ds-h1 span { font-weight: 400; color: var(--ink-2); } .ds-lede { margin: 14px 0 0; max-width: 58ch; font-family: 'Avenir Next', Avenir, 'Segoe UI', system-ui, sans-serif; font-size: 15.5px; line-height: 1.5; color: var(--ink-2); } .ds-lede b { color: var(--ink); font-weight: 700; }"
+    },
+    {
+      "name": "KPI stat group",
+      "kind": "card",
+      "refersTo": "kpi-stat",
+      "description": "Three surface tiles joined by 1px hairline seams: a 26px mono figure over a tracked uppercase caption.",
+      "html": "<div class=\"ds-kpis\"><div class=\"ds-kpi\"><div class=\"ds-kpi-value\">38</div><div class=\"ds-kpi-label\">Tournaments</div></div><div class=\"ds-kpi\"><div class=\"ds-kpi-value\">2,614</div><div class=\"ds-kpi-label\">Decks</div></div><div class=\"ds-kpi\"><div class=\"ds-kpi-value\">11,902</div><div class=\"ds-kpi-label\">Matches</div></div></div>",
+      "css": ".ds-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); } .ds-kpi { background: var(--surface); padding: 14px 18px 12px; } .ds-kpi-value { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; font-size: 26px; font-weight: 600; line-height: 1; letter-spacing: -0.01em; color: var(--ink); } .ds-kpi-label { margin-top: 6px; font-family: 'Avenir Next', Avenir, 'Segoe UI', system-ui, sans-serif; font-size: 11.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); }"
+    },
+    {
+      "name": "Deck tile",
+      "kind": "card",
+      "refersTo": "deck-tile",
+      "description": "\"Top of the field\" card: the one rounded object. Art plate (mana-gradient fallback shown) with scrim, rank badge, pips; name in Newsreader, mono share and polarity-tinted win rate. Hover lifts and turns the border gold.",
+      "html": "<a class=\"ds-tile\" href=\"#\"><div class=\"ds-tile-art\"><div class=\"ds-tile-scrim\"></div><span class=\"ds-tile-rank\">1</span><span class=\"ds-pips\" aria-label=\"Colors: WR\"><span class=\"ds-pip\" style=\"background: var(--chip-w)\"></span><span class=\"ds-pip\" style=\"background: var(--chip-r)\"></span></span></div><div class=\"ds-tile-body\"><span class=\"ds-tile-name\">Boros Energy</span><span class=\"ds-tile-stats\"><span class=\"ds-tile-share\">14.2% meta</span><span class=\"ds-tile-wr ds-tile-wr-good\">53.1%</span></span></div></a>",
+      "css": ".ds-tile { display: block; width: 320px; overflow: hidden; border-radius: 12px; background: var(--surface); border: 1px solid color-mix(in oklab, var(--gold) 34%, var(--line)); box-shadow: var(--shadow); text-decoration: none; color: var(--ink); transition: transform 150ms ease-out, border-color 150ms ease-out; } .ds-tile:hover { transform: translateY(-3px); border-color: var(--gold); } .ds-tile:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; } .ds-tile-art { position: relative; aspect-ratio: 626 / 457; background: linear-gradient(135deg, var(--chip-w) 0%, var(--chip-r) 100%); } .ds-tile-scrim { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 -34px 30px -20px rgba(10, 8, 4, 0.66); } .ds-tile-rank { position: absolute; top: 10px; left: 10px; z-index: 2; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 9999px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 700; background: rgba(12, 10, 6, 0.72); color: #eadfbe; box-shadow: 0 0 0 1px rgba(201, 168, 85, 0.55); } .ds-pips { position: absolute; right: 10px; bottom: 8px; z-index: 2; display: inline-flex; gap: 3px; } .ds-pip { width: 17px; height: 17px; border-radius: 9999px; box-shadow: inset -1px -1.5px 0 rgba(0, 0, 0, 0.28), inset 0 0 0 0.5px rgba(0, 0, 0, 0.18); } .ds-tile-body { display: flex; align-items: baseline; gap: 10px; padding: 10px 14px 12px; } .ds-tile-name { font-family: Newsreader, 'Newsreader Fallback', Optima, Candara, 'Segoe UI', system-ui, sans-serif; font-size: 16.5px; font-weight: 700; letter-spacing: 0.01em; color: var(--ink); } .ds-tile-stats { margin-left: auto; display: flex; align-items: baseline; gap: 12px; white-space: nowrap; } .ds-tile-share { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink-2); } .ds-tile-wr { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 700; color: var(--ink); } .ds-tile-wr-good { color: var(--good); } .ds-tile-wr-bad { color: var(--bad); }"
+    },
+    {
+      "name": "Matchup matrix cells",
+      "kind": "custom",
+      "refersTo": "matrix-cell",
+      "description": "Confidence as ink: cells fill with color-mix of the teal or rose pole into the raised tone, scaled by |wr−50| and reliability. Under five games: a dash on plain raised. Mirror: dashed hairline. Hover shows the gold ring.",
+      "html": "<div class=\"ds-matrix\"><div class=\"ds-mcell\" style=\"background: color-mix(in oklab, var(--good) 44.8%, var(--raised))\"><span class=\"ds-mwr\">68%</span><span class=\"ds-mrec\">17–8</span></div><div class=\"ds-mcell\" style=\"background: color-mix(in oklab, var(--good) 12.3%, var(--raised))\"><span class=\"ds-mwr\">52%</span><span class=\"ds-mrec\">27–25</span></div><div class=\"ds-mcell ds-mcell-mirror\" aria-label=\"mirror match\"><span class=\"ds-mdash\">–</span></div><div class=\"ds-mcell\" style=\"background: color-mix(in oklab, var(--bad) 31.6%, var(--raised))\"><span class=\"ds-mwr\">39%</span><span class=\"ds-mrec\">9–14</span></div><div class=\"ds-mcell ds-mcell-low\"><span class=\"ds-mdash\">–</span><span class=\"ds-mrec\">2–1</span></div></div>",
+      "css": ".ds-matrix { display: grid; grid-template-columns: repeat(5, minmax(54px, 1fr)); gap: 2px; width: 320px; } .ds-mcell { position: relative; display: grid; place-content: center; min-height: 48px; text-align: center; background: var(--raised); color: var(--ink); cursor: default; transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-mcell:hover { transform: scale(1.04); box-shadow: 0 0 0 1.5px var(--gold); z-index: 2; } .ds-mcell:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; z-index: 3; } .ds-mwr { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; font-size: 13.5px; font-weight: 700; } .ds-mrec { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; font-size: 10px; color: var(--ink-2); } .ds-mdash { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; font-size: 13.5px; color: var(--ink-3); } .ds-mcell-low { color: var(--ink-3); } .ds-mcell-mirror { background: transparent; border: 1px dashed var(--line); } .ds-mcell-mirror:hover { transform: none; box-shadow: none; }"
+    },
+    {
+      "name": "Tier and bucket badges",
+      "kind": "chip",
+      "refersTo": "badge-tier",
+      "description": "Sharp outlined micro-labels: the tier badge in gold on a gold-soft hairline; the bucket badge (UNKNOWN / CONFLICT) in tertiary ink on a strong hairline so it never competes with a real archetype.",
+      "html": "<span class=\"ds-badge-row\"><span class=\"ds-badge ds-badge-tier\">Tier 1</span><span class=\"ds-badge ds-badge-bucket\" title=\"Catch-all bucket — excluded from tier math\">UNKNOWN</span></span>",
+      "css": ".ds-badge-row { display: inline-flex; gap: 8px; align-items: center; } .ds-badge { display: inline-block; border: 1px solid; padding: 2px 8px; border-radius: 0; font-family: 'Avenir Next', Avenir, 'Segoe UI', system-ui, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; } .ds-badge-tier { color: var(--gold); border-color: var(--gold-soft); } .ds-badge-bucket { color: var(--ink-3); border-color: var(--line-strong); text-transform: uppercase; }"
+    },
+    {
+      "name": "Popover field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "The knobs/window popover input: hairline border, ground fill, mono at the 16px iOS zoom floor, tracked uppercase caption; gold outline on focus.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Min matches</span><input class=\"ds-input\" type=\"number\" value=\"80\" inputmode=\"numeric\"></label>",
+      "css": ".ds-field { display: grid; gap: 4px; width: 160px; font-family: 'Avenir Next', Avenir, 'Segoe UI', system-ui, sans-serif; font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-3); } .ds-field-label { display: block; } .ds-input { width: 100%; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; font-size: 16px; padding: 4px 8px; border-radius: 0; } .ds-input:hover { border-color: var(--line-strong); } .ds-input:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Gathering Ledger",
+    "overview": "MetaMage reads like a well-kept ledger of the tournament field: a gold eyebrow names the format and the window, a serif display headline states the leading fact as a plain sentence (\"Broodscale is the most-played deck.\"), a ledger of labelled figures beneath it gives share, win rate and the 95% interval, and everything numeric below is set in tabular mono so columns of win rates and records line up like entries in a book. Card art appears as plates — the archetype's signature card cropped and framed — and is the only place the surface becomes pictorial. The mood is editorial and archival, quietly confident: it states sample sizes, intervals and records plainly and lets the figures carry the claim.\n\nThe material is paper in two states. By default the page is a parchment study (warm cream grounds, dark umber ink, muted bronze gold); when the visitor's system or the toggle asks for dark, the same ledger is lit as Arena bronze (near-black umber grounds, parchment-coloured ink, brighter gold). Depth is mostly tonal — background, surface, raised — with hairline rules doing the structural work and a single ambient shadow lifting the few things that are genuinely cards. Density is high but hierarchical: the page is organised into titled sections (eyebrow, headline, one-line description, then the panel) so a wall of numbers always has a heading above it. Two directions were confirmed as rejections: the stock shadcn / generic slate dashboard look, and the Goldfish / MTGTop8 wall-of-table density that offers no hierarchy.\n\nDurable product commitments that constrain the visual system: the copy is analytical with no hype (numbers and confidence, never \"best deck!\"); the site must stay recognisable to the existing social audience that already knows the monthly meta images; and WCAG 2.2 AA is the standard — colour is never the only signal, text contrast is at least 4.5:1, and every control has a visible gold focus ring.",
+    "keyCharacteristics": [
+      "Ledger headline pattern on every page: gold eyebrow → serif H1 stating the fact → labelled figure rows with intervals; every section: eyebrow → serif H2 → one-line description.",
+      "Numbers are always monospaced with tabular figures; prose is a humanist sans.",
+      "Parchment by default, Arena bronze in dark mode; the same token names paint both.",
+      "Gold is structure (eyebrows, frames, active lens, focus ring), never a data value.",
+      "Rose↔teal is the only polarity pair; neutral grey is the midpoint; the pair is CVD-validated.",
+      "Flat tonal layering with hairline rules; one ambient shadow, used sparingly.",
+      "Cards are round, chrome is cut: art gets radius, panels are sharp, hero frames are notched.",
+      "Confidence is ink: the matchup matrix fills cells in proportion to how sure the data is."
+    ],
+    "rules": [
+      {
+        "name": "The Gold Is Structure Rule",
+        "body": "Gold marks where you are and what frames the data (eyebrows, active lens, frames, focus). It never encodes a measured value; a gold number is a defect.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Polarity Rule",
+        "body": "Rose↔teal is the only value-carrying pair, with neutral grey as the midpoint. The pair is CVD-validated and is never swapped for red/green. Polarity tints only a win-rate figure whose interval clears 50% (and the matrix/chart fills); archetype names, labels and prose never wear a series colour.",
+        "section": "colors"
+      },
+      {
+        "name": "The Cardboard Rule",
+        "body": "Mana chip colours are theme-constant. They identify an archetype together with its rank number and card art; they are never borrowed as chart hues.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Numbers Rule",
+        "body": "Any figure the reader might compare down a column is set in the mono face with tabular figures. Prose numbers inside a sentence may stay in the body face only when bolded as emphasis in the lede.",
+        "section": "typography"
+      },
+      {
+        "name": "The Headline Pattern Rule",
+        "body": "Every page opens with a gold eyebrow (format · window), a serif H1 that states the leading fact as a plain sentence, and a ledger of labelled figures with their 95% intervals. The headline never asserts what the interval cannot support: \"edge\", \"winning\" and \"best\" are not derived from point estimates. Every major section opens with eyebrow → serif H2 → one-line description in secondary ink.",
+        "section": "typography"
+      },
+      {
+        "name": "The Matrix Seam Rule",
+        "body": "The seam at 880px + `hover: hover` + `pointer: fine` is written once (the `matrix` variant); surfaces only consume it. Phones and touch tablets never receive the grid.",
+        "section": "layout"
+      },
+      {
+        "name": "The Titled Section Rule",
+        "body": "No table, chart or grid appears without the eyebrow → headline → description stack above it. Density is permitted; untitled density is not.",
+        "section": "layout"
+      },
+      {
+        "name": "The Hairline First Rule",
+        "body": "Separate with a 1px rule or a tonal step before reaching for a shadow. The ambient shadow belongs only to objects that are themselves cards or panels; it never appears on controls, chips or rows.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Round Cards, Cut Chrome Rule",
+        "body": "Radius is reserved for objects that depict cards or dots. Interface chrome stays sharp; where chrome needs emphasis it is notched, never rounded.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "**Do** open every page and section with the headline pattern: gold eyebrow (11.5px, 0.18em, uppercase) → Newsreader headline → one-line description in secondary ink.",
+      "**Do** set every comparable number in the mono face with tabular figures, and tint a win rate teal or rose only when its interval clears 50%.",
+      "**Do** keep chrome sharp (0px) and notch it (14px / 18px cuts) when it needs a frame; give radius only to card art (4–12px) and dots.",
+      "**Do** separate with hairlines and tonal steps first; reserve the ambient `--shadow` for tiles and panels.",
+      "**Do** carry the same rank number, pips and signature art for an archetype across tiles, table, scatter and matrix.",
+      "**Do** keep sample size and uncertainty next to every figure: the interval under the win rate, the record under the matrix percentage, the low-sample notice when the window is thin.",
+      "**Do** paint with the token pairs so both themes stay correct, and keep mana chip colours fixed across themes."
+    ],
+    "donts": [
+      "**Don't** fall back to the stock shadcn / generic slate dashboard look: rounded pills, slate greys, blue primary, or the unused `Button` / `Badge` / `Card` primitives as shipped.",
+      "**Don't** present a wall-of-table in the Goldfish / MTGTop8 manner — a dense grid with no eyebrow, headline or description above it.",
+      "**Don't** use gold for any measured quantity, and don't swap the rose↔teal pair for red/green.",
+      "**Don't** colour archetype names, labels or prose with a series or polarity colour.",
+      "**Don't** render the N×N matrix on touch or below 880px; use the matchup list with inline CIs.",
+      "**Don't** make colour the only signal: every polarity tint travels with a numeral, every pip row has a text label, every focus state has the gold outline."
+    ]
+  }
+}

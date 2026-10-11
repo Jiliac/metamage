@@ -66,6 +66,11 @@ CSS-first (`@theme` + oklch tokens in `globals.css`, no `tailwind.config.js`),
 shadcn/Radix primitives, next-themes, PostHog, Recharts (2D charts only),
 TanStack Table.
 
+**Type.** The display face is Newsreader, self-hosted through `next/font/google`
+in `src/app/layout.tsx` (downloaded at build, served from this origin, exposed
+as `--font-display-face` on `<html>`); body and data remain the system stacks
+declared in `globals.css`.
+
 ### The URL is the state
 
 There is no client store for view state. `src/lib/params.ts` is the only place

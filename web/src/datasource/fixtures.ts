@@ -26,9 +26,10 @@ import type {
   WindowKpisDTO,
 } from '@/datasource/types'
 import { parseSort, type SearchParamsInput } from '@/lib/params'
-import type { MetaSort } from '@/datasource/types'
+import type { MetaSort, Platform } from '@/datasource/types'
 import { winrateCi, wr as wrOf, wrExclDraws, type WLD } from '@/lib/stats'
 import { isAllFormats, sortFormats } from '@/datasource/format-order'
+import { matchesPlatform } from '@/datasource/platform'
 import { synthesizeEvent, type SeedEntry } from '@/datasource/fixtures/event'
 import {
   DEFAULT_SORT,
@@ -193,6 +194,13 @@ export const FIXTURE_DB_PATH = join(
 
 let loadedDb: RawDb | null = null
 
+/** Vitest hook: swap the loaded DB for a synthetic one (the committed fixture
+ *  cannot express a month populated for only one platform). Pass null to
+ *  reload the committed fixture on next use. */
+export function setFixtureDb(db: RawDb | null): void {
+  loadedDb = db
+}
+
 /** Read and decode the JSONL fixture on first use, not at import: index.ts
  *  imports this module under DATA_SOURCE=postgres too, where the file is
  *  never read (and need not be traced into the deployment). */
@@ -229,22 +237,6 @@ function findWindow(
   return f.windows.find(w => windowKey(w.start, w.end) === key)
 }
 
-function sumRecord(players: RawPlayer[]): {
-  wins: number
-  losses: number
-  draws: number
-} {
-  let wins = 0
-  let losses = 0
-  let draws = 0
-  for (const p of players) {
-    wins += p.w
-    losses += p.l
-    draws += p.d
-  }
-  return { wins, losses, draws }
-}
-
 function clustersOf(players: RawPlayer[]): WLD[] {
   return players.map(p => ({ wins: p.w, losses: p.l, draws: p.d }))
 }
@@ -253,20 +245,34 @@ function clustersOf(players: RawPlayer[]): WLD[] {
 
 function deriveIntrinsic(
   raw: RawArchetype,
-  denomMatches: number
+  denomMatches: number,
+  /** Entry-share scale of the platform lens (1 for 'all'); see platformSlice. */
+  ratio = 1
 ): IntrinsicRow {
-  const { wins, losses, draws } = sumRecord(raw.players)
+  // The lens scales every clustering unit with the window, so the clustered
+  // CI reflects the smaller sample instead of silently keeping the full
+  // window's width. At ratio 1 this is the identity (raw counts pass through).
+  const scale = (x: number) => Math.round(x * ratio)
+  const clusters = clustersOf(raw.players).map(c => ({
+    wins: scale(c.wins),
+    losses: scale(c.losses),
+    draws: scale(c.draws),
+  }))
+  const wins = clusters.reduce((s, c) => s + c.wins, 0)
+  const losses = clusters.reduce((s, c) => s + c.losses, 0)
+  const draws = clusters.reduce((s, c) => s + c.draws, 0)
   const games = wins + losses + draws
-  const clusters = clustersOf(raw.players)
   const ci = winrateCi(clusters)
-  const activePlayers = raw.players.filter(p => p.w + p.l + p.d > 0).length
+  const activePlayers = scale(
+    raw.players.filter(p => p.w + p.l + p.d > 0).length
+  )
   return {
     slug: asSlug(raw.slug),
     name: raw.name,
     color: raw.color,
     art: raw.art,
     matches: games,
-    decks: raw.decks,
+    decks: scale(raw.decks),
     share: denomMatches > 0 ? games / denomMatches : 0,
     wins,
     losses,
@@ -280,6 +286,43 @@ function deriveIntrinsic(
     ciMethod: ci.method,
     players: activePlayers,
     isBucket: raw.isBucket,
+  }
+}
+
+/**
+ * The platform lens's slice of a fixture window: the tournaments it keeps and
+ * the share of the window's entries they hold. The fixture DB aggregates
+ * records per WINDOW, not per source — per-player records and matchup pairs
+ * carry no tournament attribution — so a sub-'all' lens is modeled as a
+ * proportional slice of the window (counts scaled by the kept entry share),
+ * the finest split the raw fixture supports. The Postgres backend filters the
+ * SQL instead and needs none of this.
+ */
+function platformSlice(
+  win: RawWindow,
+  platform: Platform
+): { tournaments: RawTournament[]; entries: number; ratio: number } {
+  const tournaments = win.tournaments.filter(t =>
+    matchesPlatform(t.source, platform)
+  )
+  const entries = tournaments.reduce((s, t) => s + t.entries, 0)
+  const ratio =
+    platform === 'all'
+      ? 1
+      : win.kpis.entries > 0
+        ? entries / win.kpis.entries
+        : 0
+  return { tournaments, entries, ratio }
+}
+
+/** A pre-aggregated record scaled by the lens's entry share (platformSlice);
+ *  the identity at ratio 1. */
+function scaleRec(rec: WLD, ratio: number): WLD {
+  if (ratio === 1) return rec
+  return {
+    wins: Math.round(rec.wins * ratio),
+    losses: Math.round(rec.losses * ratio),
+    draws: Math.round(rec.draws * ratio),
   }
 }
 
@@ -306,17 +349,27 @@ function lookupMatchup(
 
 // ---- Trend + card mapping --------------------------------------------------
 
-function trendPoint(week: RawTrendWeek): TrendPointDTO {
-  const games = week.w + week.l + week.d
+/** `ratio` is the platform lens's entry share (platformSlice): presence is a
+ *  ratio and survives the slice unchanged; the games behind it scale. */
+function trendPoint(week: RawTrendWeek, ratio = 1): TrendPointDTO {
+  const { wins, losses, draws } = scaleRec(
+    { wins: week.w, losses: week.l, draws: week.d },
+    ratio
+  )
+  const games = wins + losses + draws
   return {
     weekStart: asIso(week.weekStart),
     presencePct: week.fieldDecks > 0 ? week.decks / week.fieldDecks : 0,
-    wr: games > 0 ? wrOf(week.w, week.l, week.d) : null,
+    wr: games > 0 ? wrOf(wins, losses, draws) : null,
     games,
   }
 }
 
-function cardDto(raw: RawCard, board: 'MAIN' | 'SIDE'): CardAdoptionDTO {
+function cardDto(
+  raw: RawCard,
+  board: 'MAIN' | 'SIDE',
+  ratio = 1
+): CardAdoptionDTO {
   return {
     cardId: raw.cardId,
     name: raw.name,
@@ -324,7 +377,7 @@ function cardDto(raw: RawCard, board: 'MAIN' | 'SIDE'): CardAdoptionDTO {
     hasDisplayName: false,
     board,
     avgCount: raw.avgCount,
-    decksPlaying: raw.decksPlaying,
+    decksPlaying: Math.round(raw.decksPlaying * ratio),
     presencePct: raw.presencePct,
   }
 }
@@ -336,8 +389,14 @@ function windowTournaments(
   const formats = isAllFormats(String(q.format))
     ? fixtureDb().formats.map(f => f.slug)
     : [String(q.format)]
+  // Event lists filter exactly; the window aggregates (reports, matrix,
+  // archetype reads) are pre-computed across every source, so those scale by
+  // platformSlice instead (Postgres filters everything).
   return formats.flatMap(
-    format => findWindow(format, q)?.tournaments.map(t => ({ format, t })) ?? []
+    format =>
+      findWindow(format, q)
+        ?.tournaments.filter(t => matchesPlatform(t.source, q.platform))
+        .map(t => ({ format, t })) ?? []
   )
 }
 
@@ -430,8 +489,17 @@ export function compareEntrySummaries(
   )
 }
 
-function entrySummaries(win: RawWindow, raw: RawArchetype): DeckSummaryDTO[] {
-  const byId = new Map(win.tournaments.map(t => [t.id, t] as const))
+function entrySummaries(
+  win: RawWindow,
+  raw: RawArchetype,
+  platform: Platform = 'all'
+): DeckSummaryDTO[] {
+  // Entries carry their tournament, so the platform lens filters them exactly.
+  const byId = new Map(
+    win.tournaments
+      .filter(t => matchesPlatform(t.source, platform))
+      .map(t => [t.id, t] as const)
+  )
   const rows: DeckSummaryDTO[] = []
   for (const e of raw.entries) {
     const t = byId.get(e.tournamentId)
@@ -531,24 +599,50 @@ export class FixtureDataSource implements MetaDataSource {
     q: MetaQuery,
     sort: MetaSort
   ): MetaReportDTO {
-    const denom = win.kpis.matches
-    const intrinsics = win.archetypes.map(a => deriveIntrinsic(a, denom))
-    const { rows, other } = selectReportRows(intrinsics, denom, q, sort)
+    const slice = platformSlice(win, q.platform)
+    if (slice.tournaments.length === 0) {
+      // No event of this platform played in the window: an honest zero, so
+      // the landing falls back to the latest populated platform window.
+      return {
+        window: { start: asIso(win.start), end: asIso(win.end) },
+        kpis: emptyKpis(),
+        rows: [],
+        other: null,
+        floor: { belowFloorCount: 0, unknownShare: null, conflictShare: null },
+        generatedAt: fixtureDb().generatedAt,
+      }
+    }
+    const denom = Math.round(win.kpis.matches * slice.ratio)
+    const intrinsics = win.archetypes.map(a =>
+      deriveIntrinsic(a, denom, slice.ratio)
+    )
+    const { rows, other, floor } = selectReportRows(intrinsics, denom, q, sort)
     return {
       window: { start: asIso(win.start), end: asIso(win.end) },
-      kpis: win.kpis,
+      kpis: {
+        tournaments: slice.tournaments.length,
+        entries: slice.entries,
+        matches: denom,
+      },
       rows,
       other,
+      floor,
       generatedAt: fixtureDb().generatedAt,
     }
   }
 
+  /** Latest month with at least one tournament matching the platform lens. */
   async getLatestWindow(
-    format: FormatSlug
+    format: FormatSlug,
+    platform: Platform = 'all'
   ): Promise<{ start: IsoDate; end: IsoDate } | null> {
     const f = findFormat(String(format))
     if (!f) return null
-    const populated = f.windows.filter(w => w.kpis.matches > 0)
+    const populated = f.windows.filter(
+      w =>
+        w.kpis.matches > 0 &&
+        w.tournaments.some(t => matchesPlatform(t.source, platform))
+    )
     if (populated.length === 0) return null
     const latest = populated.reduce((a, b) => (b.end > a.end ? b : a))
     return { start: asIso(latest.start), end: asIso(latest.end) }
@@ -562,6 +656,7 @@ export class FixtureDataSource implements MetaDataSource {
         kpis: win ? win.kpis : emptyKpis(),
         rows: [],
         other: null,
+        floor: { belowFloorCount: 0, unknownShare: null, conflictShare: null },
         generatedAt: fixtureDb().generatedAt,
       }
     }
@@ -587,6 +682,10 @@ export class FixtureDataSource implements MetaDataSource {
     if (!win) return null
     const raw = win.archetypes.find(a => a.slug === String(q.slug))
     if (!raw) return null
+    // No event of this platform in the window: no match for the archetype
+    // either, which Postgres reports as null (→ 404) too.
+    const { tournaments, ratio } = platformSlice(win, q.platform)
+    if (tournaments.length === 0) return null
 
     // Reuse the report pipeline so summary rank/tier match the table exactly.
     const report = this.buildReport(
@@ -597,14 +696,15 @@ export class FixtureDataSource implements MetaDataSource {
     // Below-floor archetypes are absent from report.rows; recompute the dense
     // identity rank over the full window (mirroring buildReport) so the fallback
     // preserves the true presence rank (§9 rule 3) instead of an invalid 0.
+    const denom = report.kpis.matches
     const rankMap = presenceRankMap(
-      win.archetypes.map(a => deriveIntrinsic(a, win.kpis.matches)),
+      win.archetypes.map(a => deriveIntrinsic(a, denom, ratio)),
       q.weight
     )
     const summary =
       report.rows.find(r => r.slug === String(q.slug)) ??
       ({
-        ...deriveIntrinsic(raw, win.kpis.matches),
+        ...deriveIntrinsic(raw, denom, ratio),
         presenceRank: rankMap.get(String(q.slug)) ?? 0,
         tier: null,
       } as ArchetypeRowDTO)
@@ -617,19 +717,19 @@ export class FixtureDataSource implements MetaDataSource {
         col.slug,
         raw.name,
         col.name,
-        lookupMatchup(win.matchups, raw.slug, col.slug)
+        scaleRec(lookupMatchup(win.matchups, raw.slug, col.slug), ratio)
       )
     )
 
     return {
       archetype: { slug: q.slug, name: raw.name, color: raw.color },
       window: { start: asIso(win.start), end: asIso(win.end) },
-      kpis: win.kpis,
+      kpis: report.kpis,
       summary,
-      mainCards: raw.mainCards.map(c => cardDto(c, 'MAIN')),
-      sideCards: raw.sideCards.map(c => cardDto(c, 'SIDE')),
+      mainCards: raw.mainCards.map(c => cardDto(c, 'MAIN', ratio)),
+      sideCards: raw.sideCards.map(c => cardDto(c, 'SIDE', ratio)),
       matchups,
-      trends: raw.trend.map(trendPoint),
+      trends: raw.trend.map(w => trendPoint(w, ratio)),
     }
   }
 
@@ -638,9 +738,11 @@ export class FixtureDataSource implements MetaDataSource {
   ): Promise<CardAdoptionDTO[]> {
     const win = findWindow(q.format, q)
     const raw = win?.archetypes.find(a => a.slug === String(q.slug))
-    if (!raw) return []
+    if (!raw || !win) return []
+    const { tournaments, ratio } = platformSlice(win, q.platform)
+    if (tournaments.length === 0) return []
     const cards = q.board === 'SIDE' ? raw.sideCards : raw.mainCards
-    return cards.map(c => cardDto(c, q.board))
+    return cards.map(c => cardDto(c, q.board, ratio))
   }
 
   async getArchetypeTrends(
@@ -648,8 +750,10 @@ export class FixtureDataSource implements MetaDataSource {
   ): Promise<TrendPointDTO[]> {
     const win = findWindow(q.format, q)
     const raw = win?.archetypes.find(a => a.slug === String(q.slug))
-    if (!raw) return []
-    return raw.trend.map(trendPoint)
+    if (!raw || !win) return []
+    const { tournaments, ratio } = platformSlice(win, q.platform)
+    if (tournaments.length === 0) return []
+    return raw.trend.map(w => trendPoint(w, ratio))
   }
 
   /** The archetype's window entries for the recent-decks column (KTD7, KTD12).
@@ -662,7 +766,7 @@ export class FixtureDataSource implements MetaDataSource {
     const win = findWindow(q.format, q)
     const raw = win?.archetypes.find(a => a.slug === String(q.slug))
     if (!raw || !win) return { total: 0, entries: [] }
-    const entries = entrySummaries(win, raw)
+    const entries = entrySummaries(win, raw, q.platform)
     return {
       total: entries.length,
       entries: entries.slice(0, ARCHETYPE_ENTRIES_CAP),
@@ -700,15 +804,22 @@ export class FixtureDataSource implements MetaDataSource {
     q: MetaQuery & { matrixTopN: number }
   ): Promise<MatrixDTO> {
     const win = findWindow(q.format, q)
-    if (!win || win.archetypes.length === 0) {
+    const slice = win ? platformSlice(win, q.platform) : null
+    if (
+      !win ||
+      !slice ||
+      win.archetypes.length === 0 ||
+      slice.tournaments.length === 0
+    ) {
       return {
         window: { start: q.start, end: q.end },
         order: [],
         cells: [],
       }
     }
-    const denom = win.kpis.matches
-    const intrinsics = win.archetypes.map(a => deriveIntrinsic(a, denom))
+    const { ratio } = slice
+    const denom = Math.round(win.kpis.matches * ratio)
+    const intrinsics = win.archetypes.map(a => deriveIntrinsic(a, denom, ratio))
     // Share the dense identity rank the table/scatter/tiles use so the matrix
     // never renders a divergent number on a presence-weight tie (§9 rule 3).
     const rankMap = presenceRankMap(intrinsics, q.weight)
@@ -735,7 +846,7 @@ export class FixtureDataSource implements MetaDataSource {
         const rec =
           rowR.slug === colR.slug
             ? ZERO_REC
-            : lookupMatchup(win.matchups, rowR.slug, colR.slug)
+            : scaleRec(lookupMatchup(win.matchups, rowR.slug, colR.slug), ratio)
         cells.push(buildCell(rowR.slug, colR.slug, rowR.name, colR.name, rec))
       }
     }
@@ -755,12 +866,14 @@ export class FixtureDataSource implements MetaDataSource {
     const a = win.archetypes.find(x => x.slug === String(q.a))
     const b = win.archetypes.find(x => x.slug === String(q.b))
     if (!a || !b) return null
+    // An empty platform slice has ratio 0: a zero cell, as Postgres returns.
+    const { ratio } = platformSlice(win, q.platform)
     return buildCell(
       a.slug,
       b.slug,
       a.name,
       b.name,
-      lookupMatchup(win.matchups, a.slug, b.slug)
+      scaleRec(lookupMatchup(win.matchups, a.slug, b.slug), ratio)
     )
   }
 

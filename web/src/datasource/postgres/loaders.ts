@@ -12,10 +12,11 @@ import {
   type MatchupRow,
   type PlayerRow,
 } from '@/datasource/postgres/sql'
+import type { Platform } from '@/datasource/types'
 
 // ---------------------------------------------------------------------------
 // Per-request memoized raw loaders for the window aggregates whose SQL depends
-// ONLY on (formatId, start, end) — never on the lens knobs (topN, minMatches,
+// ONLY on (formatId, start, end, platform) — never on the lens knobs (topN, minMatches,
 // includeArchetypes, hideBuckets, weight, matrixTopN), which are applied in TS
 // afterwards (@/datasource/derive).
 //
@@ -49,16 +50,29 @@ export const loadArchetypes = cache(
 )
 
 export const loadKpi = cache(
-  async (formatId: string, start: string, end: string): Promise<KpiRow[]> =>
-    await KPI_SQL(formatId, start, end)
+  async (
+    formatId: string,
+    start: string,
+    end: string,
+    platform: Platform
+  ): Promise<KpiRow[]> => await KPI_SQL(formatId, start, end, platform)
 )
 
 export const loadPlayerRecords = cache(
-  async (formatId: string, start: string, end: string): Promise<PlayerRow[]> =>
-    await PLAYER_RECORDS_SQL(formatId, start, end)
+  async (
+    formatId: string,
+    start: string,
+    end: string,
+    platform: Platform
+  ): Promise<PlayerRow[]> =>
+    await PLAYER_RECORDS_SQL(formatId, start, end, platform)
 )
 
 export const loadMatchups = cache(
-  async (formatId: string, start: string, end: string): Promise<MatchupRow[]> =>
-    await MATCHUPS_SQL(formatId, start, end)
+  async (
+    formatId: string,
+    start: string,
+    end: string,
+    platform: Platform
+  ): Promise<MatchupRow[]> => await MATCHUPS_SQL(formatId, start, end, platform)
 )

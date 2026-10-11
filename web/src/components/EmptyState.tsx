@@ -27,9 +27,9 @@ export type EmptyStateProps = {
 }
 
 export function EmptyState({
-  eyebrow = 'Nothing here yet',
+  eyebrow = 'No results',
   title = 'No tournaments in this window',
-  message = 'The ledger is empty for the dates and filters you picked. Widen the window or loosen the floor to bring the field back into view.',
+  message = 'No tournaments match these dates and filters. Widen the window or lower the match floor to bring the field back into view.',
   widenHref,
   widenLabel = 'Widen the window',
   action,

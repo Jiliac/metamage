@@ -1,7 +1,11 @@
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
+import { Suspense } from 'react'
 
 import { getDataSource } from '@/datasource'
+import { platformScope } from '@/datasource/platform'
+import { windowLabel } from '@/lib/dates'
+import { LensBar } from '@/components/LensBar/LensBar'
 import {
   buildHref,
   parseDeckId,
@@ -120,6 +124,16 @@ export default async function ArchetypeDetailPage({
 
   const { canonical, detail, deck } = selection
   const archPath = `/archetype/${canonical.slug}`
+  const ds = getDataSource()
+  // The LensBar's format list and the trend chart's ban/set markers: both
+  // format-level reads, memoized by the data layer like everything else.
+  const [formats, changes] = await Promise.all([
+    ds.listFormats(),
+    ds.getFormatMetaChanges(query.format),
+  ])
+  const fmtName =
+    formats.find(f => f.slug === query.format)?.name ??
+    format.charAt(0).toUpperCase() + format.slice(1)
   // Forward the deck only when it actually resolved to the shown deck.
   const shownDeckId = deck && deck.entry.id === deckId ? deckId : undefined
   // The selection survives tab switches (KTD6).
@@ -147,8 +161,17 @@ export default async function ArchetypeDetailPage({
 
   return (
     <>
+      {/* The window the figures below describe is the lens; the archetype
+          variant keeps the window knob and Share but drops the format chips
+          (a slug belongs to one format). */}
+      <Suspense fallback={null}>
+        <LensBar formats={formats} archetypes={[]} variant="archetype" />
+      </Suspense>
       <ArchetypeHeader
-        format={format}
+        fmtName={fmtName}
+        window={
+          windowLabel(query.start, query.end) + platformScope(query.platform)
+        }
         name={detail?.archetype.name ?? canonical.name}
         color={color}
         summary={detail?.summary ?? null}
@@ -158,6 +181,8 @@ export default async function ArchetypeDetailPage({
           tab={tab}
           tabHref={tabHref}
           detail={detail}
+          changes={changes}
+          fmtName={fmtName}
           decklists={decklists}
         />
       ) : (

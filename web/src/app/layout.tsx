@@ -1,5 +1,6 @@
 import './globals.css'
 import type { Metadata } from 'next'
+import { Newsreader } from 'next/font/google'
 
 import { Providers } from './providers'
 import { Navbar } from '@/components/Navbar'
@@ -8,14 +9,32 @@ import { Toaster } from '@/components/ui/sonner'
 
 // ---------------------------------------------------------------------------
 // Root shell (WP5). Establishes the <html>/<body> spine, the metadataBase +
-// '%s | MetaMage' title template, the Gathering Ledger fonts (system stacks in
-// globals.css — no next/font), the client Providers (next-themes + PostHog,
-// owned by WP3), the site Navbar (WP3), the WUBRG hairline under the header
-// (§9 rule 6), and the toaster mount.
+// '%s | MetaMage' title template, the Gathering Ledger fonts (the display face
+// is Newsreader, self-hosted via next/font below and exposed as
+// --font-display-face; body and data stay system stacks in globals.css), the
+// client Providers (next-themes + PostHog, owned by WP3), the site Navbar
+// (WP3), the WUBRG hairline under the header (§9 rule 6), and the toaster
+// mount.
 //
 // WP7: the OG defaults below are static; the per-route generateMetadata blocks
 // point openGraph.images at the /og route once lib/seo lands.
 // ---------------------------------------------------------------------------
+
+// Display face (§9 "Type"): an editorial serif with a real weight range and an
+// optical-size axis, so the 44px H1 and the 22px brand mark are cut from the
+// same masthead. Downloaded at build, served from this origin — no runtime
+// Google request. adjustFontFallback keeps the metric-matched fallback so the
+// swap does not shift layout; the Optima/Candara stack in globals.css remains
+// the last resort.
+const displayFace = Newsreader({
+  subsets: ['latin'],
+  weight: 'variable',
+  style: ['normal'],
+  axes: ['opsz'],
+  display: 'swap',
+  adjustFontFallback: true,
+  variable: '--font-display-face',
+})
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -43,7 +62,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={displayFace.variable} suppressHydrationWarning>
       <body>
         <Providers>
           <div className={cn(CONTAINER_CLASS, 'w-full pb-24')}>
@@ -51,7 +70,6 @@ export default function RootLayout({
                 the active format from usePathname and preserves the lens via
                 buildHref. The WUBRG hairline sits directly beneath it (§9). */}
             <Navbar />
-            <hr className="wubrg-rule mb-0.5" />
             <main>{children}</main>
           </div>
         </Providers>

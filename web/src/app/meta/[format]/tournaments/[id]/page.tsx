@@ -16,23 +16,29 @@ import {
   archetypeHref,
   eventStats,
   isEventId,
+  isPartialRecordSource,
   leaderLabel,
   placingLabel,
+  rankStandings,
   recordLabel,
   SOURCE_LABEL,
-  sortStandings,
+  STANDINGS_PAGE_SIZE,
   standingLink,
   type EventFieldRow,
+  type RankedStanding,
   type StandingLink,
 } from '@/lib/events'
-import { buildHref, parseMetaQuery } from '@/lib/params'
+import { int } from '@/lib/format'
+import { slicePage } from '@/lib/paging'
+import { buildHref, parseMetaQuery, parsePage, parseRow } from '@/lib/params'
 import { longDate } from '@/lib/dates'
 import { buildPageMetadata } from '@/lib/seo'
 import { cn } from '@/lib/utils'
 
-import { KpiStat, KpiStatGroup } from '@/components/KpiStat'
+import { KpiStat } from '@/components/KpiStat'
 import { ManaPips } from '@/components/ManaPips'
-import { MatchupMatrix } from '@/components/charts/MatchupMatrix'
+import { Pager } from '@/components/Pager'
+import { MatchupSurface } from '@/components/charts/MatchupSurface'
 import { PresenceBars } from '@/components/charts/PresenceBars'
 
 // ---------------------------------------------------------------------------
@@ -43,12 +49,17 @@ import { PresenceBars } from '@/components/charts/PresenceBars'
 // to the event's. The event itself is window-free; the lens params ride along
 // only so "back" and the archetype links keep the user's window.
 //
-// Deck names link to the archetype page's Decklists tab with `?deck=<entry>`
-// selected. Players are plain text (no player pages yet).
+// Standings carry an explicit place on every row (published, or derived from
+// the record when the source publishes none) and page through `?page` in
+// 50-row slices, so a 1,500-player Regional Championship is one screen, not
+// sixty. Deck names link to the archetype page's Decklists tab with
+// `?deck=<entry>` selected. Players are plain text (no player pages yet).
 // ---------------------------------------------------------------------------
 
 type RouteParams = { format: string; id: string }
 type SearchParams = Record<string, string | string[] | undefined>
+
+const STANDINGS_ID = 'standings'
 
 function formatLabel(formats: FormatDTO[], slug: string): string {
   return formats.find(f => f.slug === slug)?.name ?? slug
@@ -131,8 +142,14 @@ export default async function TournamentPage({
           No standings were published for this event.
         </p>
       ) : (
-        // Archetype links always target the event's real format.
-        <EventBody detail={detail} query={{ ...query, format: t.format }} />
+        <EventBody
+          detail={detail}
+          routeFormat={format}
+          // Archetype links always target the event's real format.
+          query={{ ...query, format: t.format }}
+          page={parsePage(sp)}
+          sp={sp}
+        />
       )}
 
       <EventFooter tournament={t} />
@@ -153,38 +170,116 @@ function EventFooter({ tournament: t }: { tournament: TournamentDTO }) {
 /** KPIs, standings, field and matrix of an event with standings. */
 function EventBody({
   detail,
+  routeFormat,
   query,
+  page,
+  sp,
 }: {
   detail: TournamentDetailDTO
+  /** The `{format}` path segment the page was reached at (`all` included),
+   *  so page links stay on the URL the reader is on. */
+  routeFormat: string
   query: MetaQuery
+  page: number
+  sp: SearchParams
 }) {
   const t = detail.tournament
-  const standings = sortStandings(detail.standings)
+  const ranked = rankStandings(detail.standings)
+  const standings = ranked.map(r => r.standing)
   const { field, matrix } = eventStats(standings, detail.matchups, t.date)
   const hrefFor = (slug: string) => archetypeHref(t.format, query, slug, t.date)
+
+  const slice = slicePage(ranked, page, STANDINGS_PAGE_SIZE)
+  const row = parseRow(sp, matrix.order)
+  // `row` rides so paging keeps the mobile matchup list's selection (KTD4).
+  const pageHref = (n: number) =>
+    `${buildHref(routeFormat, query, {
+      path: `/tournaments/${t.id}`,
+      page: n,
+      row,
+      matrixOrder: matrix.order,
+    })}#${STANDINGS_ID}`
+  const hasPublished = ranked.some(r => !r.derived)
+  const hasDerived = ranked.some(r => r.derived)
+  const partialRecords = isPartialRecordSource(t.source)
 
   return (
     <>
       <EventKpis standings={standings} field={field} />
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <section aria-labelledby="standings-h" className="min-w-0">
-          <h2 id="standings-h" className="eyebrow mb-2">
-            Standings
-          </h2>
+        <section
+          id={STANDINGS_ID}
+          aria-labelledby="standings-h"
+          className="min-w-0 scroll-mt-6"
+        >
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h2 id="standings-h" className="eyebrow">
+              Standings
+            </h2>
+            {slice.pages > 1 && (
+              <p className="text-[12.5px] text-ink-3">
+                Players{' '}
+                <span className="num text-ink-2">
+                  {int(slice.from)}–{int(slice.to)}
+                </span>{' '}
+                of <span className="num text-ink-2">{int(slice.total)}</span>
+              </p>
+            )}
+          </div>
           <StandingsTable
-            standings={standings}
-            showPlace={standings.some(s => s.rank !== null)}
+            rows={slice.visible}
+            placeHeading={hasPublished ? 'Place' : 'Rank'}
             linkFor={s => standingLink(t.format, query, s, t.date)}
             archetypeHrefFor={hrefFor}
           />
-          <p className="mt-2 text-[12px] text-ink-3">
-            Records count only matches against other published decks.
-          </p>
+          <StandingsNotes
+            derived={hasDerived}
+            published={hasPublished}
+            partialRecords={partialRecords}
+          />
+          <Pager
+            page={slice.page}
+            pages={slice.pages}
+            from={slice.from}
+            to={slice.to}
+            total={slice.total}
+            unit="players"
+            hrefFor={pageHref}
+            className="mt-4"
+          />
         </section>
         <FieldPanel field={field} hrefFor={hrefFor} />
       </div>
-      <MatchupsSection matrix={matrix} hrefFor={hrefFor} />
+      <MatchupsSection matrix={matrix} row={row} hrefFor={hrefFor} />
     </>
+  )
+}
+
+/** The one or two provenance lines under the table: how the places were
+ *  arrived at, and whether the records are whole. */
+function StandingsNotes({
+  derived,
+  published,
+  partialRecords,
+}: {
+  derived: boolean
+  published: boolean
+  partialRecords: boolean
+}) {
+  if (!derived && !partialRecords) return null
+  return (
+    <div className="mt-2 grid gap-1 text-[12px] text-ink-3">
+      {derived && (
+        <p>
+          {published
+            ? 'Unranked entrants are placed by match points (3 per win, 1 per draw), then fewer losses; equal records share a place.'
+            : 'The source publishes no final placings. Rank follows match points (3 per win, 1 per draw), then fewer losses; equal records share a rank.'}
+        </p>
+      )}
+      {partialRecords && (
+        <p>Records count only matches against other published decks.</p>
+      )}
+    </div>
   )
 }
 
@@ -200,12 +295,12 @@ function EventHeader({
       <p className="eyebrow mb-1.5">
         Event · {formatName} · {SOURCE_LABEL[t.source]}
       </p>
-      <h1 className="font-display text-[clamp(24px,4vw,36px)] font-bold">
+      <h1 className="font-display text-[clamp(24px,4vw,36px)] font-bold text-balance">
         {t.name}
       </h1>
       <p className="mt-1.5 text-[13.5px] text-ink-2">
         <span className="data">{longDate(t.date)}</span> ·{' '}
-        <span className="data">{t.entries}</span> players
+        <span className="data">{int(t.entries)}</span> players
         {t.link && (
           <>
             {' '}
@@ -233,8 +328,10 @@ function EventKpis({
   field: EventFieldRow[]
 }) {
   const leader = standings[0]
+  // Three joined tiles; on a phone the leader's name needs the full width,
+  // so the triad folds to a 2 + 1 grid below 480px.
   return (
-    <KpiStatGroup columns={3} className="mt-6">
+    <div className="mt-6 grid grid-cols-3 gap-px border border-line bg-line max-[480px]:grid-cols-2">
       <KpiStat label="Players" value={standings.length} />
       <KpiStat
         label="Archetypes"
@@ -243,9 +340,9 @@ function EventKpis({
       <KpiStat
         label={leaderLabel(leader.rank)}
         value={leader.archetype.name}
-        className="[&_.num]:truncate [&_.num]:text-[20px]"
+        className="max-[480px]:col-span-2 [&_.num]:truncate [&_.num]:text-[20px]"
       />
-    </KpiStatGroup>
+    </div>
   )
 }
 
@@ -282,14 +379,14 @@ function FieldPanel({
 
 function MatchupsSection({
   matrix,
+  row,
   hrefFor,
 }: {
   matrix: MatrixDTO
+  /** `?row`, the phone list's selected archetype (rank 1 when absent). */
+  row: string | undefined
   hrefFor: (slug: string) => string
 }) {
-  const rowHref = Object.fromEntries(
-    matrix.order.map(o => [o.slug, hrefFor(o.slug)])
-  )
   return (
     <section aria-labelledby="matchups-h" className="mt-10">
       <h2 id="matchups-h" className="eyebrow mb-1.5">
@@ -302,7 +399,10 @@ function MatchupsSection({
       </p>
       {matrix.order.length >= 2 ? (
         <div className="border border-line bg-surface p-3 shadow-ledger">
-          <MatchupMatrix data={matrix} rowHref={rowHref} />
+          {/* The same `matrix:` seam as the overview and matrix routes (§9
+              Matrix Seam Rule): the N×N grid only on a wide, hover-capable
+              screen; the per-archetype list with inline CIs elsewhere. */}
+          <MatchupSurface matrix={matrix} row={row} hrefFor={hrefFor} />
         </div>
       ) : (
         <p className="border border-line bg-surface p-6 text-[13.5px] text-ink-2">
@@ -334,13 +434,13 @@ function Th({
 }
 
 function StandingsTable({
-  standings,
-  showPlace,
+  rows,
+  placeHeading,
   linkFor,
   archetypeHrefFor,
 }: {
-  standings: StandingDTO[]
-  showPlace: boolean
+  rows: RankedStanding[]
+  placeHeading: 'Place' | 'Rank'
   linkFor: (s: StandingDTO) => StandingLink | null
   archetypeHrefFor: (slug: string) => string
 }) {
@@ -352,21 +452,24 @@ function StandingsTable({
       >
         <thead>
           <tr>
-            {showPlace && <Th className="w-[64px]">Place</Th>}
+            <Th className="w-[64px]">{placeHeading}</Th>
             <Th>Deck</Th>
-            <Th>Pilot</Th>
+            {/* Below `md` the pilot folds under the deck name so the record
+                stays on screen without a sideways scroll. */}
+            <Th className="hidden md:table-cell">Pilot</Th>
             <Th className="text-right">Record</Th>
           </tr>
         </thead>
         <tbody>
-          {standings.map(s => (
+          {rows.map(r => (
             <StandingRow
-              key={s.entryId}
-              standing={s}
-              showPlace={showPlace}
-              link={linkFor(s)}
+              key={r.standing.entryId}
+              ranked={r}
+              link={linkFor(r.standing)}
               archetypeHref={
-                s.archetype.isBucket ? null : archetypeHrefFor(s.archetype.slug)
+                r.standing.archetype.isBucket
+                  ? null
+                  : archetypeHrefFor(r.standing.archetype.slug)
               }
             />
           ))}
@@ -382,13 +485,11 @@ const ROW_LINK_CLASS =
   "font-semibold text-ink no-underline after:absolute after:inset-0 after:content-[''] hover:text-gold group-hover:text-gold group-hover:underline group-hover:underline-offset-[3px] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-gold"
 
 function StandingRow({
-  standing: s,
-  showPlace,
+  ranked: { standing: s, place, derived },
   link,
   archetypeHref,
 }: {
-  standing: StandingDTO
-  showPlace: boolean
+  ranked: RankedStanding
   link: StandingLink | null
   /** Fallback name link when the row has no decklist to open. */
   archetypeHref: string | null
@@ -401,29 +502,33 @@ function StandingRow({
         s.archetype.isBucket && 'text-ink-2'
       )}
     >
-      {showPlace && (
-        <td className="border-b border-line px-3.5 py-2">
-          <span
-            className={cn(
-              'data',
-              s.rank === 1 ? 'font-bold text-gold' : 'text-ink-2'
-            )}
-          >
-            {placingLabel(s.rank) ?? '—'}
-          </span>
-        </td>
-      )}
-      <td className="border-b border-line px-3.5 py-2">
+      <td className="border-b border-line px-3.5 py-2 align-top md:align-middle">
+        <span
+          className={cn(
+            'data whitespace-nowrap',
+            // The published winner is bold ink: weight carries it, and gold
+            // never encodes a value (§9 rule 1). A derived first place is a
+            // record, not a title, so it stays in the secondary ink.
+            place === 1 && !derived ? 'font-bold text-ink' : 'text-ink-2'
+          )}
+        >
+          {placingLabel(place)}
+        </span>
+      </td>
+      <td className="border-b border-line px-3.5 py-2 align-top md:align-middle">
         <span className="inline-flex items-center gap-2">
           <ManaPips colors={s.archetype.color} size={14} />
           <DeckName standing={s} link={link} archetypeHref={archetypeHref} />
           <ListHint standing={s} link={link} />
         </span>
+        <span className="mt-0.5 block text-[12.5px] text-ink-2 md:hidden">
+          {s.player}
+        </span>
       </td>
-      <td className="border-b border-line px-3.5 py-2 text-ink-2">
+      <td className="hidden border-b border-line px-3.5 py-2 text-ink-2 md:table-cell">
         {s.player}
       </td>
-      <td className="border-b border-line px-3.5 py-2 text-right">
+      <td className="border-b border-line px-3.5 py-2 text-right align-top md:align-middle">
         <span className="data">{recordLabel(s)}</span>
       </td>
     </tr>
@@ -445,7 +550,9 @@ function ListHint({
     : !s.hasDecklist
       ? 'no list'
       : null
-  return hint ? <span className="text-[11px] text-ink-3">{hint}</span> : null
+  return hint ? (
+    <span className="text-[11px] whitespace-nowrap text-ink-3">{hint}</span>
+  ) : null
 }
 
 /** The row's one link: the decklist (stretched over the row), else the

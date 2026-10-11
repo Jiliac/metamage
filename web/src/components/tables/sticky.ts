@@ -17,6 +17,11 @@ const STICKY_BASE =
  *  width; do not add another width utility at the call site. */
 export const STICKY_COL_1 = `${STICKY_BASE} left-0 w-[58px] after:bg-line`
 
+/** First pinned column for a date ("Oct 3", "Sep 30") — 84px so the mono
+ *  date never wraps. Only for tables with a single pinned column: nothing
+ *  offsets past it. */
+export const STICKY_COL_DATE = `${STICKY_BASE} left-0 w-[84px] whitespace-nowrap after:bg-line`
+
 /** Second pinned column, offset past the 58px first column. */
 export const STICKY_COL_2 = `${STICKY_BASE} left-[58px] after:bg-line`
 

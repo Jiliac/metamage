@@ -34,6 +34,19 @@ const POLE_VAR: Record<WrPolarity, string> = {
   mid: 'var(--mid)',
 }
 
+// Rank badge paint per polarity. Pole fills carry `--bg` numerals (≥4.9:1 in
+// both themes); the neutral grey cannot, so the "mid" badge is an ink numeral
+// on the raised surface with a grey ring — same silhouette, legible figure.
+const BADGE_STYLE: Record<WrPolarity, React.CSSProperties> = {
+  good: { background: 'var(--good)', color: 'var(--bg)' },
+  bad: { background: 'var(--bad)', color: 'var(--bg)' },
+  mid: {
+    background: 'var(--raised)',
+    color: 'var(--ink)',
+    boxShadow: '0 0 0 1px var(--mid)',
+  },
+}
+
 type ScatterDatum = {
   x: number // presence %, 0..100
   y: number // win rate %, 0..100
@@ -63,17 +76,17 @@ function NumberedDot({ cx, cy, payload, onNavigate }: DotShapeProps) {
       <circle
         cx={cx}
         cy={cy}
-        r={11}
-        fill={POLE_VAR[payload.pol]}
-        stroke="var(--surface)"
+        r={12}
+        fill={payload.pol === 'mid' ? 'var(--raised)' : POLE_VAR[payload.pol]}
+        stroke={payload.pol === 'mid' ? 'var(--mid)' : 'var(--surface)'}
         strokeWidth={2}
       />
       <text
         x={cx}
-        y={cy + 3.5}
+        y={cy + 4}
         textAnchor="middle"
-        fill="var(--bg)"
-        fontSize={10}
+        fill={payload.pol === 'mid' ? 'var(--ink)' : 'var(--bg)'}
+        fontSize={11}
         fontWeight={700}
         style={{ fontFamily: 'var(--font-mono)', pointerEvents: 'none' }}
       >
@@ -194,7 +207,7 @@ export function WrPresenceScatter({
     >
       <style>
         {
-          '.mm-scatter-link:focus{outline:none}.mm-scatter-link:focus-visible circle{stroke:var(--gold);stroke-width:3}@media (prefers-reduced-motion: no-preference){.mm-scatter-dot{animation:mm-pop .45s cubic-bezier(.2,.9,.3,1.4) backwards}@keyframes mm-pop{from{opacity:0;transform:scale(.4)}}}'
+          '.mm-scatter-link:focus{outline:none}.mm-scatter-link:focus-visible circle{stroke:var(--gold);stroke-width:3}@media (prefers-reduced-motion: no-preference){.mm-scatter-dot{animation:mm-pop .45s cubic-bezier(.16,1,.3,1) backwards}@keyframes mm-pop{from{opacity:0;transform:scale(.6)}}}'
         }
       </style>
       <div className="border-b border-line px-4 py-3 md:border-b-0 md:border-r md:py-4">
@@ -205,8 +218,8 @@ export function WrPresenceScatter({
               className="flex items-center gap-2 py-2 md:py-[3.5px]"
             >
               <span
-                className="data grid size-[17px] flex-none place-items-center rounded-full text-[9.5px] font-bold text-bg"
-                style={{ background: POLE_VAR[d.pol] }}
+                className="data grid size-[19px] flex-none place-items-center rounded-full text-[11px] font-bold"
+                style={BADGE_STYLE[d.pol]}
               >
                 {d.rank}
               </span>

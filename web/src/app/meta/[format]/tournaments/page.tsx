@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 
 import { getDataSource } from '@/datasource'
+import { platformScope } from '@/datasource/platform'
 import type {
   ArchetypeRef,
   FormatDTO,
@@ -15,7 +16,7 @@ import { shortDate } from '@/lib/dates'
 import { SOURCE_LABEL } from '@/lib/events'
 import { buildPageMetadata } from '@/lib/seo'
 import { cn } from '@/lib/utils'
-import { STICKY_COL_1 } from '@/components/tables/sticky'
+import { STICKY_COL_DATE } from '@/components/tables/sticky'
 
 import { LensBar } from '@/components/LensBar/LensBar'
 import { EmptyState } from '@/components/EmptyState'
@@ -128,14 +129,14 @@ export default async function TournamentsPage({
       </Suspense>
 
       <section className="mt-10">
-        <p className="eyebrow mb-1.5">The feed</p>
-        <h2 className="font-display text-[clamp(24px,4vw,34px)] font-bold">
+        <p className="eyebrow mb-1.5">Events{platformScope(query.platform)}</p>
+        <h1 className="font-display text-[clamp(24px,4vw,34px)] font-bold">
           {heading}
-        </h2>
+        </h1>
         <p className="mt-0.5 max-w-[65ch] text-[13.5px] text-ink-2">
           {isAll
             ? 'Every event in the window, across every format. Open one for its standings, field and matchups.'
-            : 'Every event in the window, and where the data comes from. The matrix and the field above are built from exactly these results. Open one for its standings.'}
+            : 'Every event in the window, and where the data comes from. The ranking and the matrix are built from exactly these results. Open one for its standings.'}
         </p>
 
         {tournaments.length === 0 ? (
@@ -158,10 +159,12 @@ export default async function TournamentsPage({
               <table className="w-full border-collapse text-[13.5px]">
                 <thead>
                   <tr>
-                    <Th className={STICKY_COL_1}>Date</Th>
+                    <Th className={STICKY_COL_DATE}>Date</Th>
                     <Th>Tournament</Th>
                     {isAll && <Th>Format</Th>}
-                    <Th>Source</Th>
+                    {/* Below `md` the source folds under the event name so
+                        the entries column stays on screen. */}
+                    <Th className="hidden md:table-cell">Source</Th>
                     <Th className="text-right">Entries</Th>
                   </tr>
                 </thead>
@@ -173,28 +176,31 @@ export default async function TournamentsPage({
                     >
                       <td
                         className={cn(
-                          'border-b border-line px-3.5 py-2',
-                          STICKY_COL_1
+                          'border-b border-line px-3.5 py-2 align-top md:align-middle',
+                          STICKY_COL_DATE
                         )}
                       >
                         <span className="data text-ink-2">
                           {shortDate(t.date)}
                         </span>
                       </td>
-                      <td className="border-b border-line px-3.5 py-2 font-semibold text-ink">
+                      <td className="border-b border-line px-3.5 py-2 align-top font-semibold text-ink md:align-middle">
                         <Link
                           href={eventHref(t.id)}
                           className="hover:text-gold hover:underline hover:underline-offset-[3px]"
                         >
                           {t.name}
                         </Link>
+                        <span className="mt-0.5 block text-[12px] font-normal text-ink-3 md:hidden">
+                          {SOURCE_LABEL[t.source]}
+                        </span>
                       </td>
                       {isAll && (
-                        <td className="border-b border-line px-3.5 py-2 text-ink-2">
+                        <td className="border-b border-line px-3.5 py-2 align-top text-ink-2 md:align-middle">
                           {formatChip(formats, t.format)}
                         </td>
                       )}
-                      <td className="border-b border-line px-3.5 py-2 text-ink-2">
+                      <td className="hidden border-b border-line px-3.5 py-2 whitespace-nowrap text-ink-2 md:table-cell">
                         {t.link ? (
                           <a
                             href={t.link}
@@ -209,7 +215,7 @@ export default async function TournamentsPage({
                           SOURCE_LABEL[t.source]
                         )}
                       </td>
-                      <td className="border-b border-line px-3.5 py-2 text-right">
+                      <td className="border-b border-line px-3.5 py-2 text-right align-top md:align-middle">
                         <span className="data">{t.entries}</span>
                       </td>
                     </tr>

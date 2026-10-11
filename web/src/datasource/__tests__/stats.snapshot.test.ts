@@ -18,6 +18,10 @@ import {
   compareEntrySummaries,
   FixtureDataSource,
   fixtureDb,
+  setFixtureDb,
+  type RawArchetype,
+  type RawDb,
+  type RawWindow,
 } from '@/datasource/fixtures'
 import type {
   ArchetypeSlug,
@@ -44,6 +48,7 @@ function stdQuery(overrides: Partial<MetaQuery> = {}): MetaQuery {
     includeArchetypes: [],
     hideBuckets: true,
     weight: 'match',
+    platform: 'all',
     ...overrides,
   }
 }
@@ -463,5 +468,175 @@ describe('FixtureDataSource — decklists tab fixtures (KTD12)', () => {
     expect(deck!.main.reduce((s, c) => s + c.count, 0)).toBe(99)
     expect(deck!.side).toHaveLength(1)
     expect(deck!.side[0]!.typeLine).not.toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The platform lens on fixtures (#6): the window aggregates carry no source
+// attribution, so a sub-'all' lens is modeled as a proportional slice of the
+// window (counts scaled by the kept entry share) and getLatestWindow only
+// lands on months the lens actually populates.
+// ---------------------------------------------------------------------------
+
+describe('FixtureDataSource — the platform lens on fixtures', () => {
+  it('narrows the report figures to the matching sources', async () => {
+    const ds = new FixtureDataSource()
+    const all = await ds.getMetaReport(stdQuery())
+    const online = await ds.getMetaReport(stdQuery({ platform: 'online' }))
+    const paper = await ds.getMetaReport(stdQuery({ platform: 'paper' }))
+    // June 2026 standard seeds 35 MTGO + 16 Melee + 7 CardsRealm events.
+    expect(online.kpis.tournaments).toBe(35)
+    expect(paper.kpis.tournaments).toBe(23)
+    expect(online.kpis.tournaments + paper.kpis.tournaments).toBe(
+      all.kpis.tournaments
+    )
+    expect(online.kpis.entries + paper.kpis.entries).toBe(all.kpis.entries)
+    // Each lens partitions the window instead of reprinting it.
+    expect(online.kpis.matches).toBeLessThan(all.kpis.matches)
+    expect(paper.kpis.matches).toBeLessThan(all.kpis.matches)
+    // Shares denominate against the lens's own window, not the 'all' one.
+    expect(online.rows.length).toBeGreaterThan(0)
+    const top = online.rows[0]!
+    expect(top.share).toBeCloseTo(top.matches / online.kpis.matches, 4)
+  })
+
+  it('slices the matrix and archetype reads the same way as the report', async () => {
+    const ds = new FixtureDataSource()
+    const q = stdQuery({ platform: 'online' })
+    const [report, all, matrix] = await Promise.all([
+      ds.getMetaReport(q),
+      ds.getMatchupMatrix({ ...stdQuery(), matrixTopN: 10 }),
+      ds.getMatchupMatrix({ ...q, matrixTopN: 10 }),
+    ])
+    // The matrix order reprints the lens's figures, not the 'all' window's.
+    const top = report.rows[0]!
+    const head = matrix.order.find(o => o.slug === top.slug)!
+    expect(head.matches).toBe(top.matches)
+    const games = (m: typeof matrix) => m.cells.reduce((s, c) => s + c.games, 0)
+    expect(games(matrix)).toBeLessThan(games(all))
+
+    const detail = await ds.getArchetypeDetail({ ...q, slug: top.slug })
+    expect(detail!.kpis).toEqual(report.kpis)
+    expect(detail!.summary.matches).toBe(top.matches)
+
+    // Entries carry their event, so they filter exactly.
+    const entries = await ds.getArchetypeEntries({ ...q, slug: top.slug })
+    expect(entries.entries.length).toBeGreaterThan(0)
+    expect(entries.entries.every(e => e.event.source === 'MTGO')).toBe(true)
+  })
+
+  it('counts sub-floor archetypes over the full field', async () => {
+    const ds = new FixtureDataSource()
+    const report = await ds.getMetaReport(stdQuery())
+    // The four sub-80 archetypes, even though all sit inside the top-20 cut.
+    expect(report.floor.belowFloorCount).toBe(4)
+    expect(report.floor.unknownShare).not.toBeNull()
+    expect(report.floor.conflictShare).not.toBeNull()
+  })
+
+  it('getLatestWindow skips months the lens leaves empty', async () => {
+    const zeroArchetype: RawArchetype = {
+      slug: 'unknown',
+      name: 'Unknown',
+      color: null,
+      isBucket: true,
+      art: null,
+      decks: 0,
+      players: [],
+      mainCards: [],
+      sideCards: [],
+      trend: [],
+      entries: [],
+      deckLists: [],
+    }
+    const paperOnly: RawWindow = {
+      start: '2026-09-01',
+      end: '2026-09-30',
+      kpis: { tournaments: 2, entries: 40, matches: 160 },
+      archetypes: [zeroArchetype],
+      matchups: [],
+      tournaments: [
+        {
+          id: 'm',
+          name: 'Melee Open',
+          date: '2026-09-05',
+          source: 'MELEE',
+          entries: 20,
+        },
+        {
+          id: 'c',
+          name: 'CardsRealm Open',
+          date: '2026-09-12',
+          source: 'CARDSREALM',
+          entries: 20,
+        },
+      ],
+    }
+    const onlineOnly: RawWindow = {
+      start: '2026-10-01',
+      end: '2026-10-31',
+      kpis: { tournaments: 1, entries: 30, matches: 120 },
+      archetypes: [zeroArchetype],
+      matchups: [],
+      tournaments: [
+        {
+          id: 't',
+          name: 'MTGO Challenge',
+          date: '2026-10-10',
+          source: 'MTGO',
+          entries: 30,
+        },
+      ],
+    }
+    setFixtureDb({
+      generatedAt: '2026-10-11T00:00:00.000Z',
+      cardData: {},
+      formats: [
+        {
+          slug: 'standard' as FormatSlug,
+          name: 'Standard',
+          displayName: 'Standard',
+          metaChanges: [],
+          windows: [paperOnly, onlineOnly],
+        },
+      ],
+    } satisfies RawDb)
+    try {
+      const ds = new FixtureDataSource()
+      // Each month is populated only for the platform that played in it.
+      expect(
+        await ds.getLatestWindow('standard' as FormatSlug, 'online')
+      ).toEqual({
+        start: '2026-10-01' as IsoDate,
+        end: '2026-10-31' as IsoDate,
+      })
+      expect(
+        await ds.getLatestWindow('standard' as FormatSlug, 'paper')
+      ).toEqual({
+        start: '2026-09-01' as IsoDate,
+        end: '2026-09-30' as IsoDate,
+      })
+      // The lens-zero report is an honest zero, not the window's 'all' data.
+      const report = await ds.getMetaReport(
+        stdQuery({
+          start: '2026-09-01' as IsoDate,
+          end: '2026-09-30' as IsoDate,
+          platform: 'online',
+        })
+      )
+      expect(report.rows).toHaveLength(0)
+      expect(report.kpis.matches).toBe(0)
+      const matrix = await ds.getMatchupMatrix({
+        ...stdQuery({
+          start: '2026-09-01' as IsoDate,
+          end: '2026-09-30' as IsoDate,
+          platform: 'online',
+        }),
+        matrixTopN: 10,
+      })
+      expect(matrix.order).toHaveLength(0)
+    } finally {
+      setFixtureDb(null)
+    }
   })
 })

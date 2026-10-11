@@ -4,28 +4,28 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/**'
-      - 'tests/**'
-      - 'scripts/**'
-      - 'visualize/**'
-      - 'alembic/**'
-      - 'alembic.ini'
-      - 'pyproject.toml'
-      - 'uv.lock'
-      - '.python-version'
-      - '.github/workflows/ci-python.yml'
+      - "src/**"
+      - "tests/**"
+      - "scripts/**"
+      - "visualize/**"
+      - "alembic/**"
+      - "alembic.ini"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".python-version"
+      - ".github/workflows/ci-python.yml"
   pull_request:
     paths:
-      - 'src/**'
-      - 'tests/**'
-      - 'scripts/**'
-      - 'visualize/**'
-      - 'alembic/**'
-      - 'alembic.ini'
-      - 'pyproject.toml'
-      - 'uv.lock'
-      - '.python-version'
-      - '.github/workflows/ci-python.yml'
+      - "src/**"
+      - "tests/**"
+      - "scripts/**"
+      - "visualize/**"
+      - "alembic/**"
+      - "alembic.ini"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".python-version"
+      - ".github/workflows/ci-python.yml"
 
 permissions:
   contents: read
@@ -47,7 +47,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          python-version: '3.13'
+          python-version: "3.13"
           enable-cache: true
 
       - name: Sync locked dependencies
@@ -61,4 +61,3 @@ jobs:
       # so local and CI collect the same set.
       - name: Pytest
         run: uv run pytest -q
-
