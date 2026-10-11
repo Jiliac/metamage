@@ -159,6 +159,8 @@ export default async function MetaOverviewPage({
 
   const fmtName = formatName(formats, format)
   const win = windowLabel(query.start, query.end)
+  // After a fallback this differs from the URL; the lens labels follow it.
+  const shown = { start: query.start, end: query.end }
   const canonicalHref = buildHref(query.format, query, { sort })
 
   // ---- Empty window → shared chrome + EmptyState (§5) ----------------------
@@ -168,7 +170,11 @@ export default async function MetaOverviewPage({
     return (
       <>
         <Suspense fallback={null}>
-          <LensBar formats={formats} archetypes={archetypes} />
+          <LensBar
+            formats={formats}
+            archetypes={archetypes}
+            shownWindow={shown}
+          />
         </Suspense>
         <EmptyState
           title="No tournaments in this window"
@@ -187,18 +193,38 @@ export default async function MetaOverviewPage({
     return (
       <>
         <Suspense fallback={null}>
-          <LensBar formats={formats} archetypes={archetypes} />
+          <LensBar
+            formats={formats}
+            archetypes={archetypes}
+            shownWindow={shown}
+          />
         </Suspense>
-        <EmptyState
-          title="No archetypes clear the current filters"
-          message={`${fmtName} has results for ${win}, but no archetype reaches the ${query.minMatches}-match floor. Lower the floor to see the field.`}
-          widenHref={buildHref(
-            query.format,
-            { ...query, minMatches: 0 },
-            { sort }
-          )}
-          widenLabel="Lower the floor"
-        />
+        {query.minMatches > 0 || !query.hideBuckets ? (
+          <EmptyState
+            title="No archetypes clear the current filters"
+            message={`${fmtName} has results for ${win}, but no archetype reaches the ${query.minMatches}-match floor. Lower the floor to see the field.`}
+            widenHref={buildHref(
+              query.format,
+              { ...query, minMatches: 0 },
+              { sort }
+            )}
+            widenLabel="Lower the floor"
+          />
+        ) : (
+          // The floor is already zero, so only the hidden Unknown/Conflict
+          // buckets hold this window's results: lowering it again would link
+          // to this same empty view.
+          <EmptyState
+            title="Only unclassified decks in this window"
+            message={`Every ${fmtName} result for ${win} is in the Unknown or Conflict buckets, which this view hides. Show the buckets to see them.`}
+            widenHref={buildHref(
+              query.format,
+              { ...query, hideBuckets: false },
+              { sort }
+            )}
+            widenLabel="Show buckets"
+          />
+        )}
       </>
     )
   }
@@ -253,7 +279,11 @@ export default async function MetaOverviewPage({
   return (
     <>
       <Suspense fallback={null}>
-        <LensBar formats={formats} archetypes={archetypes} />
+        <LensBar
+          formats={formats}
+          archetypes={archetypes}
+          shownWindow={shown}
+        />
       </Suspense>
 
       {/* ---- HEADLINE + KPI ---- */}
@@ -346,12 +376,16 @@ export default async function MetaOverviewPage({
               Matchup matrix
             </h2>
             <p className="text-ink-2 mt-0.5 max-w-[64ch] text-[13.5px]">
-              Row beats column. Ink density is sample size: pale cells are thin
-              samples; a dash means fewer than five matches.
+              Row beats column. Color strength grows with distance from 50% and
+              with games played, so a pale cell is either close to even or
+              thinly sampled; a dash means fewer than five matches.
             </p>
           </div>
           <Link
-            href={buildHref(query.format, query, { path: '/matrix' })}
+            href={buildHref(query.format, query, {
+              path: '/matrix',
+              matrixTopN,
+            })}
             className="border-gold-soft text-gold hover:bg-gold-wash inline-flex items-center border px-3 py-1.5 text-[13px] whitespace-nowrap"
           >
             Full matrix →

@@ -45,12 +45,17 @@ export type LensBarProps = {
   formats: FormatDTO[]
   archetypes: ArchetypeRef[]
   variant?: 'meta' | 'matrix' | 'changes' | 'tournaments' | 'archetype'
+  /** The window the page actually shows when it differs from the URL's
+   *  (the overview's latest-populated-month fallback), so the window knob
+   *  and the phone summary never label the figures with the wrong period. */
+  shownWindow?: { start: string; end: string }
 }
 
 export function LensBar({
   formats,
   archetypes,
   variant = 'meta',
+  shownWindow,
 }: LensBarProps) {
   // R7 — per-route scoping: a control renders only where it can affect the
   // view. Knobs (topN / minMatches / weight / buckets) and the archetype adder
@@ -79,11 +84,12 @@ export function LensBar({
   const formatName = isAllFormats(query.format)
     ? 'All formats'
     : (formats.find(f => f.slug === query.format)?.name ?? query.format)
-  const preset = matchPreset(query)
+  const win = shownWindow ?? query
+  const preset = matchPreset(win)
   const summary = [
     formatName,
     showWindow &&
-      (preset ? PRESET_LABELS[preset] : windowLabel(query.start, query.end)),
+      (preset ? PRESET_LABELS[preset] : windowLabel(win.start, win.end)),
     showWindow &&
       query.platform !== 'all' &&
       `${PLATFORM_LABELS[query.platform]} only`,
@@ -138,7 +144,7 @@ export function LensBar({
         {showDivider && (
           <div role="none" className="mx-1 w-px self-stretch bg-line" />
         )}
-        {showWindow && <WindowPicker />}
+        {showWindow && <WindowPicker shown={shownWindow} />}
         {/* The platform splits the same window's events, so it rides with
             the window wherever the window knob applies. */}
         {showWindow && <PlatformPicker />}

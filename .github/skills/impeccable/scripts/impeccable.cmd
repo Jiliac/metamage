@@ -175,7 +175,9 @@ rem unknown verb with "Unknown command", exit 1, so it never passes.
 set "probe_ok="
 set "probe_tmp=%TEMP%\impeccable-probe-%RANDOM%%RANDOM%.txt"
 set "IMPECCABLE_LAUNCHER_PROBE=1"
-"%~1" engine-probe >"%probe_tmp%" 2>nul
+rem `call` so a batch-file candidate (the 3.x npm impeccable.cmd shim)
+rem returns here instead of taking over the launcher.
+call "%~1" engine-probe >"%probe_tmp%" 2>nul
 set "probe_err=%ERRORLEVEL%"
 set "IMPECCABLE_LAUNCHER_PROBE="
 if not "%probe_err%"=="0" goto probe_done

@@ -61,9 +61,17 @@ const dateInputClass =
   'border border-line bg-bg text-ink px-2 py-1 text-[16px] font-mono w-full ' +
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold'
 
-export function WindowPicker() {
+export type WindowPickerProps = {
+  /** The window the page actually shows, when it differs from the URL's (the
+   *  overview falls back to the latest populated month). Defaults to the
+   *  URL's window. */
+  shown?: { start: string; end: string }
+}
+
+export function WindowPicker({ shown }: WindowPickerProps = {}) {
   const { query, setParams } = useMetaParams()
-  const activeChip: Preset | undefined = matchPreset(query)
+  const win = shown ?? query
+  const activeChip: Preset | undefined = matchPreset(win)
 
   return (
     <Popover>
@@ -71,7 +79,7 @@ export function WindowPicker() {
         <button type="button" className={knobClass}>
           Window{' '}
           <b className="font-semibold text-ink">
-            {windowLabel(query.start, query.end)}
+            {windowLabel(win.start, win.end)}
           </b>
         </button>
       </PopoverTrigger>
@@ -116,11 +124,14 @@ export function WindowPicker() {
               Start
               <input
                 type="date"
-                value={query.start}
-                max={query.end}
+                value={win.start}
+                max={win.end}
                 onChange={e => {
                   const v = e.target.value
-                  if (isValidIsoDate(v)) setParams({ start: asIsoDate(v) })
+                  // Pin the other edge to the shown window, not the URL's.
+                  if (isValidIsoDate(v)) {
+                    setParams({ start: asIsoDate(v), end: asIsoDate(win.end) })
+                  }
                 }}
                 className={dateInputClass}
               />
@@ -129,11 +140,16 @@ export function WindowPicker() {
               End
               <input
                 type="date"
-                value={query.end}
-                min={query.start}
+                value={win.end}
+                min={win.start}
                 onChange={e => {
                   const v = e.target.value
-                  if (isValidIsoDate(v)) setParams({ end: asIsoDate(v) })
+                  if (isValidIsoDate(v)) {
+                    setParams({
+                      start: asIsoDate(win.start),
+                      end: asIsoDate(v),
+                    })
+                  }
                 }}
                 className={dateInputClass}
               />

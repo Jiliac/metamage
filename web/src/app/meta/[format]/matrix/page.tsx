@@ -123,8 +123,9 @@ export default async function MatrixPage({
           {fmtName} matchup matrix
         </h1>
         <p className="mt-0.5 max-w-[65ch] text-[13.5px] text-ink-2">
-          Row beats column. Ink density is sample size: pale cells are thin
-          samples; a dash means fewer than five matches. Hover a cell for the
+          Row beats column. Color strength grows with distance from 50% and with
+          games played, so a pale cell is either close to even or thinly
+          sampled; a dash means fewer than five matches. Hover a cell for the
           record and its 95% interval.
         </p>
 
