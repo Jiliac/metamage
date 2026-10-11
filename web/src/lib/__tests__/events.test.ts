@@ -8,6 +8,7 @@ import type {
 import {
   deckHref,
   leaderLabel,
+  standingLink,
   eventStats,
   isEventId,
   placingLabel,
@@ -37,6 +38,7 @@ function standing(
       color: null,
       isBucket: over.bucket ?? false,
     },
+    ...(over.decklistUrl ? { decklistUrl: over.decklistUrl } : {}),
     hasDecklist: over.hasDecklist ?? true,
   }
 }
@@ -257,5 +259,50 @@ describe('leaderLabel', () => {
     expect(leaderLabel(1)).toBe('Winner')
     expect(leaderLabel(2)).toBe('Top finisher')
     expect(leaderLabel(null)).toBe('Best record')
+  })
+})
+
+describe('standingLink', () => {
+  const query = parseMetaQuery('modern', {}, now)
+  const day = asIsoDate('2026-10-03')
+  const SRC = 'https://melee.gg/Decklist/View/1'
+
+  it('opens the stored decklist on the archetype page', () => {
+    expect(
+      standingLink('modern', query, standing({ entryId: 'abc' }), day, now)
+    ).toEqual({
+      href: '/meta/modern/archetype/broodscale?deck=abc',
+      external: false,
+    })
+  })
+
+  it("falls back to the source's list when no cards are stored", () => {
+    expect(
+      standingLink(
+        'modern',
+        query,
+        standing({ hasDecklist: false, decklistUrl: SRC }),
+        day,
+        now
+      )
+    ).toEqual({ href: SRC, external: true })
+  })
+
+  it("uses the source's list for buckets (no archetype page)", () => {
+    expect(
+      standingLink(
+        'modern',
+        query,
+        standing({ arch: 'unknown', bucket: true, decklistUrl: SRC }),
+        day,
+        now
+      )
+    ).toEqual({ href: SRC, external: true })
+  })
+
+  it('is null with neither a stored nor a published list', () => {
+    expect(
+      standingLink('modern', query, standing({ hasDecklist: false }), day, now)
+    ).toBeNull()
   })
 })

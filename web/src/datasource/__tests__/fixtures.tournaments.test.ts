@@ -80,4 +80,31 @@ describe('FixtureDataSource.getTournament', () => {
       expect(o!.standings.every(s => s.rank === null)).toBe(true)
     }
   })
+
+  it('links stored-list rows to decks getDeck resolves (same entry)', async () => {
+    const events = await ds.getTournaments(lens(ALL_FORMATS))
+    const details = await Promise.all(events.map(t => ds.getTournament(t.id)))
+    const withLists = details.filter(d => d!.standings.some(s => s.hasDecklist))
+    expect(withLists.length).toBeGreaterThan(0)
+
+    for (const d of withLists) {
+      for (const s of d!.standings.filter(x => x.hasDecklist)) {
+        const deck = await ds.getDeck({ entryId: s.entryId })
+        expect(deck?.entry.id).toBe(s.entryId)
+        expect(deck?.entry.player).toBe(s.player)
+        expect(deck?.archetype.slug).toBe(s.archetype.slug)
+        expect(deck?.format).toBe(d!.tournament.format)
+        expect(deck!.main.length).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it('gives filler rows no stored list (nothing for ?deck to open)', async () => {
+    const [t] = await ds.getTournaments(lens('pauper'))
+    const d = await ds.getTournament(t.id)
+    for (const s of d!.standings.filter(x => !x.hasDecklist)) {
+      const deck = await ds.getDeck({ entryId: s.entryId })
+      expect(deck === null || deck.main.length === 0).toBe(true)
+    }
+  })
 })

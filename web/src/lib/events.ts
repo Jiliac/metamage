@@ -254,7 +254,8 @@ export function archetypeHref(
 /**
  * Standings row → the archetype page's Decklists tab with this entry
  * selected (`?deck=<entryId>`, resolved by the archetype page). Null for the
- * unknown/conflict buckets, which have no archetype page.
+ * unknown/conflict buckets, which have no archetype page, and for entries
+ * without stored cards, which have no list to show there.
  */
 export function deckHref(
   format: FormatSlug | string,
@@ -263,7 +264,7 @@ export function deckHref(
   eventDate: IsoDate,
   now?: Date
 ): string | null {
-  if (standing.archetype.isBucket) return null
+  if (standing.archetype.isBucket || !standing.hasDecklist) return null
   return archetypeHref(
     format,
     query,
@@ -272,4 +273,21 @@ export function deckHref(
     now,
     standing.entryId
   )
+}
+
+/** Where a standings row's click goes: its stored list, else the source's. */
+export type StandingLink = { href: string; external: boolean }
+
+export function standingLink(
+  format: FormatSlug | string,
+  query: MetaQuery,
+  standing: StandingDTO,
+  eventDate: IsoDate,
+  now?: Date
+): StandingLink | null {
+  const internal = deckHref(format, query, standing, eventDate, now)
+  if (internal) return { href: internal, external: false }
+  return standing.decklistUrl
+    ? { href: standing.decklistUrl, external: true }
+    : null
 }

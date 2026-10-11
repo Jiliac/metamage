@@ -29,7 +29,7 @@ import { parseSort, type SearchParamsInput } from '@/lib/params'
 import type { MetaSort } from '@/datasource/types'
 import { winrateCi, wr as wrOf, wrExclDraws, type WLD } from '@/lib/stats'
 import { isAllFormats, sortFormats } from '@/datasource/format-order'
-import { synthesizeEvent } from '@/datasource/fixtures/event'
+import { synthesizeEvent, type SeedEntry } from '@/datasource/fixtures/event'
 import {
   DEFAULT_SORT,
   buildCell,
@@ -338,6 +338,22 @@ function windowTournaments(
     : [String(q.format)]
   return formats.flatMap(
     format => findWindow(format, q)?.tournaments.map(t => ({ format, t })) ?? []
+  )
+}
+
+/** The window's real entries for one event, in archetype order — the ids
+ *  getDeck resolves, so their standings rows open the stored list. */
+function seedEntries(win: RawWindow, t: RawTournament): SeedEntry[] {
+  return win.archetypes.flatMap(arch =>
+    arch.entries
+      .filter(e => e.tournamentId === t.id)
+      .map(e => ({
+        entryId: e.id,
+        player: e.player,
+        arch,
+        hasDecklist: e.deck !== null,
+        decklistUrl: e.decklistUrl,
+      }))
   )
 }
 
@@ -790,7 +806,10 @@ export class FixtureDataSource implements MetaDataSource {
         const t = win.tournaments.find(x => fixtureEventId(f.slug, x) === id)
         if (!t) continue
         const tournament = tournamentDto(f.slug, t)
-        return { tournament, ...synthesizeEvent(tournament, win.archetypes) }
+        return {
+          tournament,
+          ...synthesizeEvent(tournament, win.archetypes, seedEntries(win, t)),
+        }
       }
     }
     return null

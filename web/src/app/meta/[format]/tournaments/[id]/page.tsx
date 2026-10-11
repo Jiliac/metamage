@@ -13,14 +13,15 @@ import type {
 } from '@/datasource/types'
 import {
   archetypeHref,
-  deckHref,
   eventStats,
   isEventId,
   leaderLabel,
   placingLabel,
   recordLabel,
   sortStandings,
+  standingLink,
   type EventFieldRow,
+  type StandingLink,
 } from '@/lib/events'
 import { buildHref, parseMetaQuery } from '@/lib/params'
 import { buildPageMetadata } from '@/lib/seo'
@@ -163,7 +164,8 @@ export default async function TournamentPage({
               <StandingsTable
                 standings={standings}
                 showPlace={standings.some(s => s.rank !== null)}
-                hrefFor={s => deckHref(t.format, eventQuery, s, t.date)}
+                linkFor={s => standingLink(t.format, eventQuery, s, t.date)}
+                archetypeHrefFor={hrefFor}
               />
               <p className="mt-2 text-[12px] text-ink-3">
                 Records count only matches against other published decks.
@@ -332,11 +334,13 @@ function Th({
 function StandingsTable({
   standings,
   showPlace,
-  hrefFor,
+  linkFor,
+  archetypeHrefFor,
 }: {
   standings: StandingDTO[]
   showPlace: boolean
-  hrefFor: (s: StandingDTO) => string | null
+  linkFor: (s: StandingDTO) => StandingLink | null
+  archetypeHrefFor: (slug: string) => string
 }) {
   return (
     <div className="overflow-x-auto border border-line bg-surface shadow-ledger">
@@ -358,7 +362,10 @@ function StandingsTable({
               key={s.entryId}
               standing={s}
               showPlace={showPlace}
-              href={hrefFor(s)}
+              link={linkFor(s)}
+              archetypeHref={
+                s.archetype.isBucket ? null : archetypeHrefFor(s.archetype.slug)
+              }
             />
           ))}
         </tbody>
@@ -367,19 +374,28 @@ function StandingsTable({
   )
 }
 
+/** Stretches a link over its (relative) row so the whole row is one target,
+ *  without nesting interactive elements or a client click handler. */
+const ROW_LINK_CLASS =
+  "font-semibold text-ink no-underline after:absolute after:inset-0 after:content-[''] hover:text-gold group-hover:text-gold group-hover:underline group-hover:underline-offset-[3px] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-gold"
+
 function StandingRow({
   standing: s,
   showPlace,
-  href,
+  link,
+  archetypeHref,
 }: {
   standing: StandingDTO
   showPlace: boolean
-  href: string | null
+  link: StandingLink | null
+  /** Fallback name link when the row has no decklist to open. */
+  archetypeHref: string | null
 }) {
   return (
     <tr
       className={cn(
         'hover:bg-[var(--gold-wash)]',
+        link && 'group relative cursor-pointer',
         s.archetype.isBucket && 'text-ink-2'
       )}
     >
@@ -398,17 +414,12 @@ function StandingRow({
       <td className="border-b border-line px-3.5 py-2">
         <span className="inline-flex items-center gap-2">
           <ManaPips colors={s.archetype.color} size={14} />
-          {href ? (
-            <Link
-              href={href}
-              className="font-semibold text-ink no-underline hover:text-gold hover:underline hover:underline-offset-[3px]"
-            >
-              {s.archetype.name}
-            </Link>
-          ) : (
-            <span className="font-semibold">{s.archetype.name}</span>
+          <DeckName standing={s} link={link} archetypeHref={archetypeHref} />
+          {!s.hasDecklist && (
+            <span className="text-[11px] text-ink-3">
+              {link ? 'source list ↗' : 'no list'}
+            </span>
           )}
-          <DecklistNote standing={s} />
         </span>
       </td>
       <td className="border-b border-line px-3.5 py-2 text-ink-2">
@@ -421,20 +432,47 @@ function StandingRow({
   )
 }
 
-/** No stored cards: point at the source's own list when it published one. */
-function DecklistNote({ standing: s }: { standing: StandingDTO }) {
-  if (s.hasDecklist) return null
-  if (s.decklistUrl) {
+/** The row's one link: the decklist (stretched over the row), else the
+ *  archetype page, else plain text. */
+function DeckName({
+  standing: s,
+  link,
+  archetypeHref,
+}: {
+  standing: StandingDTO
+  link: StandingLink | null
+  archetypeHref: string | null
+}) {
+  const label = `${s.archetype.name} decklist by ${s.player}`
+  if (link?.external) {
     return (
       <a
-        href={s.decklistUrl}
+        href={link.href}
         target="_blank"
         rel="noreferrer"
-        className="text-[11px] text-ink-3 hover:text-gold hover:underline hover:underline-offset-[3px]"
+        aria-label={`${label} (opens the source)`}
+        className={ROW_LINK_CLASS}
       >
-        source list ↗
+        {s.archetype.name}
       </a>
     )
   }
-  return <span className="text-[11px] text-ink-3">no list</span>
+  if (link) {
+    return (
+      <Link href={link.href} aria-label={label} className={ROW_LINK_CLASS}>
+        {s.archetype.name}
+      </Link>
+    )
+  }
+  if (archetypeHref) {
+    return (
+      <Link
+        href={archetypeHref}
+        className="font-semibold text-ink no-underline hover:text-gold hover:underline hover:underline-offset-[3px]"
+      >
+        {s.archetype.name}
+      </Link>
+    )
+  }
+  return <span className="font-semibold">{s.archetype.name}</span>
 }

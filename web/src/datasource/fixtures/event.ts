@@ -6,11 +6,14 @@ import type {
 } from '@/datasource/types'
 
 // ---------------------------------------------------------------------------
-// Fixture event synthesis. db.json carries per-window tournaments (id, size,
-// source) but no entries, so FixtureDataSource.getTournament builds the
-// standings here: archetypes drawn by the window's deck counts, then a
-// seeded Swiss run (pair by points, ~5% draws). Deterministic per tournament
-// id, so pages and snapshots are stable. Pure; no I/O.
+// Fixture event synthesis. db.jsonl carries per-window tournaments (id, size,
+// source) and at most 8 recent-deck entries per archetype, so
+// FixtureDataSource.getTournament builds full standings here: the event's
+// real entries first (their ids resolve through getDeck, so `?deck` links
+// open their lists), then filler drawn by the window's deck counts with no
+// stored list. A seeded Swiss run (pair by points, ~5% draws) sets every
+// record. Deterministic per tournament id, so pages and snapshots are
+// stable. Pure; no I/O.
 // ---------------------------------------------------------------------------
 
 export type FixtureArchetype = {
@@ -62,27 +65,30 @@ function pickWeighted<T extends { decks: number }>(
   return items[items.length - 1]
 }
 
-type Mutable = {
+/** One of the event's real fixture entries (a getDeck-resolvable id). */
+export type SeedEntry = {
   entryId: string
   player: string
   arch: FixtureArchetype
-  wins: number
-  losses: number
-  draws: number
+  hasDecklist: boolean
+  decklistUrl: string | null
 }
+
+type Mutable = SeedEntry & { wins: number; losses: number; draws: number }
 
 export function synthesizeEvent(
   tournament: TournamentDTO,
-  archetypes: readonly FixtureArchetype[]
+  archetypes: readonly FixtureArchetype[],
+  seeded: readonly SeedEntry[] = []
 ): { standings: StandingDTO[]; matchups: EventMatchupDTO[] } {
-  const n = tournament.entries
-  if (n === 0 || archetypes.length === 0) {
+  const n = Math.max(tournament.entries, seeded.length)
+  if (n === 0 || (archetypes.length === 0 && seeded.length === 0)) {
     return { standings: [], matchups: [] }
   }
   const rand = rngFrom(seedOf(tournament.id))
 
   const usedPlayers = new Map<string, number>()
-  let entries: Mutable[] = Array.from({ length: n }, () => {
+  const filler = Array.from({ length: n - seeded.length }, (): SeedEntry => {
     const arch = pickWeighted(archetypes, rand)
     const k = usedPlayers.get(arch.slug) ?? 0
     usedPlayers.set(arch.slug, k + 1)
@@ -90,11 +96,16 @@ export function synthesizeEvent(
       entryId: uuidFrom(rand),
       player: arch.players[k]?.p ?? `${arch.slug}-p${k + 1}`,
       arch,
-      wins: 0,
-      losses: 0,
-      draws: 0,
+      hasDecklist: false,
+      decklistUrl: null,
     }
   })
+  let entries: Mutable[] = [...seeded, ...filler].map(e => ({
+    ...e,
+    wins: 0,
+    losses: 0,
+    draws: 0,
+  }))
 
   const cells = new Map<string, EventMatchupDTO>()
   const record = (
@@ -154,8 +165,8 @@ export function synthesizeEvent(
       color: e.arch.color,
       isBucket: e.arch.isBucket,
     },
-    ...(tournament.link ? { decklistUrl: tournament.link } : {}),
-    hasDecklist: true,
+    ...(e.decklistUrl ? { decklistUrl: e.decklistUrl } : {}),
+    hasDecklist: e.hasDecklist,
   }))
 
   return { standings, matchups: [...cells.values()] }
