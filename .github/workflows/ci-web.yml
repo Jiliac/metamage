@@ -1,11 +1,12 @@
 name: CI (web)
 
 on:
+  # No path filter on main: metamage-web's Vercel Deployment Checks require
+  # this job before promoting to production, and Vercel decides whether to build
+  # by diffing against the last successful deploy, not this push's `before`. A
+  # filtered push could leave a production deploy waiting on a check that never runs.
   push:
     branches: [main]
-    paths:
-      - 'web/**'
-      - '.github/workflows/ci-web.yml'
   pull_request:
     paths:
       - 'web/**'

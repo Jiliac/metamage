@@ -1,0 +1,95 @@
+name: DB migrate (tournament)
+
+# Manual only: runs Alembic against the Neon tournament DB. The default run is
+# a dry run that prints the pending SQL; tick "apply" to execute it.
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: 'Target revision (alembic upgrade target)'
+        required: true
+        default: 'head'
+        type: string
+      apply:
+        description: 'Apply the migration (unticked = dry run, prints SQL only)'
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+# Never run two migrations at once, and never cancel one mid-flight.
+concurrency:
+  group: db-migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: migrate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # The write URL lives in this environment, not in repo secrets. Restrict
+    # the environment's deployment branches to main so a branch's workflow
+    # file cannot read it.
+    environment: tournament-db
+    env:
+      # metamage_rw owns the tables (setup_pg_roles.sql), so it can run DDL.
+      TOURNAMENT_DATABASE_URL: ${{ secrets.TOURNAMENT_DATABASE_WRITE_URL }}
+      REVISION: ${{ inputs.revision }}
+    steps:
+      - name: Require main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Migrations run from main only (got $GITHUB_REF)."
+          exit 1
+
+      - name: Validate inputs
+        run: |
+          if [ -z "$TOURNAMENT_DATABASE_URL" ]; then
+            echo "::error::TOURNAMENT_DATABASE_WRITE_URL is not set in the tournament-db environment."
+            exit 1
+          fi
+          if ! [[ "$REVISION" =~ ^[A-Za-z0-9_+-]+$ ]]; then
+            echo "::error::Invalid revision '$REVISION' (expected head, a revision id, or +N)."
+            exit 1
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: '3.13'
+          enable-cache: true
+
+      - name: Sync locked dependencies
+        run: uv sync --frozen
+
+      - name: Current revision
+        id: current
+        run: |
+          current=$(uv run alembic current | awk 'NR==1{print $1}')
+          if [ -z "$current" ]; then
+            echo "::error::Database has no alembic_version; stamp it before migrating."
+            exit 1
+          fi
+          echo "Current revision: $current"
+          echo "revision=$current" >> "$GITHUB_OUTPUT"
+
+      # Offline mode renders the SQL without touching the DB; the
+      # "-- Running upgrade X -> Y" headers list the pending revisions.
+      - name: Pending SQL
+        env:
+          CURRENT: ${{ steps.current.outputs.revision }}
+        run: uv run alembic upgrade "$CURRENT:$REVISION" --sql
+
+      - name: Apply
+        if: inputs.apply
+        run: uv run alembic upgrade "$REVISION"
+
+      - name: Revision after apply
+        if: inputs.apply
+        run: uv run alembic current
