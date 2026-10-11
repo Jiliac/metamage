@@ -318,9 +318,10 @@ const DECK_ID_RE =
 
 /**
  * `?deck=<entryId>` (KTD6): validated against a strict UUID pattern BEFORE
- * any data call, so garbage values (`../x`, empty, over-length, junk) can
- * neither grow the `getDeck` cache nor reach a datasource. Returns the
- * lower-cased id, or undefined.
+ * any data call, so garbage values (`../x`, empty, over-length, junk) never
+ * reach a datasource. A well-formed but unknown UUID does cost one query; the
+ * `getDeck` wrapper caches found decks only, so it cannot grow the cache.
+ * Returns the lower-cased id, or undefined.
  */
 export function parseDeckId(raw: string | undefined): string | undefined {
   if (!raw) return undefined

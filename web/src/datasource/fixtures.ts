@@ -335,25 +335,40 @@ function entrySummary(entry: RawEntry, t: RawTournament): DeckSummaryDTO {
   }
 }
 
-/** Mirror of ARCHETYPE_ENTRIES_SQL's `order by date desc, tournament name asc,
- *  entry rank asc, handle asc` so the recent-decks column groups the same way
- *  in fixtures mode as on Postgres. */
+/** Code-unit order, like Postgres sorting the lowercase-hex id columns. */
+function compareIds(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0
+}
+
+/** Mirror of ARCHETYPE_ENTRIES_SQL's `order by date desc, tournament name
+ *  asc, tournament id, unranked last, entry rank asc, handle asc, entry id`
+ *  so the recent-decks column groups the same way in fixtures mode as on
+ *  Postgres. Rank 0 is already null on the DTO, so "unranked last" reads the
+ *  null; the entry id is the unique final key. */
+export function compareEntrySummaries(
+  a: DeckSummaryDTO,
+  b: DeckSummaryDTO
+): number {
+  return (
+    b.event.date.localeCompare(a.event.date) ||
+    a.event.name.localeCompare(b.event.name) ||
+    compareIds(a.event.id, b.event.id) ||
+    Number(a.rank === null) - Number(b.rank === null) ||
+    (a.rank ?? 0) - (b.rank ?? 0) ||
+    a.player.localeCompare(b.player) ||
+    compareIds(a.id, b.id)
+  )
+}
+
 function entrySummaries(win: RawWindow, raw: RawArchetype): DeckSummaryDTO[] {
   const byId = new Map(win.tournaments.map(t => [t.id, t] as const))
-  const rows: { s: DeckSummaryDTO; storedRank: number }[] = []
+  const rows: DeckSummaryDTO[] = []
   for (const e of raw.entries) {
     const t = byId.get(e.tournamentId)
     if (!t) continue
-    rows.push({ s: entrySummary(e, t), storedRank: e.rank })
+    rows.push(entrySummary(e, t))
   }
-  rows.sort(
-    (a, b) =>
-      b.s.event.date.localeCompare(a.s.event.date) ||
-      a.s.event.name.localeCompare(b.s.event.name) ||
-      a.storedRank - b.storedRank ||
-      a.s.player.localeCompare(b.s.player)
-  )
-  return rows.map(r => r.s)
+  return rows.sort(compareEntrySummaries)
 }
 
 /** One decklist row with the generation-time KTD1 card data from the global

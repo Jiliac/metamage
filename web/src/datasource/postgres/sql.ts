@@ -467,8 +467,13 @@ export type EntryListRow = EntrySummaryRow & { total: number }
 //
 // Parity expectation (unverified against the live DB): for a window where the
 // archetype has 2,450 entries, total = 2450 and at most 2,000 rows come back,
-// ordered by date desc with same-event rows adjacent (tournament name, rank,
-// handle) so the column can group by event without re-sorting.
+// ordered by date desc with same-event rows adjacent (tournament name, then
+// tournament id so same-name same-day events never interleave) so the column
+// can group by event without re-sorting. Within an event: unranked rows
+// (stored rank 0, mapped to null) last, matching lib/decks' featured pick,
+// then rank, handle, and the entry id as a unique final key so ties at the
+// LIMIT cap resolve the same way on every cache refresh. The fixture backend
+// mirrors this order (compareEntrySummaries in fixtures.ts).
 export const ARCHETYPE_ENTRIES_SQL = (
   formatId: string,
   start: string,
@@ -506,8 +511,9 @@ export const ARCHETYPE_ENTRIES_SQL = (
   join players p on p.id = win.player_id
   left join carded on carded.entry_id = win.id
   cross join total
-  order by win.date desc, win.tournament_name asc, win.entry_rank asc,
-           p.handle asc
+  order by win.date desc, win.tournament_name asc, win.tournament_id asc,
+           (win.entry_rank = 0) asc, win.entry_rank asc, p.handle asc,
+           win.id asc
   limit ${ARCHETYPE_ENTRIES_CAP}
 `
 

@@ -62,10 +62,59 @@ describe('parseManaCost', () => {
     ])
   })
 
+  it('every other real Scryfall form maps to its file', () => {
+    const files = (cost: string) =>
+      parseManaCost(cost).map(t => (t.kind === 'symbol' ? t.file : t.text))
+    // Tap, untap, energy, snow, the X/Y/Z variables, generic phyrexian.
+    expect(files('{T}{Q}{E}{S}{Y}{Z}{P}')).toEqual([
+      'T.svg',
+      'Q.svg',
+      'E.svg',
+      'S.svg',
+      'Y.svg',
+      'Z.svg',
+      'P.svg',
+    ])
+    // Generic 0-20 plus the two large Un-numbers.
+    expect(files('{0}{20}{100}{1000000}')).toEqual([
+      '0.svg',
+      '20.svg',
+      '100.svg',
+      '1000000.svg',
+    ])
+    // Hybrid phyrexian, colorless hybrid, colorless phyrexian, 2/color.
+    expect(files('{W/U/P}{B/G/P}{C/G}{C/P}{2/G}')).toEqual([
+      'WUP.svg',
+      'BGP.svg',
+      'CG.svg',
+      'CP.svg',
+      '2G.svg',
+    ])
+  })
+
   it('unknown symbols render as their brace text', () => {
     expect(parseManaCost('{QW}')).toEqual([{ kind: 'text', text: '{QW}' }])
     expect(parseManaCost('{Y/Z}')).toEqual([{ kind: 'text', text: '{Y/Z}' }])
     expect(parseManaCost('{}')).toEqual([{ kind: 'text', text: '{}' }])
+  })
+
+  it('well-formed but non-existent symbols render as text, not a broken img', () => {
+    for (const cost of [
+      '{X/Y}', // two letters Scryfall ships, but no XY.svg
+      '{U/W}', // a real pair in non-canonical order (the file is WU.svg)
+      '{W/W}',
+      '{T/P}',
+      '{2/C}',
+      '{3/W}',
+      '{P/W}',
+      '{G/U/R}',
+      '{21}', // generic numbers stop at 20, then 100 and 1000000
+      '{99}',
+      '{007}',
+      '{1234567}',
+    ]) {
+      expect(parseManaCost(cost), cost).toEqual([{ kind: 'text', text: cost }])
+    }
   })
 
   it('free text between symbols survives as text', () => {

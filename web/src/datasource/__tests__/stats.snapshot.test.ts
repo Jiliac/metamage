@@ -14,11 +14,12 @@ import {
   wr,
   wrExclDraws,
 } from '@/lib/stats'
-import { FixtureDataSource } from '@/datasource/fixtures'
+import { compareEntrySummaries, FixtureDataSource } from '@/datasource/fixtures'
 import type { RawDb } from '@/datasource/fixtures'
 import rawDb from '@/datasource/fixtures/data/db.json'
 import type {
   ArchetypeSlug,
+  DeckSummaryDTO,
   FormatSlug,
   IsoDate,
   MetaQuery,
@@ -353,6 +354,65 @@ describe('FixtureDataSource — decklists tab fixtures (KTD12)', () => {
       expect(card.scryfallUri).not.toBeNull()
       expect(card.name).not.toBe(card.name.toLowerCase())
     }
+  })
+
+  it('entry order mirrors ARCHETYPE_ENTRIES_SQL, with a unique final key', () => {
+    const row = (
+      id: string,
+      eventId: string,
+      rank: number | null,
+      player = 'p',
+      name = 'Modern Challenge',
+      date = '2026-09-10'
+    ): DeckSummaryDTO =>
+      ({
+        id,
+        player,
+        rank,
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        decklistUrl: null,
+        event: {
+          id: eventId,
+          name,
+          date: date as IsoDate,
+          link: null,
+          source: 'MTGO',
+        },
+        hasCards: true,
+      }) satisfies DeckSummaryDTO
+    const rows = [
+      row('e7', 't1', 1, 'p', 'Modern Challenge', '2026-09-09'), // older day
+      row('e6', 't9', 1, 'p', 'Alpha Open'), // name sorts first
+      row('e5', 't2', 2), // same-name same-day event, higher id
+      row('e4', 't1', null), // unranked: after ranked rows of its event
+      row('e3', 't1', 2, 'zed'),
+      row('e2', 't1', 2, 'amy'),
+      row('e1', 't2', 1),
+      row('e0b', 't1', 1, 'x'), // full tie but for the entry id
+      row('e0a', 't1', 1, 'x'),
+    ]
+    expect([...rows].sort(compareEntrySummaries).map(r => r.id)).toEqual([
+      'e6',
+      // t1's rows stay adjacent (no interleaving with same-name t2), ranked
+      // first, then the unranked e4; the id breaks the e0a/e0b tie.
+      'e0a',
+      'e0b',
+      'e2',
+      'e3',
+      'e4',
+      'e1',
+      'e5',
+      'e7',
+    ])
+    // Deterministic regardless of input order.
+    expect(
+      [...rows]
+        .reverse()
+        .sort(compareEntrySummaries)
+        .map(r => r.id)
+    ).toEqual([...rows].sort(compareEntrySummaries).map(r => r.id))
   })
 
   it('getDeck with an unknown id returns null', async () => {

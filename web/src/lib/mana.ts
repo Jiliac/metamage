@@ -14,20 +14,49 @@ export type ManaToken =
     }
   | { kind: 'text'; text: string }
 
+const COLORS = ['W', 'U', 'B', 'R', 'G'] as const
+
+/** Scryfall's ten two-color pairs, in its canonical order — the order the
+ *  file name uses (`{W/U}` → `WU.svg`; there is no `UW.svg`). */
+const COLOR_PAIRS = [
+  'W/U',
+  'W/B',
+  'U/B',
+  'U/R',
+  'B/R',
+  'B/G',
+  'R/G',
+  'R/W',
+  'G/W',
+  'G/U',
+] as const
+
 /**
- * One symbol component between slashes: a single letter from the atoms
- * Scryfall ships, or a plain number. Anything else makes the WHOLE symbol
- * render as text (KTD10: unknown symbols render as text).
+ * The brace contents Scryfall ships an SVG for, checked against its
+ * `/symbology` list: generic 0-20, 100 and 1000000; the single letters (five
+ * colors, colorless, snow, X/Y/Z, energy, tap, untap, generic phyrexian);
+ * hybrid pairs, hybrid phyrexian, 2/color, color/P, C/P and C/color. Each
+ * file name is the content with its slashes dropped. Anything else — `{X/Y}`,
+ * a non-canonical `{U/W}`, `{21}` — makes the WHOLE symbol render as text
+ * (KTD10: unknown symbols render as text, never a broken image).
  */
-const ATOM_RE = /^(?:\d{1,7}|[WUBRGCSXETQP])$/
+const KNOWN_SYMBOLS: ReadonlySet<string> = new Set([
+  ...Array.from({ length: 21 }, (_, n) => String(n)),
+  '100',
+  '1000000',
+  ...'WUBRGCSXYZETQP',
+  ...COLOR_PAIRS,
+  ...COLOR_PAIRS.map(pair => `${pair}/P`),
+  ...COLORS.map(c => `2/${c}`),
+  ...COLORS.map(c => `${c}/P`),
+  'C/P',
+  ...COLORS.map(c => `C/${c}`),
+])
 
 function symbolFile(content: string): string | null {
-  let file = ''
-  for (const atom of content.split('/')) {
-    if (!ATOM_RE.test(atom)) return null
-    file += atom
-  }
-  return file ? `${file}.svg` : null
+  return KNOWN_SYMBOLS.has(content)
+    ? `${content.replaceAll('/', '')}.svg`
+    : null
 }
 
 function pushGap(tokens: ManaToken[], gap: string): void {

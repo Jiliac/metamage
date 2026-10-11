@@ -37,4 +37,22 @@ describe('titleCaseName', () => {
   it('capitalizes after slashes (split cards)', () => {
     expect(titleCaseName('fire/ice')).toBe('Fire/Ice')
   })
+
+  it('capitalizes non-ASCII initials, including after hyphens', () => {
+    expect(titleCaseName('éowyn, fearless knight')).toBe(
+      'Éowyn, Fearless Knight'
+    )
+    expect(titleCaseName('ætherling')).toBe('Ætherling')
+    expect(titleCaseName("ûro, titan of nature's wrath")).toBe(
+      "Ûro, Titan of Nature's Wrath"
+    )
+    expect(titleCaseName("lim-dûl's vault")).toBe("Lim-Dûl's Vault")
+    expect(titleCaseName('fire-éowyn')).toBe('Fire-Éowyn')
+  })
+
+  it('treats Object.prototype keys as ordinary words, not small words', () => {
+    // The two all-lowercase prototype keys: a plain-object lookup found them.
+    expect(titleCaseName('the constructor tower')).toBe('The Constructor Tower')
+    expect(titleCaseName('a __proto__ b')).toBe('A __proto__ B')
+  })
 })

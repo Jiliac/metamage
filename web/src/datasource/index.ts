@@ -66,6 +66,14 @@ function createRawDataSource(): MetaDataSource {
   }
 }
 
+/** Thrown inside the cached getDeck read on a miss, so no null is cached. */
+class DeckNotFound extends Error {
+  constructor(entryId: string) {
+    super(`[datasource] No entry '${entryId}'.`)
+    this.name = 'DeckNotFound'
+  }
+}
+
 /**
  * Wrap a raw `MetaDataSource` so every method result is memoized by
  * `unstable_cache`. The cache key is `[method]` (the `keyParts`) plus a stable
@@ -74,6 +82,24 @@ function createRawDataSource(): MetaDataSource {
  * DTOs are plain JSON, so they round-trip through the data cache cleanly.
  */
 function withCache(inner: MetaDataSource): MetaDataSource {
+  // getDeck caches a function of the ENTRY ID alone (KTD7): unstable_cache
+  // folds the wrapped function's arguments into the key, so the public
+  // `getDeck(q)` drops `q.format` before calling it — one cache entry per
+  // deck, shared by the archetype page and the tournament page, and never
+  // duplicated per window the way the archetype reads are. A miss throws
+  // DeckNotFound instead of returning null: unstable_cache stores only
+  // resolved results, so a well-formed but unknown `?deck` UUID costs a query
+  // every time but never adds a cache entry.
+  const cachedDeck = unstable_cache(
+    async (entryId: string): Promise<DeckDTO> => {
+      const deck = await inner.getDeck({ entryId })
+      if (deck === null) throw new DeckNotFound(entryId)
+      return deck
+    },
+    ['getDeck'],
+    { revalidate: HOUR, tags: ['archetype'] }
+  )
+
   return {
     listFormats: unstable_cache(
       (): Promise<FormatDTO[]> => inner.listFormats(),
@@ -125,16 +151,18 @@ function withCache(inner: MetaDataSource): MetaDataSource {
       { revalidate: HOUR, tags: ['archetype'] }
     ),
 
-    // Keyed on the ENTRY ID only (KTD7): the id is a globally unique UUID, so
-    // the wrapper drops `format` before the call — one cache entry per deck,
-    // shared by the archetype page and the tournament page, and never
-    // duplicated per window the way the archetype reads above are.
-    getDeck: unstable_cache(
-      (q: { format?: FormatSlug; entryId: string }): Promise<DeckDTO | null> =>
-        inner.getDeck({ entryId: q.entryId }),
-      ['getDeck'],
-      { revalidate: HOUR, tags: ['archetype'] }
-    ),
+    // Keyed on the ENTRY ID only (KTD7) — see `cachedDeck` above.
+    getDeck: async (q: {
+      format?: FormatSlug
+      entryId: string
+    }): Promise<DeckDTO | null> => {
+      try {
+        return await cachedDeck(q.entryId)
+      } catch (err) {
+        if (err instanceof DeckNotFound) return null
+        throw err
+      }
+    },
 
     getMatchupMatrix: unstable_cache(
       (q: MetaQuery & { matrixTopN: number }): Promise<MatrixDTO> =>
