@@ -5,6 +5,7 @@ import { ChevronDown } from 'lucide-react'
 
 import type { ArchetypeRef, FormatDTO } from '@/datasource/types'
 import { isAllFormats } from '@/datasource/format-order'
+import { PLATFORM_LABELS } from '@/datasource/platform'
 import { useMetaParams } from '@/hooks/useMetaParams'
 import { matchPreset, PRESET_LABELS } from '@/lib/params'
 import { cn } from '@/lib/utils'
@@ -12,6 +13,7 @@ import { ShareButton } from '@/components/ShareButton'
 
 import { FormatPicker } from './FormatPicker'
 import { WindowPicker, windowLabel } from './WindowPicker'
+import { PlatformPicker } from './PlatformPicker'
 import { KnobsPopover } from './KnobsPopover'
 import { ArchetypeAdder } from './ArchetypeAdder'
 import { knobClass } from './styles'
@@ -32,6 +34,7 @@ import { knobClass } from './styles'
 //
 // `formats` and `archetypes` are server-provided (listFormats / the format's
 // archetype list). `variant='matrix'` surfaces the matrix-size (?n) knob.
+// The All / Online / Paper platform chips ride with the window knob.
 //
 // NOTE FOR WP5/WP7: this subtree reads useSearchParams — wrap the rendered
 // <LensBar> in a <Suspense> boundary at the page/layout level so the route can
@@ -81,6 +84,9 @@ export function LensBar({
     formatName,
     showWindow &&
       (preset ? PRESET_LABELS[preset] : windowLabel(query.start, query.end)),
+    showWindow &&
+      query.platform !== 'all' &&
+      `${PLATFORM_LABELS[query.platform]} only`,
     knobsVariant === 'matrix' && `Grid ${matrixTopN}`,
     knobsVariant === 'meta' && `Top ${query.topN}`,
     knobsVariant && `≥${query.minMatches} matches`,
@@ -133,6 +139,9 @@ export function LensBar({
           <div role="none" className="mx-1 w-px self-stretch bg-line" />
         )}
         {showWindow && <WindowPicker />}
+        {/* The platform splits the same window's events, so it rides with
+            the window wherever the window knob applies. */}
+        {showWindow && <PlatformPicker />}
         {knobsVariant && <KnobsPopover variant={knobsVariant} />}
         {knobsVariant && <ArchetypeAdder archetypes={archetypes} />}
         {/* Share rides inside the first wrapped row (ml-auto within the flex

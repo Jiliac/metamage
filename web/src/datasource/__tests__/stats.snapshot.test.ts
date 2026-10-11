@@ -44,6 +44,7 @@ function stdQuery(overrides: Partial<MetaQuery> = {}): MetaQuery {
     includeArchetypes: [],
     hideBuckets: true,
     weight: 'match',
+    platform: 'all',
     ...overrides,
   }
 }

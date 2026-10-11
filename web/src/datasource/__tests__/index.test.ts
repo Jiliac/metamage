@@ -141,6 +141,7 @@ describe('withCache — decklists methods', () => {
       includeArchetypes: [],
       hideBuckets: false,
       weight: 'match' as const,
+      platform: 'all',
       slug: 'broodscale-combo' as ArchetypeSlug,
     } as MetaQuery & { slug: ArchetypeSlug }
     const entries = await ds.getArchetypeEntries(q)

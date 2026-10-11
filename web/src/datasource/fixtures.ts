@@ -26,9 +26,10 @@ import type {
   WindowKpisDTO,
 } from '@/datasource/types'
 import { parseSort, type SearchParamsInput } from '@/lib/params'
-import type { MetaSort } from '@/datasource/types'
+import type { MetaSort, Platform } from '@/datasource/types'
 import { winrateCi, wr as wrOf, wrExclDraws, type WLD } from '@/lib/stats'
 import { isAllFormats, sortFormats } from '@/datasource/format-order'
+import { matchesPlatform } from '@/datasource/platform'
 import { synthesizeEvent, type SeedEntry } from '@/datasource/fixtures/event'
 import {
   DEFAULT_SORT,
@@ -336,8 +337,14 @@ function windowTournaments(
   const formats = isAllFormats(String(q.format))
     ? fixtureDb().formats.map(f => f.slug)
     : [String(q.format)]
+  // The platform lens can only filter event lists here: the window aggregates
+  // are pre-computed across every source, so reports ignore it (Postgres
+  // filters everything).
   return formats.flatMap(
-    format => findWindow(format, q)?.tournaments.map(t => ({ format, t })) ?? []
+    format =>
+      findWindow(format, q)
+        ?.tournaments.filter(t => matchesPlatform(t.source, q.platform))
+        .map(t => ({ format, t })) ?? []
   )
 }
 
@@ -543,8 +550,10 @@ export class FixtureDataSource implements MetaDataSource {
     }
   }
 
+  // Aggregates are not split by platform here (see windowTournaments).
   async getLatestWindow(
-    format: FormatSlug
+    format: FormatSlug,
+    _platform: Platform = 'all'
   ): Promise<{ start: IsoDate; end: IsoDate } | null> {
     const f = findFormat(String(format))
     if (!f) return null

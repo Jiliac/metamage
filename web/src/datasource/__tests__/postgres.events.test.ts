@@ -204,6 +204,7 @@ describe('PostgresDataSource events', () => {
   const query = {
     start: '2026-09-01',
     end: '2026-09-30',
+    platform: 'paper',
   } as const
 
   it('lists every format with a null format filter for `all`', async () => {
@@ -216,9 +217,15 @@ describe('PostgresDataSource events', () => {
     expect(sql.TOURNAMENTS_SQL).toHaveBeenCalledWith(
       null,
       query.start,
-      query.end
+      query.end,
+      'paper'
     )
-    expect(sql.SOURCES_SQL).toHaveBeenCalledWith(null, query.start, query.end)
+    expect(sql.SOURCES_SQL).toHaveBeenCalledWith(
+      null,
+      query.start,
+      query.end,
+      'paper'
+    )
     expect(loaders.loadFormatId).not.toHaveBeenCalled()
   })
 
@@ -239,7 +246,8 @@ describe('PostgresDataSource events', () => {
     expect(sql.TOURNAMENTS_SQL).toHaveBeenCalledWith(
       'fmt-1',
       query.start,
-      query.end
+      query.end,
+      'paper'
     )
   })
 })

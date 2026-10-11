@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { Suspense } from 'react'
 
 import { getDataSource } from '@/datasource'
+import { platformScope } from '@/datasource/platform'
 import { windowLabel } from '@/lib/dates'
 import { LensBar } from '@/components/LensBar/LensBar'
 import {
@@ -168,7 +169,9 @@ export default async function ArchetypeDetailPage({
       </Suspense>
       <ArchetypeHeader
         fmtName={fmtName}
-        window={windowLabel(query.start, query.end)}
+        window={
+          windowLabel(query.start, query.end) + platformScope(query.platform)
+        }
         name={detail?.archetype.name ?? canonical.name}
         color={color}
         summary={detail?.summary ?? null}

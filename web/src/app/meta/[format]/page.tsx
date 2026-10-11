@@ -5,6 +5,7 @@ import { Suspense } from 'react'
 
 import { getDataSource } from '@/datasource'
 import { isAllFormats } from '@/datasource/format-order'
+import { platformScope } from '@/datasource/platform'
 import type {
   ArchetypeRef,
   ArchetypeRowDTO,
@@ -149,7 +150,7 @@ export default async function MetaOverviewPage({
     query.start === def.start &&
     query.end === def.end
   ) {
-    const latest = await ds.getLatestWindow(query.format)
+    const latest = await ds.getLatestWindow(query.format, query.platform)
     if (latest && (latest.start !== query.start || latest.end !== query.end)) {
       query = { ...query, start: latest.start, end: latest.end }
       report = await ds.getMetaReport(query)
@@ -171,7 +172,7 @@ export default async function MetaOverviewPage({
         </Suspense>
         <EmptyState
           title="No tournaments in this window"
-          message={`We have no ${fmtName} results for ${win}. Widen the window to see the field.`}
+          message={`We have no ${fmtName}${query.platform === 'all' ? '' : ` ${query.platform}`} results for ${win}. Widen the window to see the field.`}
           widenHref={buildHref(
             query.format,
             { ...query, ...expandPreset('last-3m') },
@@ -260,6 +261,7 @@ export default async function MetaOverviewPage({
         <div>
           <p className="eyebrow mb-1.5">
             {fmtName} · {win}
+            {platformScope(query.platform)}
           </p>
           <h1 className="font-display text-[clamp(30px,4.5vw,44px)] leading-[1.08] font-bold text-balance">
             {mostPlayed ? (

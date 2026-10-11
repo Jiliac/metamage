@@ -51,6 +51,7 @@ export type MetaParamsPatch = Partial<
     | 'includeArchetypes'
     | 'hideBuckets'
     | 'weight'
+    | 'platform'
   >
 > & {
   format?: FormatSlug | string
@@ -125,6 +126,7 @@ export function useMetaParams(
         includeArchetypes: patch.includeArchetypes ?? current.includeArchetypes,
         hideBuckets: patch.hideBuckets ?? current.hideBuckets,
         weight: patch.weight ?? current.weight,
+        platform: patch.platform ?? current.platform,
       }
 
       const href = buildHref(nextFormat, nextQuery, {

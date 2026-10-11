@@ -7,6 +7,7 @@ import type {
   MatrixOrderEntryDTO,
   MetaQuery,
   MetaSort,
+  Platform,
 } from '@/datasource/types'
 import { MAX_DECKS_PAGE } from '@/lib/decks'
 
@@ -30,6 +31,7 @@ export const DEFAULTS = {
   weight: 'match',
   hideBuckets: true, // ?buckets=hide
   sort: 'presence',
+  platform: 'all', // ?platform
 } as const satisfies {
   topN: number
   matrixTopN: number
@@ -37,6 +39,7 @@ export const DEFAULTS = {
   weight: MetaQuery['weight']
   hideBuckets: boolean
   sort: MetaSort
+  platform: Platform
 }
 
 const CLAMP = {
@@ -51,6 +54,9 @@ const weightSchema = z.enum(['match', 'entry']).catch(DEFAULTS.weight)
 const bucketsSchema = z.enum(['hide', 'show']).catch('hide')
 // Legacy `?sort=tier` (tier column removed) falls through `.catch` → default.
 const sortSchema = z.enum(['presence', 'wrlo']).catch(DEFAULTS.sort)
+const platformSchema = z
+  .enum(['all', 'online', 'paper'])
+  .catch(DEFAULTS.platform)
 
 // ---------------------------------------------------------------------------
 // searchParams reader — accepts either a URLSearchParams (client) or the plain
@@ -272,6 +278,9 @@ export function parseMetaQuery(
     hideBuckets:
       bucketsSchema.parse(readParam(sp, 'buckets') ?? 'hide') !== 'show',
     weight: weightSchema.parse(readParam(sp, 'weight') ?? DEFAULTS.weight),
+    platform: platformSchema.parse(
+      readParam(sp, 'platform') ?? DEFAULTS.platform
+    ),
   }
 }
 
@@ -399,6 +408,9 @@ export function buildHref(
     params.set('min', String(query.minMatches))
   }
   if (query.weight !== DEFAULTS.weight) params.set('weight', query.weight)
+  if (query.platform !== DEFAULTS.platform) {
+    params.set('platform', query.platform)
+  }
   if (query.hideBuckets !== DEFAULTS.hideBuckets) {
     params.set('buckets', query.hideBuckets ? 'hide' : 'show')
   }

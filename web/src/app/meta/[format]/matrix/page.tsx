@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 
 import { getDataSource } from '@/datasource'
+import { platformScope } from '@/datasource/platform'
 import { isAllFormats } from '@/datasource/format-order'
 import type { ArchetypeRef, FormatDTO, MatrixDTO } from '@/datasource/types'
 import {
@@ -115,7 +116,9 @@ export default async function MatrixPage({
       </Suspense>
 
       <section className="mt-10">
-        <p className="eyebrow mb-1.5">Matchups</p>
+        <p className="eyebrow mb-1.5">
+          Matchups{platformScope(query.platform)}
+        </p>
         <h1 className="font-display text-[clamp(24px,4vw,34px)] font-bold">
           {fmtName} matchup matrix
         </h1>

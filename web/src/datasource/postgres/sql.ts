@@ -1,4 +1,5 @@
-import { ARCHETYPE_ENTRIES_CAP } from '@/datasource/types'
+import { ARCHETYPE_ENTRIES_CAP, type Platform } from '@/datasource/types'
+import { ONLINE_SOURCES } from '@/datasource/platform'
 import { db } from '@/datasource/postgres/client'
 
 // ---------------------------------------------------------------------------
@@ -14,7 +15,9 @@ import { db } from '@/datasource/postgres/client'
 //     one entry; the paired row is the opponent's copy) — same as the R
 //     pipeline and src/analysis/meta.py;
 //   * the window is inclusive on both ends: `t.date >= start` and
-//     `t.date < end + 1 day`.
+//     `t.date < end + 1 day`;
+//   * the platform lens keeps online (MTGO) or paper (every other source)
+//     events only. All three predicates come from `inWindow` below.
 // ---------------------------------------------------------------------------
 
 // ---- Row types --------------------------------------------------------------
@@ -133,14 +136,14 @@ export const FORMAT_ID_SQL = (formatName: string) => db()<FormatRow[]>`
 // Parity expectation (unverified against the live DB): for a format whose
 // newest match-having tournament is dated 2026-09-21, returns
 // (2026-09-01, 2026-09-30).
-export const LATEST_WINDOW_SQL = (formatName: string) => db()<
-  LatestWindowRow[]
->`
+export const LATEST_WINDOW_SQL = (formatName: string, platform: Platform) =>
+  db()<LatestWindowRow[]>`
   with latest as (
     select max(t.date) as newest
     from tournaments t
     join formats f on f.id = t.format_id
     where lower(f.name) = lower(${formatName})
+      and ${platformFilter(platform)}
       and exists (
         select 1
         from tournament_entries te
@@ -188,9 +191,12 @@ export const ARCHETYPE_BY_ALIAS_SQL = (formatId: string, slug: string) => db()<
 // Window KPIs: tournaments / entries / one-sided match rows in the window.
 // Entries = all entries; matches = match rows (an entry with no match rows
 // still counts toward entries but contributes zero games).
-export const KPI_SQL = (formatId: string, start: string, end: string) => db()<
-  KpiRow[]
->`
+export const KPI_SQL = (
+  formatId: string,
+  start: string,
+  end: string,
+  platform: Platform
+) => db()<KpiRow[]>`
   select
     count(distinct t.id)::int as tournaments,
     count(distinct te.id)::int as entries,
@@ -198,9 +204,7 @@ export const KPI_SQL = (formatId: string, start: string, end: string) => db()<
   from tournaments t
   left join tournament_entries te on te.tournament_id = t.id
   left join matches m on m.entry_id = te.id
-  where t.format_id = ${formatId}
-    and t.date >= ${start}::timestamp
-    and t.date < (${end}::date + interval '1 day')
+  where ${inWindow(formatId, start, end, platform)}
 `
 
 // Per-player aggregate record per archetype in the window — the clustering
@@ -223,15 +227,14 @@ export const KPI_SQL = (formatId: string, start: string, end: string) => db()<
 export const PLAYER_RECORDS_SQL = (
   formatId: string,
   start: string,
-  end: string
+  end: string,
+  platform: Platform
 ) => db()<PlayerRow[]>`
   with entries as (
     select te.id, te.archetype_id, te.player_id
     from tournament_entries te
     join tournaments t on t.id = te.tournament_id
-    where t.format_id = ${formatId}
-      and t.date >= ${start}::timestamp
-      and t.date < (${end}::date + interval '1 day')
+    where ${inWindow(formatId, start, end, platform)}
   )
   select e.archetype_id, e.player_id,
          count(*) filter (where m.result = 'WIN')::int as wins,
@@ -253,7 +256,8 @@ export const PLAYER_RECORDS_SQL = (
 export const MATCHUPS_SQL = (
   formatId: string,
   start: string,
-  end: string
+  end: string,
+  platform: Platform
 ) => db()<MatchupRow[]>`
   select te.archetype_id as row_id, te2.archetype_id as col_id,
          count(*) filter (where m.result = 'WIN')::int as wins,
@@ -263,9 +267,7 @@ export const MATCHUPS_SQL = (
   join tournament_entries te on te.tournament_id = t.id
   join matches m on m.entry_id = te.id
   join tournament_entries te2 on te2.id = m.opponent_entry_id
-  where t.format_id = ${formatId}
-    and t.date >= ${start}::timestamp
-    and t.date < (${end}::date + interval '1 day')
+  where ${inWindow(formatId, start, end, platform)}
   group by te.archetype_id, te2.archetype_id
 `
 
@@ -283,6 +285,7 @@ export const CARD_ADOPTION_SQL = (
   formatId: string,
   start: string,
   end: string,
+  platform: Platform,
   archetypeId: string,
   board: string
 ) => db()<CardAdoptionRow[]>`
@@ -294,9 +297,7 @@ export const CARD_ADOPTION_SQL = (
   join cards c on c.id = dc.card_id
   join tournament_entries te on te.id = dc.entry_id
   join tournaments t on t.id = te.tournament_id
-  where t.format_id = ${formatId}
-    and t.date >= ${start}::timestamp
-    and t.date < (${end}::date + interval '1 day')
+  where ${inWindow(formatId, start, end, platform)}
     and te.archetype_id = ${archetypeId}
     and dc.board = ${board}
   group by dc.card_id, c.id
@@ -309,14 +310,13 @@ export const DECK_COUNT_SQL = (
   formatId: string,
   start: string,
   end: string,
+  platform: Platform,
   archetypeId: string
 ) => db()<DeckCountRow[]>`
   select count(distinct te.id)::int as decks
   from tournament_entries te
   join tournaments t on t.id = te.tournament_id
-  where t.format_id = ${formatId}
-    and t.date >= ${start}::timestamp
-    and t.date < (${end}::date + interval '1 day')
+  where ${inWindow(formatId, start, end, platform)}
     and te.archetype_id = ${archetypeId}
 `
 
@@ -343,6 +343,7 @@ export const TREND_SQL = (
   formatId: string,
   start: string,
   end: string,
+  platform: Platform,
   archetypeId: string
 ) => db()<TrendRow[]>`
   with field as (
@@ -350,9 +351,7 @@ export const TREND_SQL = (
            count(distinct te.id)::int as field_decks
     from tournaments t
     join tournament_entries te on te.tournament_id = t.id
-    where t.format_id = ${formatId}
-      and t.date >= ${start}::timestamp
-      and t.date < (${end}::date + interval '1 day')
+    where ${inWindow(formatId, start, end, platform)}
     group by 1
   ),
   arch as (
@@ -364,9 +363,7 @@ export const TREND_SQL = (
     from tournaments t
     join tournament_entries te on te.tournament_id = t.id
     left join matches m on m.entry_id = te.id
-    where t.format_id = ${formatId}
-      and t.date >= ${start}::timestamp
-      and t.date < (${end}::date + interval '1 day')
+    where ${inWindow(formatId, start, end, platform)}
       and te.archetype_id = ${archetypeId}
     group by 1
   )
@@ -395,15 +392,14 @@ export const TREND_SQL = (
 export const TOURNAMENTS_SQL = (
   formatId: string | null,
   start: string,
-  end: string
+  end: string,
+  platform: Platform
 ) => db()<TournamentRow[]>`
   with win as (
     select t.id, t.name, t.date, t.source, t.link, f.name as format
     from tournaments t
     join formats f on f.id = t.format_id
-    where ${formatFilter(formatId)}
-      and t.date >= ${start}::timestamp
-      and t.date < (${end}::date + interval '1 day')
+    where ${inWindow(formatId, start, end, platform)}
   ),
   tc as (
     select te.tournament_id, count(*)::int as entries
@@ -423,6 +419,27 @@ function formatFilter(formatId: string | null) {
   return formatId === null ? db()`true` : db()`t.format_id = ${formatId}`
 }
 
+// Online = an ONLINE_SOURCES event, paper = any other source, all = no filter.
+function platformFilter(platform: Platform) {
+  if (platform === 'all') return db()`true`
+  const online = db()`t.source in ${db()([...ONLINE_SOURCES])}`
+  return platform === 'online' ? online : db()`not (${online})`
+}
+
+/** The shared window predicate over `tournaments t`: format (null = every
+ *  format), the inclusive date range, and the platform lens. */
+function inWindow(
+  formatId: string | null,
+  start: string,
+  end: string,
+  platform: Platform
+) {
+  return db()`${formatFilter(formatId)}
+    and t.date >= ${start}::timestamp
+    and t.date < (${end}::date + interval '1 day')
+    and ${platformFilter(platform)}`
+}
+
 // Per-source tournament + entry totals in the window; same `tc` hoist as
 // TOURNAMENTS_SQL (sum of per-tournament entry counts per source).
 //
@@ -431,14 +448,13 @@ function formatFilter(formatId: string | null) {
 export const SOURCES_SQL = (
   formatId: string | null,
   start: string,
-  end: string
+  end: string,
+  platform: Platform
 ) => db()<SourceRow[]>`
   with win as (
     select t.id, t.source
     from tournaments t
-    where ${formatFilter(formatId)}
-      and t.date >= ${start}::timestamp
-      and t.date < (${end}::date + interval '1 day')
+    where ${inWindow(formatId, start, end, platform)}
   ),
   tc as (
     select te.tournament_id, count(*)::int as entries
@@ -551,6 +567,7 @@ export const ARCHETYPE_ENTRIES_SQL = (
   formatId: string,
   start: string,
   end: string,
+  platform: Platform,
   archetypeId: string
 ) => db()<EntryListRow[]>`
   with win as (
@@ -560,9 +577,7 @@ export const ARCHETYPE_ENTRIES_SQL = (
            t.source
     from tournament_entries te
     join tournaments t on t.id = te.tournament_id
-    where t.format_id = ${formatId}
-      and t.date >= ${start}::timestamp
-      and t.date < (${end}::date + interval '1 day')
+    where ${inWindow(formatId, start, end, platform)}
       and te.archetype_id = ${archetypeId}
   ),
   carded as (

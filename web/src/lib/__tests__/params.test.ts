@@ -268,3 +268,28 @@ describe('buildHref page round-trip', () => {
     )
   })
 })
+
+describe('?platform', () => {
+  it('defaults to all and stays out of the URL', () => {
+    const q = parseMetaQuery('modern', SP(''), NOW)
+    expect(q.platform).toBe('all')
+    expect(buildHref('modern', q, { now: NOW })).toBe('/meta/modern')
+  })
+
+  it('round-trips online and paper', () => {
+    for (const p of ['online', 'paper'] as const) {
+      const q = parseMetaQuery('modern', SP(`platform=${p}`), NOW)
+      expect(q.platform).toBe(p)
+      const href = buildHref('modern', q, { now: NOW })
+      expect(href).toBe(`/meta/modern?platform=${p}`)
+      const back = parseMetaQuery('modern', SP(href.split('?')[1]), NOW)
+      expect(back).toEqual(q)
+    }
+  })
+
+  it('falls back to all on garbage', () => {
+    expect(parseMetaQuery('modern', SP('platform=arena'), NOW).platform).toBe(
+      'all'
+    )
+  })
+})

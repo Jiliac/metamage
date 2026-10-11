@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 
 import { getDataSource } from '@/datasource'
+import { platformScope } from '@/datasource/platform'
 import type {
   ArchetypeRef,
   FormatDTO,
@@ -128,7 +129,7 @@ export default async function TournamentsPage({
       </Suspense>
 
       <section className="mt-10">
-        <p className="eyebrow mb-1.5">Events</p>
+        <p className="eyebrow mb-1.5">Events{platformScope(query.platform)}</p>
         <h1 className="font-display text-[clamp(24px,4vw,34px)] font-bold">
           {heading}
         </h1>
