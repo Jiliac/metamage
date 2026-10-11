@@ -1,6 +1,7 @@
 'use client'
 
 import type { FormatDTO } from '@/datasource/types'
+import { ALL_FORMATS } from '@/datasource/format-order'
 import { cn } from '@/lib/utils'
 import { useMetaParams } from '@/hooks/useMetaParams'
 
@@ -15,14 +16,23 @@ import { knobClass, chipActiveClass } from './styles'
 
 export type FormatPickerProps = {
   formats: FormatDTO[]
+  /** Lead with an "All" chip (the cross-format tournaments list). */
+  allowAll?: boolean
 }
 
-export function FormatPicker({ formats }: FormatPickerProps) {
+const ALL_CHIP: Pick<FormatDTO, 'slug' | 'name' | 'displayName'> = {
+  slug: ALL_FORMATS as FormatDTO['slug'],
+  name: 'All formats',
+  displayName: 'All',
+}
+
+export function FormatPicker({ formats, allowAll = false }: FormatPickerProps) {
   const { format, setParams } = useMetaParams()
+  const chips = allowAll ? [ALL_CHIP, ...formats] : formats
 
   return (
     <div className="flex flex-wrap gap-0.5" role="group" aria-label="Format">
-      {formats.map(f => {
+      {chips.map(f => {
         const active = f.slug === format
         return (
           <button

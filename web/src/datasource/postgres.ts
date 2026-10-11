@@ -20,6 +20,7 @@ import type {
   MetaReportDTO,
   MetaSort,
   SourceDTO,
+  TournamentDetailDTO,
   TournamentDTO,
   TrendPointDTO,
   WindowKpisDTO,
@@ -33,7 +34,7 @@ import {
   type IntrinsicRow,
 } from '@/datasource/derive'
 import { db } from '@/datasource/postgres/client'
-import { sortFormats } from '@/datasource/format-order'
+import { isAllFormats, sortFormats } from '@/datasource/format-order'
 import {
   loadArchetypes,
   loadFormatId,
@@ -47,8 +48,15 @@ import {
   orientedPair,
 } from '@/datasource/postgres/matchups'
 import {
+  eventMatchupDto,
+  isUuid,
+  standingDto,
+  tournamentDto,
+} from '@/datasource/postgres/events'
+import {
   archetypeDisplayName,
   artFor,
+  asIso,
   formatDisplayName,
   formatDto,
   isBucketName,
@@ -65,7 +73,10 @@ import {
   META_CHANGES_SQL,
   SEARCH_ARCHETYPES_SQL,
   SOURCES_SQL,
+  STANDINGS_SQL,
+  TOURNAMENT_SQL,
   TOURNAMENTS_SQL,
+  EVENT_MATCHUPS_SQL,
   TREND_SQL,
   type ArchetypeRow,
   type CardAdoptionRow,
@@ -103,14 +114,6 @@ export { archetypeDisplayName, formatDisplayName }
 // ---- Small helpers ---------------------------------------------------------
 
 const asSlug = (s: string) => s as ArchetypeSlug
-const asIso = (d: unknown) => {
-  // postgres.js returns JS Date for date/timestamp columns; the DTO wants
-  // 'YYYY-MM-DD' in UTC so it round-trips through the canonical URL.
-  if (d instanceof Date) {
-    return d.toISOString().slice(0, 10) as IsoDate
-  }
-  return String(d).slice(0, 10) as IsoDate
-}
 
 /** Archetype identity as the class passes it around (display-cased name). */
 type ArchetypeMeta = { id: string; name: string; color: string | null }
@@ -445,28 +448,36 @@ export class PostgresDataSource implements MetaDataSource {
   }
 
   async getTournaments(q: MetaQuery): Promise<TournamentDTO[]> {
-    const formatId = await this.formatIdFor(String(q.format))
-    if (!formatId) return []
+    const formatId = await this.formatFilterId(String(q.format))
+    if (formatId === undefined) return []
     const rows = await TOURNAMENTS_SQL(formatId, q.start, q.end)
-    return rows.map(t => ({
-      id: t.id,
-      name: t.name,
-      date: asIso(t.date),
-      source: t.source as TournamentDTO['source'],
-      ...(t.link ? { link: t.link } : {}),
-      entries: t.entries,
-    }))
+    return rows.map(tournamentDto)
   }
 
   async getSources(q: MetaQuery): Promise<SourceDTO[]> {
-    const formatId = await this.formatIdFor(String(q.format))
-    if (!formatId) return []
+    const formatId = await this.formatFilterId(String(q.format))
+    if (formatId === undefined) return []
     const rows = await SOURCES_SQL(formatId, q.start, q.end)
     return rows.map(r => ({
       source: r.source as SourceDTO['source'],
       tournaments: r.tournaments,
       entries: r.entries,
     }))
+  }
+
+  async getTournament(id: string): Promise<TournamentDetailDTO | null> {
+    if (!isUuid(id)) return null
+    const [header] = await TOURNAMENT_SQL(id)
+    if (!header) return null
+    const [standings, matchups] = await Promise.all([
+      STANDINGS_SQL(id),
+      EVENT_MATCHUPS_SQL(id),
+    ])
+    return {
+      tournament: tournamentDto(header),
+      standings: standings.map(standingDto),
+      matchups: matchups.map(eventMatchupDto),
+    }
   }
 
   async searchArchetypes(
@@ -505,6 +516,15 @@ export class PostgresDataSource implements MetaDataSource {
   // aggregates go through ./postgres/loaders.ts so one request that renders
   // both the report and the matrix executes each of them once.
   // -------------------------------------------------------------------------
+
+  /** The tournaments filter: null for the all-formats pseudo-format,
+   *  undefined for an unknown format (→ empty result). */
+  private async formatFilterId(
+    formatName: string
+  ): Promise<string | null | undefined> {
+    if (isAllFormats(formatName)) return null
+    return (await this.formatIdFor(formatName)) ?? undefined
+  }
 
   private async formatIdFor(formatName: string): Promise<string | null> {
     const rows = await loadFormatId(formatName)

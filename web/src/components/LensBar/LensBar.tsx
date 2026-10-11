@@ -52,7 +52,7 @@ export function LensBar({
       aria-label="View parameters"
       className="clip-notch mt-5 flex flex-wrap items-center gap-2.5 border border-line bg-surface px-3.5 py-3"
     >
-      <FormatPicker formats={formats} />
+      <FormatPicker formats={formats} allowAll={variant === 'tournaments'} />
       {showDivider && (
         <div role="none" className="mx-1 w-px self-stretch bg-line" />
       )}

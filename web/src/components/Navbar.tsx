@@ -7,6 +7,7 @@ import { useTheme } from 'next-themes'
 import { Menu, Moon, Sun, X } from 'lucide-react'
 
 import { buildHref } from '@/lib/params'
+import { isNavActive, navFormat } from '@/lib/nav'
 import { cn, CONTAINER_CLASS } from '@/lib/utils'
 import {
   Collapsible,
@@ -40,13 +41,6 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Tournaments', sub: '/tournaments' },
 ]
 
-const OTHER_SUBS = ['/matrix', '/changes', '/tournaments']
-
-function isActive(itemSub: string, subPath: string): boolean {
-  if (itemSub === '') return !OTHER_SUBS.includes(subPath)
-  return subPath === itemSub
-}
-
 const navLinkClass =
   'border-b-2 border-transparent py-0.5 text-[13.5px] tracking-[0.04em] text-ink-2 no-underline transition-colors hover:text-ink ' +
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold'
@@ -62,13 +56,13 @@ function NavLinks({ linkClass: linkCls }: { linkClass?: string }) {
         // Meta and Matchups both carry a matrix, so the mobile list's `?row`
         // travels between them like the LensBar knobs do; other routes drop it.
         const hasMatrix = item.sub === '' || item.sub === '/matrix'
-        const href = buildHref(format, query, {
+        const href = buildHref(navFormat(format, item.sub), query, {
           path: item.sub,
           sort: item.sub === '' ? sort : undefined,
           matrixTopN: item.sub === '/matrix' ? matrixTopN : undefined,
           row: hasMatrix ? row : undefined,
         })
-        const active = isActive(item.sub, subPath)
+        const active = isNavActive(item.sub, subPath)
         return (
           <Link
             key={item.label}
@@ -93,11 +87,11 @@ function NavLinksFallback({ linkClass: linkCls }: { linkClass?: string }) {
   return (
     <>
       {NAV_ITEMS.map(item => {
-        const active = isActive(item.sub, subPath)
+        const active = isNavActive(item.sub, subPath)
         return (
           <Link
             key={item.label}
-            href={`/meta/${format}${item.sub}`}
+            href={`/meta/${navFormat(format, item.sub)}${item.sub}`}
             aria-current={active ? 'page' : undefined}
             className={cn(navLinkClass, linkCls, active && navLinkActiveClass)}
           >

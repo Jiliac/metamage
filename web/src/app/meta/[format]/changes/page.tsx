@@ -1,10 +1,12 @@
 import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 
 import { getDataSource } from '@/datasource'
-import { DUEL_COMMANDER_FORMAT } from '@/datasource/format-order'
+import { DUEL_COMMANDER_FORMAT, isAllFormats } from '@/datasource/format-order'
 import type { ArchetypeRef, FormatDTO, MetaChangeDTO } from '@/datasource/types'
 import { parseMetaQuery } from '@/lib/params'
+import { longDate } from '@/lib/dates'
 import { buildPageMetadata } from '@/lib/seo'
 
 import { LensBar } from '@/components/LensBar/LensBar'
@@ -18,11 +20,6 @@ import { EmptyState } from '@/components/EmptyState'
 type RouteParams = { format: string }
 type SearchParams = Record<string, string | string[] | undefined>
 
-const MONTHS = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-] // prettier-ignore
-
 function titleCase(slug: string): string {
   return slug
     .split('-')
@@ -32,11 +29,6 @@ function titleCase(slug: string): string {
 
 function formatName(formats: FormatDTO[], slug: string): string {
   return formats.find(f => f.slug === slug)?.name ?? titleCase(slug)
-}
-
-function longDate(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  return `${MONTHS[m - 1]} ${d}, ${y}`
 }
 
 // Format-level timeline — SSG per format, refreshed daily (blueprint §2).
@@ -78,6 +70,8 @@ export default async function ChangesPage({
   searchParams: Promise<SearchParams>
 }) {
   const { format } = await params
+  // `all` exists only for the tournaments views.
+  if (isAllFormats(format)) notFound()
   const sp = await searchParams
 
   const query = parseMetaQuery(format, sp)

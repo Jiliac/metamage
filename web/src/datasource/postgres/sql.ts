@@ -75,9 +75,31 @@ export type TournamentRow = {
   id: string
   name: string
   date: Date | string
+  format: string
   source: string
   link: string | null
   entries: number
+}
+
+export type StandingRow = {
+  entry_id: string
+  rank: number
+  wins: number
+  losses: number
+  draws: number
+  decklist_url: string | null
+  player: string
+  archetype: string
+  color: string | null
+  has_cards: boolean
+}
+
+export type EventMatchupRow = {
+  row_name: string
+  col_name: string
+  wins: number
+  losses: number
+  draws: number
 }
 
 export type SourceRow = { source: string; tournaments: number; entries: number }
@@ -371,14 +393,15 @@ export const TREND_SQL = (
 // Parity expectation (unverified against the live DB): identical (id, entries)
 // pairs and order to the previous correlated form for any window.
 export const TOURNAMENTS_SQL = (
-  formatId: string,
+  formatId: string | null,
   start: string,
   end: string
 ) => db()<TournamentRow[]>`
   with win as (
-    select t.id, t.name, t.date, t.source, t.link
+    select t.id, t.name, t.date, t.source, t.link, f.name as format
     from tournaments t
-    where t.format_id = ${formatId}
+    join formats f on f.id = t.format_id
+    where ${formatFilter(formatId)}
       and t.date >= ${start}::timestamp
       and t.date < (${end}::date + interval '1 day')
   ),
@@ -388,12 +411,17 @@ export const TOURNAMENTS_SQL = (
     join win on win.id = te.tournament_id
     group by te.tournament_id
   )
-  select win.id, win.name, win.date, win.source, win.link,
+  select win.id, win.name, win.date, win.format, win.source, win.link,
          coalesce(tc.entries, 0)::int as entries
   from win
   left join tc on tc.tournament_id = win.id
   order by win.date desc, win.name asc
 `
+
+// `t.format_id = $id`, or no filter (`true`) for the all-formats list.
+function formatFilter(formatId: string | null) {
+  return formatId === null ? db()`true` : db()`t.format_id = ${formatId}`
+}
 
 // Per-source tournament + entry totals in the window; same `tc` hoist as
 // TOURNAMENTS_SQL (sum of per-tournament entry counts per source).
@@ -401,14 +429,14 @@ export const TOURNAMENTS_SQL = (
 // Parity expectation (unverified against the live DB): identical
 // (source, tournaments, entries) rows to the previous correlated form.
 export const SOURCES_SQL = (
-  formatId: string,
+  formatId: string | null,
   start: string,
   end: string
 ) => db()<SourceRow[]>`
   with win as (
     select t.id, t.source
     from tournaments t
-    where t.format_id = ${formatId}
+    where ${formatFilter(formatId)}
       and t.date >= ${start}::timestamp
       and t.date < (${end}::date + interval '1 day')
   ),
@@ -425,6 +453,51 @@ export const SOURCES_SQL = (
   left join tc on tc.tournament_id = win.id
   group by win.source
   order by entries desc
+`
+
+// ---- One event ---------------------------------------------------------------
+
+// The event's header row (format name included so any URL format can
+// redirect/link to the real one). Entry count from a grouped join.
+export const TOURNAMENT_SQL = (id: string) => db()<TournamentRow[]>`
+  select t.id, t.name, t.date, f.name as format, t.source, t.link,
+         (select count(*)::int from tournament_entries te
+           where te.tournament_id = t.id) as entries
+  from tournaments t
+  join formats f on f.id = t.format_id
+  where t.id = ${id}
+  limit 1
+`
+
+// Every entry of one event with player, archetype and whether deck cards are
+// stored. `has_cards` is an EXISTS probe on the deck_cards entry index (stops
+// at the first row) — cheap per entry, unlike the per-row aggregates the Neon
+// latency learning warns about.
+export const STANDINGS_SQL = (id: string) => db()<StandingRow[]>`
+  select te.id as entry_id, te.rank, te.wins, te.losses, te.draws,
+         te.decklist_url, p.handle as player, a.name as archetype, a.color,
+         exists (select 1 from deck_cards d where d.entry_id = te.id) as has_cards
+  from tournament_entries te
+  join players p on p.id = te.player_id
+  join archetypes a on a.id = te.archetype_id
+  where te.tournament_id = ${id}
+`
+
+// MATCHUPS_SQL semantics scoped to one event: every match row counts once
+// for (entry archetype, opponent archetype), from the entry side. Keyed by
+// archetype name; the data source slugifies.
+export const EVENT_MATCHUPS_SQL = (id: string) => db()<EventMatchupRow[]>`
+  select a.name as row_name, a2.name as col_name,
+         count(*) filter (where m.result = 'WIN')::int as wins,
+         count(*) filter (where m.result = 'LOSS')::int as losses,
+         count(*) filter (where m.result = 'DRAW')::int as draws
+  from tournament_entries te
+  join matches m on m.entry_id = te.id
+  join tournament_entries te2 on te2.id = m.opponent_entry_id
+  join archetypes a on a.id = te.archetype_id
+  join archetypes a2 on a2.id = te2.archetype_id
+  where te.tournament_id = ${id}
+  group by a.name, a2.name
 `
 
 export const META_CHANGES_SQL = (formatId: string) => db()<MetaChangeRow[]>`

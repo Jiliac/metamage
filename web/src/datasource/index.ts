@@ -17,6 +17,7 @@ import type {
   MetaQuery,
   MetaReportDTO,
   SourceDTO,
+  TournamentDetailDTO,
   TournamentDTO,
   TrendPointDTO,
 } from '@/datasource/types'
@@ -74,6 +75,14 @@ class DeckNotFound extends Error {
   }
 }
 
+/** Thrown inside the cached getTournament read on a miss (as DeckNotFound). */
+class TournamentNotFound extends Error {
+  constructor(id: string) {
+    super(`[datasource] No tournament '${id}'.`)
+    this.name = 'TournamentNotFound'
+  }
+}
+
 /**
  * Wrap a raw `MetaDataSource` so every method result is memoized by
  * `unstable_cache`. The cache key is `[method]` (the `keyParts`) plus a stable
@@ -98,6 +107,19 @@ function withCache(inner: MetaDataSource): MetaDataSource {
     },
     ['getDeck'],
     { revalidate: HOUR, tags: ['archetype'] }
+  )
+
+  // Keyed on the event id only — an event's standings never depend on the
+  // lens window, so every window that links to it shares one entry. Misses
+  // throw like getDeck's, so unknown ids never add cache entries.
+  const cachedTournament = unstable_cache(
+    async (id: string): Promise<TournamentDetailDTO> => {
+      const detail = await inner.getTournament(id)
+      if (detail === null) throw new TournamentNotFound(id)
+      return detail
+    },
+    ['getTournament'],
+    { revalidate: HOUR, tags: ['tournaments'] }
   )
 
   return {
@@ -197,6 +219,15 @@ function withCache(inner: MetaDataSource): MetaDataSource {
       ['getSources'],
       { revalidate: HOUR, tags: ['tournaments'] }
     ),
+
+    async getTournament(id: string): Promise<TournamentDetailDTO | null> {
+      try {
+        return await cachedTournament(id)
+      } catch (err) {
+        if (err instanceof TournamentNotFound) return null
+        throw err
+      }
+    },
 
     searchArchetypes: unstable_cache(
       (format: FormatSlug, query: string): Promise<ArchetypeRef[]> =>

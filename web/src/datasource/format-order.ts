@@ -23,6 +23,14 @@ export const DUEL_COMMANDER_FORMAT =
 /** Landing format for `/` and format-less fallbacks: the most-played one. */
 export const DEFAULT_FORMAT = FORMAT_ORDER[0]
 
+/** Pseudo-format path segment for the cross-format tournaments list
+ *  (`/meta/all/tournaments`). Only the tournaments routes accept it. */
+export const ALL_FORMATS = 'all'
+
+export function isAllFormats(format: string): boolean {
+  return format === ALL_FORMATS
+}
+
 function rankOf(slug: string): number {
   const i = (FORMAT_ORDER as readonly string[]).indexOf(slug)
   return i === -1 ? FORMAT_ORDER.length : i

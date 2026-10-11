@@ -152,9 +152,48 @@ export type TournamentDTO = {
   id: string
   name: string
   date: IsoDate
+  /** The event's own format — lets the all-formats list link each row. */
+  format: FormatSlug
   source: 'MTGO' | 'MELEE' | 'CARDSREALM' | 'OTHER'
   link?: string
   entries: number
+}
+
+/** One player's line in an event's standings. */
+export type StandingDTO = {
+  entryId: string
+  /** Final placing; null when the source publishes none (Melee, leagues). */
+  rank: number | null
+  wins: number
+  losses: number
+  draws: number
+  player: string
+  archetype: {
+    slug: ArchetypeSlug
+    name: string
+    color: string | null
+    isBucket: boolean
+  }
+  decklistUrl?: string
+  /** True when the entry has stored deck cards (a viewable list). */
+  hasDecklist: boolean
+}
+
+/** Event-scoped matchup record, from the row archetype's entry side (same
+ *  semantics as the window MATCHUPS_SQL: every match counted once per side). */
+export type EventMatchupDTO = {
+  rowSlug: ArchetypeSlug
+  colSlug: ArchetypeSlug
+  wins: number
+  losses: number
+  draws: number
+}
+
+export type TournamentDetailDTO = {
+  tournament: TournamentDTO
+  /** Unsorted; order with `sortStandings` (@/lib/events). */
+  standings: StandingDTO[]
+  matchups: EventMatchupDTO[]
 }
 
 export type SourceDTO = {
@@ -270,8 +309,11 @@ export interface MetaDataSource {
     q: MetaQuery & { a: ArchetypeSlug; b: ArchetypeSlug }
   ): Promise<MatchupCellDTO | null>
   getFormatMetaChanges(format: FormatSlug): Promise<MetaChangeDTO[]>
+  /** Events in the window. `q.format === ALL_FORMATS` lists every format. */
   getTournaments(q: MetaQuery): Promise<TournamentDTO[]>
   getSources(q: MetaQuery): Promise<SourceDTO[]>
+  /** One event's standings + matchups, keyed on id only (window-free). */
+  getTournament(id: string): Promise<TournamentDetailDTO | null>
   // slug discipline + small-archetype adder
   searchArchetypes(format: FormatSlug, query: string): Promise<ArchetypeRef[]>
   resolveSlug(
