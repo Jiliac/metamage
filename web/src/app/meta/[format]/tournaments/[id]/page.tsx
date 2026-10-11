@@ -1,0 +1,370 @@
+import type { Metadata } from 'next'
+import Link from 'next/link'
+import { notFound, permanentRedirect } from 'next/navigation'
+
+import { getDataSource } from '@/datasource'
+import { isAllFormats } from '@/datasource/format-order'
+import type {
+  FormatDTO,
+  StandingDTO,
+  TournamentDetailDTO,
+  TournamentDTO,
+} from '@/datasource/types'
+import {
+  archetypeHref,
+  deckHref,
+  eventStats,
+  isEventId,
+  placingLabel,
+  recordLabel,
+  sortStandings,
+} from '@/lib/events'
+import { buildHref, parseMetaQuery } from '@/lib/params'
+import { buildPageMetadata } from '@/lib/seo'
+import { cn } from '@/lib/utils'
+
+import { KpiStat, KpiStatGroup } from '@/components/KpiStat'
+import { ManaPips } from '@/components/ManaPips'
+import { MatchupMatrix } from '@/components/charts/MatchupMatrix'
+import { PresenceBars } from '@/components/charts/PresenceBars'
+
+// ---------------------------------------------------------------------------
+// Event page — one tournament's standings, field and matchups (RSC).
+//
+// `/meta/{format}/tournaments/{id}` where {format} is the event's own format
+// or `all` (reached from the cross-format list); any other format redirects
+// to the event's. The event itself is window-free; the lens params ride along
+// only so "back" and the archetype links keep the user's window.
+//
+// Deck names link to the archetype page's Decklists tab with `?deck=<entry>`
+// selected. Players are plain text (no player pages yet).
+// ---------------------------------------------------------------------------
+
+type RouteParams = { format: string; id: string }
+type SearchParams = Record<string, string | string[] | undefined>
+
+const MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+] // prettier-ignore
+
+const SOURCE_LABEL: Record<TournamentDTO['source'], string> = {
+  MTGO: 'Magic Online',
+  MELEE: 'Melee.gg',
+  CARDSREALM: 'Cardsrealm',
+  OTHER: 'Other',
+}
+
+function longDate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return `${MONTHS[m - 1]} ${d}, ${y}`
+}
+
+function formatLabel(formats: FormatDTO[], slug: string): string {
+  return formats.find(f => f.slug === slug)?.name ?? slug
+}
+
+export const revalidate = 3600
+
+async function loadEvent(id: string): Promise<TournamentDetailDTO | null> {
+  if (!isEventId(id)) return null
+  return getDataSource().getTournament(id)
+}
+
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<RouteParams>
+  searchParams: Promise<SearchParams>
+}): Promise<Metadata> {
+  const { id } = await params
+  const sp = await searchParams
+  const detail = await loadEvent(id)
+  if (!detail) return { title: 'Tournament not found' }
+  const t = detail.tournament
+  const formats = await getDataSource().listFormats()
+  const query = parseMetaQuery(t.format, sp)
+  return buildPageMetadata({
+    view: 'meta',
+    format: t.format,
+    query,
+    path: `/tournaments/${t.id}`,
+    title: `${t.name} — ${longDate(t.date)}`,
+    description: `${formatLabel(formats, t.format)} standings, field and matchups for ${t.name} (${t.entries} players).`,
+  })
+}
+
+export default async function TournamentPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<RouteParams>
+  searchParams: Promise<SearchParams>
+}) {
+  const { format, id } = await params
+  const sp = await searchParams
+
+  const detail = await loadEvent(id)
+  if (!detail) notFound()
+  const t = detail.tournament
+
+  const query = parseMetaQuery(format, sp)
+  if (!isAllFormats(format) && format !== t.format) {
+    permanentRedirect(
+      buildHref(
+        t.format,
+        { ...query, format: t.format },
+        {
+          path: `/tournaments/${t.id}`,
+        }
+      )
+    )
+  }
+
+  const formats = await getDataSource().listFormats()
+  // Archetype links always target the event's real format.
+  const eventQuery = { ...query, format: t.format }
+  const standings = sortStandings(detail.standings)
+  const { field, matrix } = eventStats(standings, detail.matchups, t.date)
+  const anyRank = standings.some(s => s.rank !== null)
+  const winner = standings[0]
+
+  const hrefFor = (slug: string) =>
+    archetypeHref(t.format, eventQuery, slug, t.date)
+  const fieldHref = Object.fromEntries(
+    field.filter(f => !f.isBucket).map(f => [f.slug, hrefFor(f.slug)])
+  )
+  const fieldCounts = Object.fromEntries(field.map(f => [f.slug, f.decks]))
+  const matrixHref = Object.fromEntries(
+    matrix.order.map(o => [o.slug, hrefFor(o.slug)])
+  )
+  const backHref = buildHref(format, query, { path: '/tournaments' })
+  const backLabel = isAllFormats(format)
+    ? 'All tournaments'
+    : `${formatLabel(formats, t.format)} tournaments`
+
+  return (
+    <>
+      <nav className="mt-6 text-[12.5px]" aria-label="Breadcrumb">
+        <Link
+          href={backHref}
+          className="text-ink-3 no-underline hover:text-gold hover:underline hover:underline-offset-[3px]"
+        >
+          ← {backLabel}
+        </Link>
+      </nav>
+
+      {/* ---- HEADER ---- */}
+      <header className="mt-4">
+        <p className="eyebrow mb-1.5">
+          Event · {formatLabel(formats, t.format)} · {SOURCE_LABEL[t.source]}
+        </p>
+        <h1 className="font-display text-[clamp(24px,4vw,36px)] font-bold">
+          {t.name}
+        </h1>
+        <p className="mt-1.5 text-[13.5px] text-ink-2">
+          <span className="data">{longDate(t.date)}</span> ·{' '}
+          <span className="data">{t.entries}</span> players
+          {t.link && (
+            <>
+              {' '}
+              ·{' '}
+              <a
+                href={t.link}
+                target="_blank"
+                rel="noreferrer"
+                className="text-ink-2 hover:text-gold hover:underline hover:underline-offset-[3px]"
+              >
+                View on {SOURCE_LABEL[t.source]} ↗
+              </a>
+            </>
+          )}
+        </p>
+      </header>
+
+      {standings.length === 0 ? (
+        <p className="mt-8 border border-line bg-surface p-6 text-[13.5px] text-ink-2">
+          No standings were published for this event.
+        </p>
+      ) : (
+        <>
+          <KpiStatGroup columns={3} className="mt-6">
+            <KpiStat label="Players" value={standings.length} />
+            <KpiStat
+              label="Archetypes"
+              value={field.filter(f => !f.isBucket).length}
+            />
+            <KpiStat
+              label={winner.rank === 1 ? 'Winner' : 'Best record'}
+              value={winner.archetype.name}
+              className="[&_.num]:truncate [&_.num]:text-[20px]"
+            />
+          </KpiStatGroup>
+
+          <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+            {/* ---- STANDINGS ---- */}
+            <section aria-labelledby="standings-h" className="min-w-0">
+              <h2 id="standings-h" className="eyebrow mb-2">
+                Standings
+              </h2>
+              <StandingsTable
+                standings={standings}
+                showPlace={anyRank}
+                hrefFor={s => deckHref(t.format, eventQuery, s, t.date)}
+              />
+              <p className="mt-2 text-[12px] text-ink-3">
+                Records count only matches against other published decks.
+              </p>
+            </section>
+
+            {/* ---- FIELD ---- */}
+            <aside aria-labelledby="field-h" className="min-w-0">
+              <div className="lg:sticky lg:top-6">
+                <h2 id="field-h" className="eyebrow mb-2">
+                  The field
+                </h2>
+                <div className="border border-line bg-surface px-3.5 py-2 shadow-ledger">
+                  <PresenceBars
+                    rows={field}
+                    unit="decks"
+                    rowHref={fieldHref}
+                    counts={fieldCounts}
+                    compact
+                  />
+                </div>
+              </div>
+            </aside>
+          </div>
+
+          {/* ---- MATCHUPS ---- */}
+          <section aria-labelledby="matchups-h" className="mt-10">
+            <h2 id="matchups-h" className="eyebrow mb-1.5">
+              Matchups
+            </h2>
+            <p className="mb-3 max-w-[65ch] text-[13px] text-ink-2">
+              Win rate of the row archetype against the column, in this event
+              only. One event is a small sample: the fainter the cell, the fewer
+              the games behind it.
+            </p>
+            {matrix.order.length >= 2 ? (
+              <div className="border border-line bg-surface p-3 shadow-ledger">
+                <MatchupMatrix data={matrix} rowHref={matrixHref} />
+              </div>
+            ) : (
+              <p className="border border-line bg-surface p-6 text-[13.5px] text-ink-2">
+                Not enough recorded matches between archetypes for a matrix.
+              </p>
+            )}
+          </section>
+        </>
+      )}
+
+      <footer className="mt-[72px] flex flex-wrap items-center gap-[18px] border-t border-line pt-[18px] text-[12.5px] text-ink-3">
+        <span>
+          Source: {SOURCE_LABEL[t.source]} · {longDate(t.date)}
+        </span>
+      </footer>
+    </>
+  )
+}
+
+function Th({
+  children,
+  className = '',
+}: {
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <th
+      scope="col"
+      className={cn(
+        'border-b border-line-strong px-3.5 py-2.5 text-left text-[11px] font-semibold tracking-[0.13em] text-ink-3 uppercase',
+        className
+      )}
+    >
+      {children}
+    </th>
+  )
+}
+
+function StandingsTable({
+  standings,
+  showPlace,
+  hrefFor,
+}: {
+  standings: StandingDTO[]
+  showPlace: boolean
+  hrefFor: (s: StandingDTO) => string | null
+}) {
+  return (
+    <div className="overflow-x-auto border border-line bg-surface shadow-ledger">
+      <table
+        aria-label="Final standings"
+        className="w-full border-collapse text-[13.5px]"
+      >
+        <thead>
+          <tr>
+            {showPlace && <Th className="w-[64px]">Place</Th>}
+            <Th>Deck</Th>
+            <Th>Pilot</Th>
+            <Th className="text-right">Record</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {standings.map(s => {
+            const href = hrefFor(s)
+            const top = s.rank === 1
+            return (
+              <tr
+                key={s.entryId}
+                className={cn(
+                  'hover:bg-[var(--gold-wash)]',
+                  s.archetype.isBucket && 'text-ink-2'
+                )}
+              >
+                {showPlace && (
+                  <td className="border-b border-line px-3.5 py-2">
+                    <span
+                      className={cn(
+                        'data',
+                        top ? 'font-bold text-gold' : 'text-ink-2'
+                      )}
+                    >
+                      {placingLabel(s.rank) ?? '—'}
+                    </span>
+                  </td>
+                )}
+                <td className="border-b border-line px-3.5 py-2">
+                  <span className="inline-flex items-center gap-2">
+                    <ManaPips colors={s.archetype.color} size={14} />
+                    {href ? (
+                      <Link
+                        href={href}
+                        className="font-semibold text-ink no-underline hover:text-gold hover:underline hover:underline-offset-[3px]"
+                      >
+                        {s.archetype.name}
+                      </Link>
+                    ) : (
+                      <span className="font-semibold">{s.archetype.name}</span>
+                    )}
+                    {!s.hasDecklist && (
+                      <span className="text-[11px] text-ink-3">no list</span>
+                    )}
+                  </span>
+                </td>
+                <td className="border-b border-line px-3.5 py-2 text-ink-2">
+                  {s.player}
+                </td>
+                <td className="border-b border-line px-3.5 py-2 text-right">
+                  <span className="data">{recordLabel(s)}</span>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}

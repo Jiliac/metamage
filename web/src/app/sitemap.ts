@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next'
 import { getDataSource } from '@/datasource'
+import { ALL_FORMATS } from '@/datasource/format-order'
 import type { FormatDTO } from '@/datasource/types'
 import { buildHref, parseMetaQuery } from '@/lib/params'
 
@@ -44,6 +45,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       })
     }
   }
+
+  // The cross-format tournaments list (the only route `all` exists for).
+  entries.push({
+    url: `${SITE_URL}${buildHref(ALL_FORMATS, parseMetaQuery(ALL_FORMATS, {}, now), { path: '/tournaments', now })}`,
+    lastModified,
+    changeFrequency: 'hourly',
+    priority: 0.6,
+  })
 
   return entries
 }

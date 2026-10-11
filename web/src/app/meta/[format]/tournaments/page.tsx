@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { Suspense } from 'react'
 
 import { getDataSource } from '@/datasource'
@@ -8,7 +9,8 @@ import type {
   SourceDTO,
   TournamentDTO,
 } from '@/datasource/types'
-import { parseMetaQuery } from '@/lib/params'
+import { ALL_FORMATS, isAllFormats } from '@/datasource/format-order'
+import { buildHref, parseMetaQuery } from '@/lib/params'
 import { buildPageMetadata } from '@/lib/seo'
 import { cn } from '@/lib/utils'
 import { STICKY_COL_1 } from '@/components/tables/sticky'
@@ -19,7 +21,9 @@ import { KpiStat } from '@/components/KpiStat'
 
 // ---------------------------------------------------------------------------
 // Tournaments route (WP5) — the events + source breakdown feeding the window.
-// RSC. Source cards on top, the full tournament list below.
+// RSC. Source cards on top, the full tournament list below; each event links
+// to its standings page. `/meta/all/tournaments` lists every format (with a
+// Format column).
 // ---------------------------------------------------------------------------
 
 type RouteParams = { format: string }
@@ -45,7 +49,12 @@ function titleCase(slug: string): string {
 }
 
 function formatName(formats: FormatDTO[], slug: string): string {
+  if (isAllFormats(slug)) return 'All formats'
   return formats.find(f => f.slug === slug)?.name ?? titleCase(slug)
+}
+
+function formatChip(formats: FormatDTO[], slug: string): string {
+  return formats.find(f => f.slug === slug)?.displayName ?? titleCase(slug)
 }
 
 function shortDate(iso: string): string {
@@ -60,7 +69,10 @@ export const dynamicParams = true
 
 export async function generateStaticParams(): Promise<RouteParams[]> {
   const formats = await getDataSource().listFormats()
-  return formats.map(f => ({ format: String(f.slug) }))
+  return [
+    { format: ALL_FORMATS },
+    ...formats.map(f => ({ format: String(f.slug) })),
+  ]
 }
 
 export async function generateMetadata({
@@ -80,8 +92,10 @@ export async function generateMetadata({
     format,
     query,
     path: '/tournaments',
-    title: `${name} Tournaments`,
-    description: `Events and source breakdown feeding the ${name} metagame window.`,
+    title: isAllFormats(format) ? 'Tournaments' : `${name} Tournaments`,
+    description: isAllFormats(format)
+      ? 'Every tournament in the window, across all formats, with standings.'
+      : `Events and source breakdown feeding the ${name} metagame window.`,
   })
 }
 
@@ -96,6 +110,7 @@ export default async function TournamentsPage({
   const sp = await searchParams
 
   const query = parseMetaQuery(format, sp)
+  const isAll = isAllFormats(format)
 
   const ds = getDataSource()
   const [formats, sources, tournaments, archetypes]: [
@@ -107,9 +122,12 @@ export default async function TournamentsPage({
     ds.listFormats(),
     ds.getSources(query),
     ds.getTournaments(query),
-    ds.searchArchetypes(query.format, ''),
+    isAll ? Promise.resolve([]) : ds.searchArchetypes(query.format, ''),
   ])
   const fmtName = formatName(formats, format)
+  const heading = isAll ? 'All tournaments' : `${fmtName} tournaments`
+  const eventHref = (id: string) =>
+    buildHref(format, query, { path: `/tournaments/${id}` })
 
   const totalEntries = sources.reduce((s, x) => s + x.entries, 0)
   const totalEvents = sources.reduce((s, x) => s + x.tournaments, 0)
@@ -127,17 +145,18 @@ export default async function TournamentsPage({
       <section className="mt-10">
         <p className="eyebrow mb-1.5">The feed</p>
         <h2 className="font-display text-[clamp(24px,4vw,34px)] font-bold">
-          {fmtName} tournaments
+          {heading}
         </h2>
         <p className="mt-0.5 max-w-[65ch] text-[13.5px] text-ink-2">
-          Every event in the window, and where the data comes from. The matrix
-          and the field above are built from exactly these results.
+          {isAll
+            ? 'Every event in the window, across every format. Open one for its standings, field and matchups.'
+            : 'Every event in the window, and where the data comes from. The matrix and the field above are built from exactly these results. Open one for its standings.'}
         </p>
 
         {tournaments.length === 0 ? (
           <EmptyState
             title="No tournaments in this window"
-            message={`We have no ${fmtName} events for ${query.start} → ${query.end}. Widen the window to see the feed.`}
+            message={`We have no ${isAll ? '' : `${fmtName} `}events for ${query.start} → ${query.end}. Widen the window to see the feed.`}
           />
         ) : (
           <>
@@ -156,6 +175,7 @@ export default async function TournamentsPage({
                   <tr>
                     <Th className={STICKY_COL_1}>Date</Th>
                     <Th>Tournament</Th>
+                    {isAll && <Th>Format</Th>}
                     <Th>Source</Th>
                     <Th className="text-right">Entries</Th>
                   </tr>
@@ -177,21 +197,32 @@ export default async function TournamentsPage({
                         </span>
                       </td>
                       <td className="border-b border-line px-3.5 py-2 font-semibold text-ink">
+                        <Link
+                          href={eventHref(t.id)}
+                          className="hover:text-gold hover:underline hover:underline-offset-[3px]"
+                        >
+                          {t.name}
+                        </Link>
+                      </td>
+                      {isAll && (
+                        <td className="border-b border-line px-3.5 py-2 text-ink-2">
+                          {formatChip(formats, t.format)}
+                        </td>
+                      )}
+                      <td className="border-b border-line px-3.5 py-2 text-ink-2">
                         {t.link ? (
                           <a
                             href={t.link}
                             target="_blank"
                             rel="noreferrer"
+                            title={`Open on ${SOURCE_LABEL[t.source]}`}
                             className="hover:text-gold hover:underline hover:underline-offset-[3px]"
                           >
-                            {t.name}
+                            {SOURCE_LABEL[t.source]} ↗
                           </a>
                         ) : (
-                          t.name
+                          SOURCE_LABEL[t.source]
                         )}
-                      </td>
-                      <td className="border-b border-line px-3.5 py-2 text-ink-2">
-                        {SOURCE_LABEL[t.source]}
                       </td>
                       <td className="border-b border-line px-3.5 py-2 text-right">
                         <span className="data">{t.entries}</span>

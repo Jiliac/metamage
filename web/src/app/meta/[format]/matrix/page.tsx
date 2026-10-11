@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 
 import { getDataSource } from '@/datasource'
+import { isAllFormats } from '@/datasource/format-order'
 import type { ArchetypeRef, FormatDTO, MatrixDTO } from '@/datasource/types'
 import {
   buildHref,
@@ -79,6 +81,8 @@ export default async function MatrixPage({
   searchParams: Promise<SearchParams>
 }) {
   const { format } = await params
+  // `all` exists only for the tournaments views.
+  if (isAllFormats(format)) notFound()
   const sp = await searchParams
 
   const query = parseMetaQuery(format, sp)

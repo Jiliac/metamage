@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 
 import { getDataSource } from '@/datasource'
+import { isAllFormats } from '@/datasource/format-order'
 import type {
   ArchetypeRef,
   ArchetypeRowDTO,
@@ -117,6 +119,8 @@ export default async function MetaOverviewPage({
   searchParams: Promise<SearchParams>
 }) {
   const { format } = await params
+  // `all` exists only for the tournaments views.
+  if (isAllFormats(format)) notFound()
   const sp = await searchParams
 
   let query = parseMetaQuery(format, sp)

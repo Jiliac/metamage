@@ -15,6 +15,7 @@ import type {
   MetaQuery,
   MetaReportDTO,
   SourceDTO,
+  TournamentDetailDTO,
   TournamentDTO,
   TrendPointDTO,
   WindowKpisDTO,
@@ -22,7 +23,8 @@ import type {
 import { parseSort, type SearchParamsInput } from '@/lib/params'
 import type { MetaSort } from '@/datasource/types'
 import { winrateCi, wr as wrOf, wrExclDraws, type WLD } from '@/lib/stats'
-import { sortFormats } from '@/datasource/format-order'
+import { isAllFormats, sortFormats } from '@/datasource/format-order'
+import { synthesizeEvent } from '@/datasource/fixtures/event'
 import {
   DEFAULT_SORT,
   buildCell,
@@ -253,6 +255,36 @@ function cardDto(raw: RawCard, board: 'MAIN' | 'SIDE'): CardAdoptionDTO {
   }
 }
 
+/** The window's tournaments for one format, or every format for ALL_FORMATS. */
+function windowTournaments(
+  q: MetaQuery
+): { format: string; t: RawTournament }[] {
+  const formats = isAllFormats(String(q.format))
+    ? db.formats.map(f => f.slug)
+    : [String(q.format)]
+  return formats.flatMap(
+    format => findWindow(format, q)?.tournaments.map(t => ({ format, t })) ?? []
+  )
+}
+
+/** db.json reuses tournament ids across formats ('2026-05-01-mtgo-17'), so
+ *  the fixture backend namespaces them by format to keep event URLs unique. */
+function fixtureEventId(format: string, t: RawTournament): string {
+  return `${format}-${t.id}`
+}
+
+function tournamentDto(format: string, t: RawTournament): TournamentDTO {
+  return {
+    id: fixtureEventId(format, t),
+    name: t.name,
+    date: asIso(t.date),
+    format: format as FormatSlug,
+    source: t.source,
+    ...(t.link ? { link: t.link } : {}),
+    entries: t.entries,
+  }
+}
+
 // ---- The data source -------------------------------------------------------
 
 function emptyKpis(): WindowKpisDTO {
@@ -473,31 +505,45 @@ export class FixtureDataSource implements MetaDataSource {
   }
 
   async getTournaments(q: MetaQuery): Promise<TournamentDTO[]> {
-    const win = findWindow(q.format, q)
-    if (!win) return []
-    return win.tournaments.map(t => ({
-      id: t.id,
-      name: t.name,
-      date: asIso(t.date),
-      source: t.source,
-      ...(t.link ? { link: t.link } : {}),
-      entries: t.entries,
-    }))
+    return windowTournaments(q)
+      .map(({ format, t }) => tournamentDto(format, t))
+      .sort((a, b) =>
+        a.date === b.date
+          ? a.name.localeCompare(b.name)
+          : a.date < b.date
+            ? 1
+            : -1
+      )
   }
 
   async getSources(q: MetaQuery): Promise<SourceDTO[]> {
-    const win = findWindow(q.format, q)
-    if (!win) return []
     const acc = new Map<TournamentDTO['source'], SourceDTO>()
-    for (const t of win.tournaments) {
-      const cur =
-        acc.get(t.source) ??
-        ({ source: t.source, tournaments: 0, entries: 0 } as SourceDTO)
-      cur.tournaments += 1
-      cur.entries += t.entries
-      acc.set(t.source, cur)
+    for (const { t } of windowTournaments(q)) {
+      const cur = acc.get(t.source) ?? {
+        source: t.source,
+        tournaments: 0,
+        entries: 0,
+      }
+      acc.set(t.source, {
+        ...cur,
+        tournaments: cur.tournaments + 1,
+        entries: cur.entries + t.entries,
+      })
     }
     return [...acc.values()].sort((a, b) => b.entries - a.entries)
+  }
+
+  async getTournament(id: string): Promise<TournamentDetailDTO | null> {
+    for (const f of db.formats) {
+      if (!id.startsWith(`${f.slug}-`)) continue
+      for (const win of f.windows) {
+        const t = win.tournaments.find(x => fixtureEventId(f.slug, x) === id)
+        if (!t) continue
+        const tournament = tournamentDto(f.slug, t)
+        return { tournament, ...synthesizeEvent(tournament, win.archetypes) }
+      }
+    }
+    return null
   }
 
   async searchArchetypes(

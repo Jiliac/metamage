@@ -16,6 +16,8 @@ import type {
   MetaReportDTO,
   MetaSort,
   SourceDTO,
+  StandingDTO,
+  TournamentDetailDTO,
   TournamentDTO,
   TrendPointDTO,
   WindowKpisDTO,
@@ -29,7 +31,7 @@ import {
   type IntrinsicRow,
 } from '@/datasource/derive'
 import { db } from '@/datasource/postgres/client'
-import { sortFormats } from '@/datasource/format-order'
+import { isAllFormats, sortFormats } from '@/datasource/format-order'
 import {
   loadArchetypes,
   loadFormatId,
@@ -59,9 +61,14 @@ import {
   META_CHANGES_SQL,
   SEARCH_ARCHETYPES_SQL,
   SOURCES_SQL,
+  STANDINGS_SQL,
+  TOURNAMENT_SQL,
   TOURNAMENTS_SQL,
+  EVENT_MATCHUPS_SQL,
   TREND_SQL,
   type ArchetypeRow,
+  type StandingRow,
+  type TournamentRow,
   type MatchupRow,
   type PlayerRow,
 } from '@/datasource/postgres/sql'
@@ -407,28 +414,41 @@ export class PostgresDataSource implements MetaDataSource {
   }
 
   async getTournaments(q: MetaQuery): Promise<TournamentDTO[]> {
-    const formatId = await this.formatIdFor(String(q.format))
-    if (!formatId) return []
+    const formatId = await this.formatFilterId(String(q.format))
+    if (formatId === undefined) return []
     const rows = await TOURNAMENTS_SQL(formatId, q.start, q.end)
-    return rows.map(t => ({
-      id: t.id,
-      name: t.name,
-      date: asIso(t.date),
-      source: t.source as TournamentDTO['source'],
-      ...(t.link ? { link: t.link } : {}),
-      entries: t.entries,
-    }))
+    return rows.map(tournamentDto)
   }
 
   async getSources(q: MetaQuery): Promise<SourceDTO[]> {
-    const formatId = await this.formatIdFor(String(q.format))
-    if (!formatId) return []
+    const formatId = await this.formatFilterId(String(q.format))
+    if (formatId === undefined) return []
     const rows = await SOURCES_SQL(formatId, q.start, q.end)
     return rows.map(r => ({
       source: r.source as SourceDTO['source'],
       tournaments: r.tournaments,
       entries: r.entries,
     }))
+  }
+
+  async getTournament(id: string): Promise<TournamentDetailDTO | null> {
+    const [header] = await TOURNAMENT_SQL(id)
+    if (!header) return null
+    const [standings, matchups] = await Promise.all([
+      STANDINGS_SQL(id),
+      EVENT_MATCHUPS_SQL(id),
+    ])
+    return {
+      tournament: tournamentDto(header),
+      standings: standings.map(standingDto),
+      matchups: matchups.map(m => ({
+        rowSlug: asSlug(slugifyArchetype(m.row_name)),
+        colSlug: asSlug(slugifyArchetype(m.col_name)),
+        wins: m.wins,
+        losses: m.losses,
+        draws: m.draws,
+      })),
+    }
   }
 
   async searchArchetypes(
@@ -467,6 +487,15 @@ export class PostgresDataSource implements MetaDataSource {
   // aggregates go through ./postgres/loaders.ts so one request that renders
   // both the report and the matrix executes each of them once.
   // -------------------------------------------------------------------------
+
+  /** The tournaments filter: null for the all-formats pseudo-format,
+   *  undefined for an unknown format (→ empty result). */
+  private async formatFilterId(
+    formatName: string
+  ): Promise<string | null | undefined> {
+    if (isAllFormats(formatName)) return null
+    return (await this.formatIdFor(formatName)) ?? undefined
+  }
 
   private async formatIdFor(formatName: string): Promise<string | null> {
     const rows = await loadFormatId(formatName)
@@ -583,6 +612,43 @@ export class PostgresDataSource implements MetaDataSource {
 // ---------------------------------------------------------------------------
 // Module-level helpers (pure; Postgres-specific shapes)
 // ---------------------------------------------------------------------------
+
+/** Source links are rendered as hrefs; only pass through http(s) URLs. */
+function isHttpUrl(url: string | null): url is string {
+  return url !== null && /^https?:\/\//i.test(url)
+}
+
+function tournamentDto(t: TournamentRow): TournamentDTO {
+  return {
+    id: t.id,
+    name: t.name,
+    date: asIso(t.date),
+    format: t.format as FormatSlug,
+    source: t.source as TournamentDTO['source'],
+    ...(isHttpUrl(t.link) ? { link: t.link } : {}),
+    entries: t.entries,
+  }
+}
+
+function standingDto(r: StandingRow): StandingDTO {
+  return {
+    entryId: r.entry_id,
+    // 0 is the ingest's "no placing" sentinel (Melee, leagues).
+    rank: r.rank > 0 ? r.rank : null,
+    wins: r.wins,
+    losses: r.losses,
+    draws: r.draws,
+    player: r.player,
+    archetype: {
+      slug: asSlug(slugifyArchetype(r.archetype)),
+      name: archetypeDisplayName(r.archetype),
+      color: r.color ?? null,
+      isBucket: isBucketName(r.archetype),
+    },
+    ...(isHttpUrl(r.decklist_url) ? { decklistUrl: r.decklist_url } : {}),
+    hasDecklist: r.has_cards,
+  }
+}
 
 function toMeta(r: ArchetypeRow): ArchetypeMeta {
   return {

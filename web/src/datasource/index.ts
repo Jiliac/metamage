@@ -15,6 +15,7 @@ import type {
   MetaQuery,
   MetaReportDTO,
   SourceDTO,
+  TournamentDetailDTO,
   TournamentDTO,
   TrendPointDTO,
 } from '@/datasource/types'
@@ -146,6 +147,15 @@ function withCache(inner: MetaDataSource): MetaDataSource {
     getSources: unstable_cache(
       (q: MetaQuery): Promise<SourceDTO[]> => inner.getSources(q),
       ['getSources'],
+      { revalidate: HOUR, tags: ['tournaments'] }
+    ),
+
+    // Keyed on the event id only — an event's standings never depend on the
+    // lens window, so every window that links to it shares one entry.
+    getTournament: unstable_cache(
+      (id: string): Promise<TournamentDetailDTO | null> =>
+        inner.getTournament(id),
+      ['getTournament'],
       { revalidate: HOUR, tags: ['tournaments'] }
     ),
 

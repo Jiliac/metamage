@@ -1,4 +1,5 @@
 import * as React from 'react'
+import Link from 'next/link'
 
 import { ManaPips } from '@/components/ManaPips'
 import { cn } from '@/lib/utils'
@@ -14,12 +15,33 @@ import type { ArchetypeRowDTO } from '@/datasource/types'
 // the skeleton axis is linear.)
 // ---------------------------------------------------------------------------
 
+/** The fields a bar reads — a window row, or an event's field row. */
+export type PresenceBarRow = Pick<
+  ArchetypeRowDTO,
+  'slug' | 'name' | 'color' | 'share' | 'presenceRank' | 'isBucket'
+>
+
 export type PresenceBarsProps = {
-  rows: ArchetypeRowDTO[]
+  rows: readonly PresenceBarRow[]
+  /** What `share` is a share of, for the bar's accessible label. */
+  unit?: 'matches' | 'decks'
+  /** Optional slug → href; linked names go to the archetype page. */
+  rowHref?: Record<string, string>
+  /** Optional trailing count per slug (e.g. an event's deck count). */
+  counts?: Record<string, number>
+  /** Narrow-column layout (sidebars): a short fixed bar so names keep room. */
+  compact?: boolean
   className?: string
 }
 
-export function PresenceBars({ rows, className }: PresenceBarsProps) {
+export function PresenceBars({
+  rows,
+  unit = 'matches',
+  rowHref,
+  counts,
+  compact = false,
+  className,
+}: PresenceBarsProps) {
   const max = Math.max(0.0001, ...rows.map(r => r.share))
 
   return (
@@ -38,14 +60,26 @@ export function PresenceBars({ rows, className }: PresenceBarsProps) {
               <span className="data w-5 flex-none text-right text-[11px] text-ink-3">
                 {r.presenceRank}
               </span>
-              <ManaPips colors={r.color} size={14} />
-              <span className="truncate font-semibold">{r.name}</span>
+              <ManaPips colors={r.color} size={compact ? 11 : 14} />
+              {rowHref?.[r.slug] ? (
+                <Link
+                  href={rowHref[r.slug]}
+                  className="truncate font-semibold text-ink no-underline hover:text-gold hover:underline hover:underline-offset-[3px]"
+                >
+                  {r.name}
+                </Link>
+              ) : (
+                <span className="truncate font-semibold">{r.name}</span>
+              )}
             </div>
             <div
-              className="relative h-3.5 flex-1"
+              className={cn(
+                'relative h-3.5',
+                compact ? 'w-12 flex-none' : 'flex-1'
+              )}
               style={{ background: 'var(--raised)' }}
               role="img"
-              aria-label={`${r.name}: ${(r.share * 100).toFixed(1)}% of matches`}
+              aria-label={`${r.name}: ${(r.share * 100).toFixed(1)}% of ${unit}`}
             >
               <div
                 className="absolute inset-y-0.5 left-0.5"
@@ -60,9 +94,19 @@ export function PresenceBars({ rows, className }: PresenceBarsProps) {
                 />
               </div>
             </div>
-            <span className="data w-14 flex-none text-right text-[12px] text-ink-2">
+            <span
+              className={cn(
+                'data flex-none text-right text-[12px] text-ink-2',
+                compact ? 'w-11' : 'w-14'
+              )}
+            >
               {(r.share * 100).toFixed(1)}%
             </span>
+            {counts && (
+              <span className="data w-6 flex-none text-right text-[12px] text-ink-3">
+                {counts[r.slug] ?? 0}
+              </span>
+            )}
           </div>
         )
       })}
