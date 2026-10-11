@@ -1,6 +1,7 @@
 import {
   groupMaindeck,
   placingOrRecord,
+  safeExternalHref,
   sortSideboard,
   type DeckTypeGroup,
 } from '@/lib/decks'
@@ -8,6 +9,7 @@ import { titleCaseName } from '@/lib/card-names'
 import type { DeckCardDTO, DeckDTO } from '@/datasource/types'
 
 import { CardPreview } from './CardPreview'
+import { DECK_HEADER_ID } from './ids'
 import { ManaCost } from './ManaCost'
 
 // ---------------------------------------------------------------------------
@@ -20,9 +22,6 @@ import { ManaCost } from './ManaCost'
 // never split across columns (R16). Sideboard is labelled "Commander" in Duel
 // Commander (R6); entries without deck cards render "No decklist published".
 // ---------------------------------------------------------------------------
-
-/** Anchor id the mobile pick-scroll targets (R17); shared with DeckNav. */
-export const DECK_HEADER_ID = 'decklist-header'
 
 const MONTHS = [
   'Jan',
@@ -60,7 +59,9 @@ export function DecklistView({ deck, featured }: DecklistViewProps) {
   // Commander, in the right. A group is never split across columns.
   const lands = groups.find(g => g.key === 'lands')
   const leftGroups = groups.filter(g => g.key !== 'lands')
-  const sourceHref = entry.decklistUrl ?? entry.event.link
+  // Scraped URLs: only http(s) reaches the href; otherwise no link.
+  const sourceHref =
+    safeExternalHref(entry.decklistUrl) ?? safeExternalHref(entry.event.link)
   const placing = placingOrRecord(entry)
   const cardless = main.length === 0 && side.length === 0
 

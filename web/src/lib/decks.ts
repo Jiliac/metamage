@@ -154,6 +154,17 @@ export function isOutsideWindow(
   return date < window.start || date > window.end
 }
 
+const EXTERNAL_HREF_RE = /^https?:\/\//i
+
+/** R2's source link comes from scraped data: pass it through only when it is
+ *  an absolute http(s) URL, so a `javascript:` (or any other scheme) value
+ *  never reaches an `<a href>`. Anything else → null, and the link is omitted. */
+export function safeExternalHref(
+  raw: string | null | undefined
+): string | null {
+  return raw && EXTERNAL_HREF_RE.test(raw) ? raw : null
+}
+
 /** R12's end-of-list note past the cap: "Showing the newest 2,000 of 3,041". */
 export function decksCapLabel(shown: number, total: number): string {
   return `Showing the newest ${formatInt(shown)} of ${formatInt(total)} decks`

@@ -16,9 +16,9 @@ import { shortDate } from './DecklistView'
 // grouped by event, newest first, each showing player and placing/record;
 // the featured row carries a "Featured" tag and a deck without a published
 // list renders as plain text tagged "no list published". The active row is
-// highlighted with aria-current. Past the loaded rows, "Show older decks"
-// pages through the URL (KTD8) and past the cap the list ends with the R12
-// note and the control disappears.
+// highlighted and its link carries aria-current. Past the loaded rows, "Show
+// older decks" pages through the URL (KTD8) and past the cap the list ends
+// with the R12 note and the control disappears.
 // ---------------------------------------------------------------------------
 
 const FEATURED_TAG = (
@@ -38,7 +38,7 @@ export type RecentDecksProps = {
   page: DecksPage
   /** The featured pick's entry id — its row carries the tag (R9). */
   featuredId: string | null
-  /** The currently shown deck's entry id — its row gets aria-current. */
+  /** The currently shown deck's entry id — its link gets aria-current. */
   activeId: string | undefined
   /** URL for one deck row (keeps the current ?decks page, sets ?deck). */
   deckHref: (entryId: string) => string
@@ -82,10 +82,11 @@ export function RecentDecks({
                   const label = placingOrRecord(entry)
                   const active = entry.id === activeId
                   return (
-                    <li key={entry.id} aria-current={active || undefined}>
+                    <li key={entry.id}>
                       {entry.hasCards ? (
                         <DeckLink
                           href={deckHref(entry.id)}
+                          aria-current={active ? 'true' : undefined}
                           className={cn(
                             'flex items-baseline gap-2 rounded-none py-px text-[13px]',
                             active

@@ -19,10 +19,17 @@ import { cn } from '@/lib/utils'
 // spend no Vercel image-optimization quota, and they mount only when the
 // popover opens (R8). Each face sits in an aspect-ratio-reserving box so
 // layout doesn't shift while loading (R7). A double-faced card shows both
-// faces side by side on desktop and stacked on mobile.
+// faces side by side on desktop and stacked on mobile; a face that fails to
+// load falls back to the card name.
+//
+// Semantics: the anchor button takes over what a Radix Trigger would set —
+// aria-haspopup="dialog", aria-expanded, and aria-controls pointing at the
+// content (role=dialog, labelled with the card name) while it is open.
 // ---------------------------------------------------------------------------
 
 /** Scryfall `normal` prints are 488×680; the box reserves that ratio. */
+const FACE_WIDTH = 488
+const FACE_HEIGHT = 680
 const FACE_BOX_CLASS =
   'bg-raised aspect-[488/680] w-52 max-md:w-44 overflow-hidden'
 
@@ -53,6 +60,7 @@ export function CardPreview({
   // blur clears it, keeping later keyboard focus working).
   const pointerRef = React.useRef<string | null>(null)
   const closeTimer = React.useRef<number | null>(null)
+  const contentId = React.useId()
 
   const cancelClose = React.useCallback(() => {
     if (closeTimer.current !== null) {
@@ -84,7 +92,9 @@ export function CardPreview({
       <PopoverAnchor asChild>
         <button
           type="button"
+          aria-haspopup="dialog"
           aria-expanded={open}
+          aria-controls={open ? contentId : undefined}
           className={cn(
             'text-left font-semibold text-ink hover:text-gold hover:underline hover:underline-offset-[3px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold',
             className
@@ -120,6 +130,8 @@ export function CardPreview({
         </button>
       </PopoverAnchor>
       <PopoverContent
+        id={contentId}
+        aria-label={name}
         side="right"
         align="start"
         sideOffset={8}
@@ -133,29 +145,37 @@ export function CardPreview({
         }}
       >
         <div className="flex max-md:flex-col gap-1.5">
-          <div className={FACE_BOX_CLASS}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- KTD9: plain lazy img, not next/image (no optimization quota) */}
-            <img
-              src={imageNormal}
-              alt={frontAlt || name}
-              loading="lazy"
-              className="h-full w-full object-cover"
-            />
-          </div>
-          {imageBack && (
-            <div className={FACE_BOX_CLASS}>
-              {/* eslint-disable-next-line @next/next/no-img-element -- KTD9: plain lazy img, not next/image (no optimization quota) */}
-              <img
-                src={imageBack}
-                alt={backAlt || name}
-                loading="lazy"
-                className="h-full w-full object-cover"
-              />
-            </div>
-          )}
+          <FaceImage src={imageNormal} alt={frontAlt || name} />
+          {imageBack && <FaceImage src={imageBack} alt={backAlt || name} />}
         </div>
       </PopoverContent>
     </Popover>
+  )
+}
+
+/** One card face in its ratio-reserving box; a broken image shows the face
+ *  name instead of the browser's broken-image glyph. */
+function FaceImage({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = React.useState(false)
+  return (
+    <div className={FACE_BOX_CLASS}>
+      {failed ? (
+        <span className="flex h-full items-center justify-center p-3 text-center text-[13px] font-semibold text-ink-2">
+          {alt}
+        </span>
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element -- KTD9: plain lazy img, not next/image (no optimization quota)
+        <img
+          src={src}
+          alt={alt}
+          width={FACE_WIDTH}
+          height={FACE_HEIGHT}
+          loading="lazy"
+          onError={() => setFailed(true)}
+          className="h-full w-full object-cover"
+        />
+      )}
+    </div>
   )
 }
 

@@ -13,6 +13,7 @@ import {
   isOutsideWindow,
   pickFeaturedDeck,
   placingOrRecord,
+  safeExternalHref,
   sliceRecentDecks,
   sortSideboard,
 } from '@/lib/decks'
@@ -356,5 +357,28 @@ describe('formatInt', () => {
     expect(formatInt(3041)).toBe('3,041')
     expect(formatInt(999)).toBe('999')
     expect(formatInt(1_234_567)).toBe('1,234,567')
+  })
+})
+
+describe('safeExternalHref (R2 source link)', () => {
+  it('keeps http and https URLs, any case', () => {
+    expect(safeExternalHref('https://mtgo.com/decklist/1')).toBe(
+      'https://mtgo.com/decklist/1'
+    )
+    expect(safeExternalHref('http://melee.gg/Decklist/View/2')).toBe(
+      'http://melee.gg/Decklist/View/2'
+    )
+    expect(safeExternalHref('HTTPS://example.com')).toBe('HTTPS://example.com')
+  })
+
+  it('drops scraped values that are not http(s) URLs', () => {
+    expect(safeExternalHref('javascript:alert(1)')).toBeNull()
+    expect(safeExternalHref(' https://example.com')).toBeNull()
+    expect(safeExternalHref('data:text/html,hi')).toBeNull()
+    expect(safeExternalHref('//example.com')).toBeNull()
+    expect(safeExternalHref('/relative')).toBeNull()
+    expect(safeExternalHref('')).toBeNull()
+    expect(safeExternalHref(null)).toBeNull()
+    expect(safeExternalHref(undefined)).toBeNull()
   })
 })

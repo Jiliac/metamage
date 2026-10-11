@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 
 import { cn } from '@/lib/utils'
 
-import { DECK_HEADER_ID } from './DecklistView'
+import { DECK_HEADER_ID } from './ids'
 
 // ---------------------------------------------------------------------------
 // DeckNav — the client side of the Decklists tab (R16/R17). Deck picks and
@@ -78,10 +78,13 @@ export function DeckLink({
   href,
   className,
   children,
+  'aria-current': ariaCurrent,
 }: {
   href: string
   className?: string
   children: React.ReactNode
+  /** Marks the shown deck's row (RecentDecks). */
+  'aria-current'?: 'true'
 }) {
   const { navigate } = useDeckNav()
   return (
@@ -89,6 +92,7 @@ export function DeckLink({
       href={href}
       scroll={false}
       className={className}
+      aria-current={ariaCurrent}
       onClick={e => {
         // Let modified clicks and middle clicks do their browser thing.
         if (
