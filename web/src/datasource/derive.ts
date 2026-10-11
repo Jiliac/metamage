@@ -94,6 +94,7 @@ export function sortRows(
 export type ReportSelection = {
   rows: ArchetypeRowDTO[]
   other: MetaReportDTO['other']
+  floor: MetaReportDTO['floor']
 }
 
 /**
@@ -161,7 +162,27 @@ export function selectReportRows(
         }
       : null
 
-  return { rows: sorted, other }
+  // The honest-buckets strip (principles 4/5), computed off the FULL field:
+  // sub-floor archetypes must be counted even when they rank past the topN
+  // cut, and the bucket shares denominate against the whole window. Counted
+  // from the uncapped `intrinsics`, not from `rows`.
+  const belowFloorCount = intrinsics.filter(
+    r => !r.isBucket && r.matches < q.minMatches && !include.has(r.slug)
+  ).length
+  const bucketShare = (key: 'unknown' | 'conflict'): number | null =>
+    intrinsics.find(
+      r => r.isBucket && (r.slug === key || r.name.toLowerCase() === key)
+    )?.share ?? null
+
+  return {
+    rows: sorted,
+    other,
+    floor: {
+      belowFloorCount,
+      unknownShare: bucketShare('unknown'),
+      conflictShare: bucketShare('conflict'),
+    },
+  }
 }
 
 // ---- Matrix cell -----------------------------------------------------------

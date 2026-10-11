@@ -3,6 +3,7 @@ import Link from 'next/link'
 
 import { pageWindow } from '@/lib/paging'
 import { cn } from '@/lib/utils'
+import { int } from '@/lib/format'
 
 // ---------------------------------------------------------------------------
 // Pager — the ledger's page strip for long server-rendered lists (the event
@@ -38,8 +39,6 @@ const knobCurrent = 'border-gold bg-gold font-semibold text-bg hover:text-bg'
 
 const knobDisabled =
   'cursor-not-allowed border-line text-ink-3 opacity-50 hover:border-line hover:text-ink-3'
-
-const int = (n: number) => n.toLocaleString('en-US')
 
 export function Pager({
   page,

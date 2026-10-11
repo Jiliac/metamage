@@ -76,6 +76,17 @@ export type MetaReportDTO = {
   kpis: WindowKpisDTO
   rows: ArchetypeRowDTO[] // sorted by MetaQuery.sort
   other: { share: number; matches: number } | null // collapsed tail
+  /** The honest-buckets strip's figures, computed over the FULL intrinsic
+   *  field — never topN-capped — so sub-floor archetypes ranked past the topN
+   *  are still counted and the bucket shares denominate against the whole
+   *  window. */
+  floor: {
+    /** Non-bucket archetypes under the match floor that no `add=` rescued. */
+    belowFloorCount: number
+    /** Window share of the Unknown/Conflict buckets; null when absent. */
+    unknownShare: number | null
+    conflictShare: number | null
+  }
   generatedAt: string
 }
 

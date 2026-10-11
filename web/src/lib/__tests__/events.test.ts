@@ -351,6 +351,48 @@ describe('rankStandings', () => {
     ])
   })
 
+  it('does not tie records whose draws differ', () => {
+    // 13 points and 1 loss each — only the draws separate them.
+    const out = rankStandings([
+      standing({ entryId: 'd', wins: 3, losses: 1, draws: 4, player: 'd' }),
+      standing({ entryId: 'c', wins: 4, losses: 1, draws: 1, player: 'c' }),
+    ])
+    expect(out.map(r => [r.standing.entryId, r.place, r.derived])).toEqual([
+      ['c', 1, true],
+      ['d', 2, true],
+    ])
+  })
+
+  it('starts derived places above a sparse published tail', () => {
+    const out = rankStandings([
+      standing({ entryId: 'a', rank: 1 }),
+      standing({ entryId: 'b', rank: 2 }),
+      standing({ entryId: 'z', rank: 10 }),
+      standing({ entryId: 'x', wins: 9, player: 'x' }),
+      standing({ entryId: 'y', wins: 5, player: 'y' }),
+    ])
+    expect(out.map(r => [r.standing.entryId, r.place, r.derived])).toEqual([
+      ['a', 1, false],
+      ['b', 2, false],
+      ['z', 10, false],
+      ['x', 11, true],
+      ['y', 12, true],
+    ])
+  })
+
+  it('skips a derived place past the last published rank in a gap', () => {
+    const out = rankStandings([
+      standing({ entryId: 'a', rank: 1 }),
+      standing({ entryId: 'z', rank: 3 }),
+      standing({ entryId: 'x', wins: 9, player: 'x' }),
+    ])
+    expect(out.map(r => [r.standing.entryId, r.place, r.derived])).toEqual([
+      ['a', 1, false],
+      ['z', 3, false],
+      ['x', 4, true],
+    ])
+  })
+
   it('returns a new array and leaves the input untouched', () => {
     const input = [standing({ entryId: 'b', rank: 2 }), standing({ rank: 1 })]
     const copy = [...input]

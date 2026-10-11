@@ -253,16 +253,23 @@ export class PostgresDataSource implements MetaDataSource {
         kpis: { tournaments: 0, entries: 0, matches: 0 },
         rows: [],
         other: null,
+        floor: { belowFloorCount: 0, unknownShare: null, conflictShare: null },
         generatedAt: new Date().toISOString(),
       }
     }
     const { kpi, intrinsics } = await this.windowData(formatId, q)
-    const { rows, other } = selectReportRows(intrinsics, kpi.matches, q, sort)
+    const { rows, other, floor } = selectReportRows(
+      intrinsics,
+      kpi.matches,
+      q,
+      sort
+    )
     return {
       window: { start: q.start, end: q.end },
       kpis: kpi,
       rows,
       other,
+      floor,
       generatedAt: new Date().toISOString(),
     }
   }

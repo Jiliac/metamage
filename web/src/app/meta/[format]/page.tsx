@@ -6,6 +6,8 @@ import { Suspense } from 'react'
 import { getDataSource } from '@/datasource'
 import { isAllFormats } from '@/datasource/format-order'
 import { platformScope } from '@/datasource/platform'
+import { WIDE_CI } from '@/lib/stats'
+import { int, pct1 } from '@/lib/format'
 import type {
   ArchetypeRef,
   ArchetypeRowDTO,
@@ -32,13 +34,11 @@ import { DeckTile } from '@/components/DeckTile'
 import { KpiStat } from '@/components/KpiStat'
 import { EmptyState } from '@/components/EmptyState'
 import { LowSampleNotice } from '@/components/LowSampleNotice'
-import { LedgerRow } from '@/components/LedgerRow'
+import { LedgerRow, LEDGER_DL_CLASS } from '@/components/LedgerRow'
 import { MetaTable } from '@/components/tables/MetaTable'
 import { WrPresenceScatter } from '@/components/charts/WrPresenceScatter'
-import { MatchupMatrix } from '@/components/charts/MatchupMatrix'
-import { MatrixRowPicker } from '@/components/charts/MatrixRowPicker'
+import { MatchupSurface } from '@/components/charts/MatchupSurface'
 import { MatrixSkeleton } from '@/components/charts/MatrixSkeleton'
-import { MatchupList, selectRowCells } from '@/components/tables/MatchupList'
 
 // ---------------------------------------------------------------------------
 // Meta overview landing (WP5). All RSC: parse the lens once, resolve the data
@@ -66,15 +66,9 @@ function formatName(formats: FormatDTO[], slug: string): string {
   return formats.find(f => f.slug === slug)?.name ?? titleCase(slug)
 }
 
-const pct1 = (x: number) => `${(x * 100).toFixed(1)}%`
-const int = (n: number) => n.toLocaleString('en-US')
 /** '52.0–55.4%' — the 95% interval as one tabular token. */
 const ciRange = (r: ArchetypeRowDTO) =>
   `${(r.wrLo * 100).toFixed(1)}–${pct1(r.wrHi)}`
-
-// A 95% interval ten points wide or more (±5) on the leader is the honest
-// signal of a thin window: hedge the headline rather than hide it.
-const WIDE_CI = 0.1
 
 // ISR: the default-window landing is prebuilt per format (generateStaticParams);
 // any other window/knobs render on demand and are memoized by the data layer
@@ -258,33 +252,24 @@ export default async function MetaOverviewPage({
 
   // ---- Honest buckets + floor (principles 4/5): the landing hides unknown/
   // conflict and anything under the match floor; say so under the table and
-  // link to the lens that reveals them. One extra read, memoized like the rest.
-  const unfiltered: MetaReportDTO =
-    query.hideBuckets || query.minMatches > 0
-      ? await ds.getMetaReport({ ...query, hideBuckets: false, minMatches: 0 })
-      : report
-  const bucketShare = (key: 'unknown' | 'conflict') =>
-    unfiltered.rows.find(
-      r => r.isBucket && (r.slug === key || r.name.toLowerCase() === key)
-    )?.share
-  const unknownShare = bucketShare('unknown')
-  const conflictShare = bucketShare('conflict')
+  // link to the lens that reveals them. The figures ride the one report and
+  // are derived over the FULL field (never topN-capped) inside the data layer.
+  const unknownShare = report.floor.unknownShare
+  const conflictShare = report.floor.conflictShare
   const hiddenBuckets =
-    query.hideBuckets &&
-    (unknownShare !== undefined || conflictShare !== undefined)
-      ? { unknown: unknownShare, conflict: conflictShare }
+    query.hideBuckets && (unknownShare !== null || conflictShare !== null)
+      ? {
+          unknown: unknownShare ?? undefined,
+          conflict: conflictShare ?? undefined,
+        }
       : null
   const showBucketsHref = hiddenBuckets
     ? buildHref(query.format, { ...query, hideBuckets: false }, { sort })
     : undefined
-  const shownSlugs = new Set(report.rows.map(r => r.slug))
-  const belowFloorCount = unfiltered.rows.filter(
-    r => !r.isBucket && !shownSlugs.has(r.slug)
-  ).length
   const belowFloor =
-    query.minMatches > 0 && belowFloorCount > 0
+    query.minMatches > 0 && report.floor.belowFloorCount > 0
       ? {
-          count: belowFloorCount,
+          count: report.floor.belowFloorCount,
           href: buildHref(query.format, { ...query, minMatches: 0 }, { sort }),
         }
       : null
@@ -320,7 +305,7 @@ export default async function MetaOverviewPage({
             )}
           </h1>
           {mostPlayed && (
-            <dl className="text-ink-2 mt-4 grid max-w-[64ch] grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5 text-[13.5px] max-[460px]:grid-cols-1 max-[460px]:gap-y-0.5">
+            <dl className={LEDGER_DL_CLASS}>
               <LedgerRow label="Share">
                 <b className="num text-ink">{pct1(mostPlayed.share)}</b> of all
                 matches · <span className="num">{int(mostPlayed.matches)}</span>{' '}
@@ -497,26 +482,14 @@ async function MatchupMatrixHero({
       </p>
     )
   }
-  const picked = selectRowCells(matrix, parseRow(sp, matrix.order))
-  const rowHref: Record<string, string> = Object.fromEntries(
-    matrix.order.map(o => [
-      String(o.slug),
-      buildHref(query.format, query, { path: `/archetype/${o.slug}` }),
-    ])
-  )
   return (
-    <>
-      {/* grid — desktop seam (KTD3) */}
-      <div className="hidden matrix:block">
-        <MatchupMatrix data={matrix} rowHref={rowHref} />
-      </div>
-      {/* list — everywhere else; `?row` selection, rank-1 default (R4) */}
-      <div className="matrix:hidden">
-        <MatrixRowPicker order={matrix.order}>
-          <MatchupList cells={picked.cells} sort="wrAsc" ranks={picked.ranks} />
-        </MatrixRowPicker>
-      </div>
-    </>
+    <MatchupSurface
+      matrix={matrix}
+      row={parseRow(sp, matrix.order)}
+      hrefFor={slug =>
+        buildHref(query.format, query, { path: `/archetype/${slug}` })
+      }
+    />
   )
 }
 

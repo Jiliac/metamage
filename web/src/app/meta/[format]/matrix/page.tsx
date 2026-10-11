@@ -16,10 +16,7 @@ import { buildPageMetadata } from '@/lib/seo'
 
 import { LensBar } from '@/components/LensBar/LensBar'
 import { EmptyState } from '@/components/EmptyState'
-import { MatchupMatrix } from '@/components/charts/MatchupMatrix'
-import { MatrixRowPicker } from '@/components/charts/MatrixRowPicker'
-import { MatchupList, selectRowCells } from '@/components/tables/MatchupList'
-import type { SelectedRowCells } from '@/components/tables/MatchupList'
+import { MatchupSurface } from '@/components/charts/MatchupSurface'
 
 // ---------------------------------------------------------------------------
 // Matchup matrix route (WP5) — the moat, full N×N grid. RSC. Extra params
@@ -101,14 +98,6 @@ export default async function MatrixPage({
   ])
   const fmtName = formatName(formats, format)
 
-  // Selected mobile-list archetype: `?row` resolved against the matrix order,
-  // defaulting to presence rank 1 (KTD4, R4). Only computed for a non-empty
-  // matrix — an empty order has no row to select (see empty guard below).
-  const picked: SelectedRowCells | null =
-    matrix.order.length > 0
-      ? selectRowCells(matrix, parseRow(sp, matrix.order))
-      : null
-
   return (
     <>
       <Suspense fallback={null}>
@@ -143,36 +132,13 @@ export default async function MatrixPage({
             }}
           >
             <div className="clip-notch-lg bg-surface p-5">
-              {/* Grid — desktop only: >=880px AND hover-capable fine pointer
-                  (KTD3, R3). Both variants are server-rendered in one pass; the
-                  seam is CSS-only, so no hydration mismatch or layout swap. */}
-              <div className="hidden matrix:block">
-                <MatchupMatrix
-                  data={matrix}
-                  rowHref={Object.fromEntries(
-                    matrix.order.map(o => [
-                      String(o.slug),
-                      buildHref(query.format, query, {
-                        path: `/archetype/${o.slug}`,
-                      }),
-                    ])
-                  )}
-                />
-              </div>
-              {/* List — everywhere the seam is not met (phones, landscape,
-                  touch tablets >=768px). Selected archetype lives in `?row=`
-                  (R4) and defaults to presence rank 1. */}
-              <div className="matrix:hidden">
-                <MatrixRowPicker order={matrix.order}>
-                  {picked && (
-                    <MatchupList
-                      cells={picked.cells}
-                      sort="wrAsc"
-                      ranks={picked.ranks}
-                    />
-                  )}
-                </MatrixRowPicker>
-              </div>
+              <MatchupSurface
+                matrix={matrix}
+                row={parseRow(sp, matrix.order)}
+                hrefFor={slug =>
+                  buildHref(query.format, query, { path: `/archetype/${slug}` })
+                }
+              />
             </div>
           </div>
         )}

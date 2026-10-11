@@ -8,11 +8,12 @@ import { isAllFormats } from '@/datasource/format-order'
 import { PLATFORM_LABELS } from '@/datasource/platform'
 import { useMetaParams } from '@/hooks/useMetaParams'
 import { matchPreset, PRESET_LABELS } from '@/lib/params'
+import { windowRangeLabel } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { ShareButton } from '@/components/ShareButton'
 
 import { FormatPicker } from './FormatPicker'
-import { WindowPicker, windowLabel } from './WindowPicker'
+import { WindowPicker } from './WindowPicker'
 import { PlatformPicker } from './PlatformPicker'
 import { KnobsPopover } from './KnobsPopover'
 import { ArchetypeAdder } from './ArchetypeAdder'
@@ -89,7 +90,7 @@ export function LensBar({
   const summary = [
     formatName,
     showWindow &&
-      (preset ? PRESET_LABELS[preset] : windowLabel(win.start, win.end)),
+      (preset ? PRESET_LABELS[preset] : windowRangeLabel(win.start, win.end)),
     showWindow &&
       query.platform !== 'all' &&
       `${PLATFORM_LABELS[query.platform]} only`,

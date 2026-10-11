@@ -6,6 +6,7 @@ import {
   type DeckTypeGroup,
 } from '@/lib/decks'
 import { titleCaseName } from '@/lib/card-names'
+import { shortDate } from '@/lib/dates'
 import type { DeckCardDTO, DeckDTO } from '@/datasource/types'
 
 import { CardPreview } from './CardPreview'
@@ -22,28 +23,6 @@ import { ManaCost } from './ManaCost'
 // never split across columns (R16). Sideboard is labelled "Commander" in Duel
 // Commander (R6); entries without deck cards render "No decklist published".
 // ---------------------------------------------------------------------------
-
-const MONTHS = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-]
-
-/** "2026-10-11" → "Oct 11" (same convention as the tournaments table). */
-export function shortDate(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  if (!y || !m || !d) return iso
-  return `${MONTHS[m - 1]} ${d}`
-}
 
 export type DecklistViewProps = {
   deck: DeckDTO

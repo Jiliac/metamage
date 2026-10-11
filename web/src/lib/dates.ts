@@ -36,3 +36,8 @@ export function windowLabel(start: string, end: string): string {
   }
   return `${shortDate(start)} → ${shortDate(end)}, ${ye}`
 }
+
+/** The window knob's short label: 'Sep 12 → Oct 11'. */
+export function windowRangeLabel(start: string, end: string): string {
+  return `${shortDate(start)} → ${shortDate(end)}`
+}

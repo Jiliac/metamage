@@ -194,6 +194,13 @@ export const FIXTURE_DB_PATH = join(
 
 let loadedDb: RawDb | null = null
 
+/** Vitest hook: swap the loaded DB for a synthetic one (the committed fixture
+ *  cannot express a month populated for only one platform). Pass null to
+ *  reload the committed fixture on next use. */
+export function setFixtureDb(db: RawDb | null): void {
+  loadedDb = db
+}
+
 /** Read and decode the JSONL fixture on first use, not at import: index.ts
  *  imports this module under DATA_SOURCE=postgres too, where the file is
  *  never read (and need not be traced into the deployment). */
@@ -230,22 +237,6 @@ function findWindow(
   return f.windows.find(w => windowKey(w.start, w.end) === key)
 }
 
-function sumRecord(players: RawPlayer[]): {
-  wins: number
-  losses: number
-  draws: number
-} {
-  let wins = 0
-  let losses = 0
-  let draws = 0
-  for (const p of players) {
-    wins += p.w
-    losses += p.l
-    draws += p.d
-  }
-  return { wins, losses, draws }
-}
-
 function clustersOf(players: RawPlayer[]): WLD[] {
   return players.map(p => ({ wins: p.w, losses: p.l, draws: p.d }))
 }
@@ -254,20 +245,34 @@ function clustersOf(players: RawPlayer[]): WLD[] {
 
 function deriveIntrinsic(
   raw: RawArchetype,
-  denomMatches: number
+  denomMatches: number,
+  /** Entry-share scale of the platform lens (1 for 'all'); see platformSlice. */
+  ratio = 1
 ): IntrinsicRow {
-  const { wins, losses, draws } = sumRecord(raw.players)
+  // The lens scales every clustering unit with the window, so the clustered
+  // CI reflects the smaller sample instead of silently keeping the full
+  // window's width. At ratio 1 this is the identity (raw counts pass through).
+  const scale = (x: number) => Math.round(x * ratio)
+  const clusters = clustersOf(raw.players).map(c => ({
+    wins: scale(c.wins),
+    losses: scale(c.losses),
+    draws: scale(c.draws),
+  }))
+  const wins = clusters.reduce((s, c) => s + c.wins, 0)
+  const losses = clusters.reduce((s, c) => s + c.losses, 0)
+  const draws = clusters.reduce((s, c) => s + c.draws, 0)
   const games = wins + losses + draws
-  const clusters = clustersOf(raw.players)
   const ci = winrateCi(clusters)
-  const activePlayers = raw.players.filter(p => p.w + p.l + p.d > 0).length
+  const activePlayers = scale(
+    raw.players.filter(p => p.w + p.l + p.d > 0).length
+  )
   return {
     slug: asSlug(raw.slug),
     name: raw.name,
     color: raw.color,
     art: raw.art,
     matches: games,
-    decks: raw.decks,
+    decks: scale(raw.decks),
     share: denomMatches > 0 ? games / denomMatches : 0,
     wins,
     losses,
@@ -282,6 +287,32 @@ function deriveIntrinsic(
     players: activePlayers,
     isBucket: raw.isBucket,
   }
+}
+
+/**
+ * The platform lens's slice of a fixture window: the tournaments it keeps and
+ * the share of the window's entries they hold. The fixture DB aggregates
+ * records per WINDOW, not per source — per-player records and matchup pairs
+ * carry no tournament attribution — so a sub-'all' lens is modeled as a
+ * proportional slice of the window (counts scaled by the kept entry share),
+ * the finest split the raw fixture supports. The Postgres backend filters the
+ * SQL instead and needs none of this.
+ */
+function platformSlice(
+  win: RawWindow,
+  platform: Platform
+): { tournaments: RawTournament[]; entries: number; ratio: number } {
+  const tournaments = win.tournaments.filter(t =>
+    matchesPlatform(t.source, platform)
+  )
+  const entries = tournaments.reduce((s, t) => s + t.entries, 0)
+  const ratio =
+    platform === 'all'
+      ? 1
+      : win.kpis.entries > 0
+        ? entries / win.kpis.entries
+        : 0
+  return { tournaments, entries, ratio }
 }
 
 // ---- Matchup lookup --------------------------------------------------------
@@ -538,26 +569,50 @@ export class FixtureDataSource implements MetaDataSource {
     q: MetaQuery,
     sort: MetaSort
   ): MetaReportDTO {
-    const denom = win.kpis.matches
-    const intrinsics = win.archetypes.map(a => deriveIntrinsic(a, denom))
-    const { rows, other } = selectReportRows(intrinsics, denom, q, sort)
+    const slice = platformSlice(win, q.platform)
+    if (slice.tournaments.length === 0) {
+      // No event of this platform played in the window: an honest zero, so
+      // the landing falls back to the latest populated platform window.
+      return {
+        window: { start: asIso(win.start), end: asIso(win.end) },
+        kpis: emptyKpis(),
+        rows: [],
+        other: null,
+        floor: { belowFloorCount: 0, unknownShare: null, conflictShare: null },
+        generatedAt: fixtureDb().generatedAt,
+      }
+    }
+    const denom = Math.round(win.kpis.matches * slice.ratio)
+    const intrinsics = win.archetypes.map(a =>
+      deriveIntrinsic(a, denom, slice.ratio)
+    )
+    const { rows, other, floor } = selectReportRows(intrinsics, denom, q, sort)
     return {
       window: { start: asIso(win.start), end: asIso(win.end) },
-      kpis: win.kpis,
+      kpis: {
+        tournaments: slice.tournaments.length,
+        entries: slice.entries,
+        matches: denom,
+      },
       rows,
       other,
+      floor,
       generatedAt: fixtureDb().generatedAt,
     }
   }
 
-  // Aggregates are not split by platform here (see windowTournaments).
+  /** Latest month with at least one tournament matching the platform lens. */
   async getLatestWindow(
     format: FormatSlug,
-    _platform: Platform = 'all'
+    platform: Platform = 'all'
   ): Promise<{ start: IsoDate; end: IsoDate } | null> {
     const f = findFormat(String(format))
     if (!f) return null
-    const populated = f.windows.filter(w => w.kpis.matches > 0)
+    const populated = f.windows.filter(
+      w =>
+        w.kpis.matches > 0 &&
+        w.tournaments.some(t => matchesPlatform(t.source, platform))
+    )
     if (populated.length === 0) return null
     const latest = populated.reduce((a, b) => (b.end > a.end ? b : a))
     return { start: asIso(latest.start), end: asIso(latest.end) }
@@ -571,6 +626,7 @@ export class FixtureDataSource implements MetaDataSource {
         kpis: win ? win.kpis : emptyKpis(),
         rows: [],
         other: null,
+        floor: { belowFloorCount: 0, unknownShare: null, conflictShare: null },
         generatedAt: fixtureDb().generatedAt,
       }
     }

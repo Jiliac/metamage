@@ -28,6 +28,7 @@ import {
   type RankedStanding,
   type StandingLink,
 } from '@/lib/events'
+import { int } from '@/lib/format'
 import { slicePage } from '@/lib/paging'
 import { buildHref, parseMetaQuery, parsePage, parseRow } from '@/lib/params'
 import { longDate } from '@/lib/dates'
@@ -37,10 +38,8 @@ import { cn } from '@/lib/utils'
 import { KpiStat } from '@/components/KpiStat'
 import { ManaPips } from '@/components/ManaPips'
 import { Pager } from '@/components/Pager'
-import { MatchupMatrix } from '@/components/charts/MatchupMatrix'
-import { MatrixRowPicker } from '@/components/charts/MatrixRowPicker'
+import { MatchupSurface } from '@/components/charts/MatchupSurface'
 import { PresenceBars } from '@/components/charts/PresenceBars'
-import { MatchupList, selectRowCells } from '@/components/tables/MatchupList'
 
 // ---------------------------------------------------------------------------
 // Event page — one tournament's standings, field and matchups (RSC).
@@ -61,8 +60,6 @@ type RouteParams = { format: string; id: string }
 type SearchParams = Record<string, string | string[] | undefined>
 
 const STANDINGS_ID = 'standings'
-
-const int = (n: number) => n.toLocaleString('en-US')
 
 function formatLabel(formats: FormatDTO[], slug: string): string {
   return formats.find(f => f.slug === slug)?.name ?? slug
@@ -193,12 +190,17 @@ function EventBody({
   const hrefFor = (slug: string) => archetypeHref(t.format, query, slug, t.date)
 
   const slice = slicePage(ranked, page, STANDINGS_PAGE_SIZE)
+  const row = parseRow(sp, matrix.order)
+  // `row` rides so paging keeps the mobile matchup list's selection (KTD4).
   const pageHref = (n: number) =>
     `${buildHref(routeFormat, query, {
       path: `/tournaments/${t.id}`,
       page: n,
+      row,
+      matrixOrder: matrix.order,
     })}#${STANDINGS_ID}`
-  const derived = ranked.some(r => r.derived)
+  const hasPublished = ranked.some(r => !r.derived)
+  const hasDerived = ranked.some(r => r.derived)
   const partialRecords = isPartialRecordSource(t.source)
 
   return (
@@ -226,11 +228,15 @@ function EventBody({
           </div>
           <StandingsTable
             rows={slice.visible}
-            placeHeading={derived ? 'Rank' : 'Place'}
+            placeHeading={hasPublished ? 'Place' : 'Rank'}
             linkFor={s => standingLink(t.format, query, s, t.date)}
             archetypeHrefFor={hrefFor}
           />
-          <StandingsNotes derived={derived} partialRecords={partialRecords} />
+          <StandingsNotes
+            derived={hasDerived}
+            published={hasPublished}
+            partialRecords={partialRecords}
+          />
           <Pager
             page={slice.page}
             pages={slice.pages}
@@ -244,11 +250,7 @@ function EventBody({
         </section>
         <FieldPanel field={field} hrefFor={hrefFor} />
       </div>
-      <MatchupsSection
-        matrix={matrix}
-        row={parseRow(sp, matrix.order)}
-        hrefFor={hrefFor}
-      />
+      <MatchupsSection matrix={matrix} row={row} hrefFor={hrefFor} />
     </>
   )
 }
@@ -257,9 +259,11 @@ function EventBody({
  *  arrived at, and whether the records are whole. */
 function StandingsNotes({
   derived,
+  published,
   partialRecords,
 }: {
   derived: boolean
+  published: boolean
   partialRecords: boolean
 }) {
   if (!derived && !partialRecords) return null
@@ -267,8 +271,9 @@ function StandingsNotes({
     <div className="mt-2 grid gap-1 text-[12px] text-ink-3">
       {derived && (
         <p>
-          The source publishes no final placings. Rank follows match points (3
-          per win, 1 per draw), then fewer losses; equal records share a rank.
+          {published
+            ? 'Unranked entrants are placed by match points (3 per win, 1 per draw), then fewer losses; equal records share a place.'
+            : 'The source publishes no final placings. Rank follows match points (3 per win, 1 per draw), then fewer losses; equal records share a rank.'}
         </p>
       )}
       {partialRecords && (
@@ -382,10 +387,6 @@ function MatchupsSection({
   row: string | undefined
   hrefFor: (slug: string) => string
 }) {
-  const rowHref = Object.fromEntries(
-    matrix.order.map(o => [o.slug, hrefFor(o.slug)])
-  )
-  const picked = selectRowCells(matrix, row)
   return (
     <section aria-labelledby="matchups-h" className="mt-10">
       <h2 id="matchups-h" className="eyebrow mb-1.5">
@@ -401,18 +402,7 @@ function MatchupsSection({
           {/* The same `matrix:` seam as the overview and matrix routes (§9
               Matrix Seam Rule): the N×N grid only on a wide, hover-capable
               screen; the per-archetype list with inline CIs elsewhere. */}
-          <div className="hidden matrix:block">
-            <MatchupMatrix data={matrix} rowHref={rowHref} />
-          </div>
-          <div className="matrix:hidden">
-            <MatrixRowPicker order={matrix.order}>
-              <MatchupList
-                cells={picked.cells}
-                sort="wrAsc"
-                ranks={picked.ranks}
-              />
-            </MatrixRowPicker>
-          </div>
+          <MatchupSurface matrix={matrix} row={row} hrefFor={hrefFor} />
         </div>
       ) : (
         <p className="border border-line bg-surface p-6 text-[13.5px] text-ink-2">

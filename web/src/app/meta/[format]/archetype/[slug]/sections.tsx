@@ -20,6 +20,8 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { LedgerRow, LEDGER_DL_CLASS } from '@/components/LedgerRow'
 import { LowSampleNotice } from '@/components/LowSampleNotice'
+import { WIDE_CI } from '@/lib/stats'
+import { int, pct1 } from '@/lib/format'
 import { ManaPips } from '@/components/ManaPips'
 import {
   DeckDim,
@@ -53,8 +55,6 @@ export function readTab(sp: SearchParams): TabKey {
     : 'decklists'
 }
 
-const pct1 = (x: number) => `${(x * 100).toFixed(1)}%`
-
 function tierLabel(tier: number | null): string | null {
   // Display bands 1-based (best = T1) to match the spike + MTG convention; the
   // stored band stays 0-based for the tier math (§9, no "T0").
@@ -64,12 +64,6 @@ function tierLabel(tier: number | null): string | null {
 type Selection = Extract<DeckSelection, { kind: 'ok' }>
 
 // ---- Header ----
-
-// A 95% interval ten points wide or more is the honest signal of a thin
-// window: hedge the headline rather than hide it (same floor as the overview).
-const WIDE_CI = 0.1
-
-const int = (n: number) => n.toLocaleString('en-US')
 
 export function ArchetypeHeader({
   fmtName,

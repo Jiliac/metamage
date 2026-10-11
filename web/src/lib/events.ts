@@ -78,8 +78,12 @@ export const STANDINGS_PAGE_SIZE = 50
  * Sorted standings with an explicit place on every row. Published placings
  * are kept verbatim; entries without one are ranked after them by match
  * points (3 per win, 1 per draw), then fewer losses — the same order
- * `sortStandings` uses — and equal records share a place, so the number never
- * implies a tiebreak the data cannot support. Returns a new array.
+ * `sortStandings` uses — and equal full records (points, losses AND draws)
+ * share a place, so the number never implies a tiebreak the data cannot
+ * support. Derived places also never undercut a published rank: they start
+ * above the highest one seen, so a sparse tail ([1, 2, 10]) is not handed a
+ * derived place beneath a rank the row numerically beats. Returns a new
+ * array.
  */
 export function rankStandings(
   standings: readonly StandingDTO[]
@@ -87,8 +91,10 @@ export function rankStandings(
   const sorted = sortStandings(standings)
   const out: RankedStanding[] = []
   let prev: RankedStanding | null = null
+  let lastPublished = 0
   sorted.forEach((s, i) => {
     if (s.rank !== null) {
+      lastPublished = Math.max(lastPublished, s.rank)
       prev = { standing: s, place: s.rank, derived: false }
       out.push(prev)
       return
@@ -97,8 +103,15 @@ export function rankStandings(
       prev !== null &&
       prev.derived &&
       points(prev.standing) === points(s) &&
-      prev.standing.losses === s.losses
-    prev = { standing: s, place: tied ? prev!.place : i + 1, derived: true }
+      prev.standing.losses === s.losses &&
+      prev.standing.draws === s.draws
+    prev = {
+      standing: s,
+      place: tied
+        ? prev!.place
+        : Math.max(i + 1, lastPublished + 1, prev ? prev.place + 1 : 1),
+      derived: true,
+    }
     out.push(prev)
   })
   return out

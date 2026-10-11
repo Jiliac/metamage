@@ -9,7 +9,7 @@ import {
 import { cn } from '@/lib/utils'
 
 import { DeckLink } from './DeckNav'
-import { shortDate } from './DecklistView'
+import { shortDate } from '@/lib/dates'
 
 // ---------------------------------------------------------------------------
 // RecentDecks — the archetype's recent-decks column (R9/R12). Rows are

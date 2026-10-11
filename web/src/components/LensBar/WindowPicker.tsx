@@ -15,6 +15,7 @@ import {
   type Preset,
 } from '@/lib/params'
 import { cn } from '@/lib/utils'
+import { windowRangeLabel } from '@/lib/dates'
 import { useMetaParams } from '@/hooks/useMetaParams'
 
 import { chipActiveClass, knobClass } from './styles'
@@ -25,34 +26,6 @@ import { chipActiveClass, knobClass } from './styles'
 // stored) plus raw start/end date inputs. The canonical time representation is
 // the explicit inclusive `start`/`end` pair (blueprint §2).
 // ---------------------------------------------------------------------------
-
-const MONTHS = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-]
-
-function formatDay(iso: string): string {
-  const parts = iso.split('-')
-  const m = Number(parts[1])
-  const d = Number(parts[2])
-  if (!MONTHS[m - 1] || Number.isNaN(d)) return iso
-  return `${MONTHS[m - 1]} ${d}`
-}
-
-/** 'Sep 12 → Oct 11' — the knob's label; the LensBar's phone summary reuses it. */
-export function windowLabel(start: string, end: string): string {
-  return `${formatDay(start)} → ${formatDay(end)}`
-}
 
 const chipClass = 'px-2.5 py-1 text-[12px]'
 
@@ -79,7 +52,7 @@ export function WindowPicker({ shown }: WindowPickerProps = {}) {
         <button type="button" className={knobClass}>
           Window{' '}
           <b className="font-semibold text-ink">
-            {windowLabel(win.start, win.end)}
+            {windowRangeLabel(win.start, win.end)}
           </b>
         </button>
       </PopoverTrigger>
