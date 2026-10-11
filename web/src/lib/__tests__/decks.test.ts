@@ -332,12 +332,24 @@ describe('placingOrRecord (R2, R9)', () => {
     )
   })
 
-  it('rank 0 (or null) with a record → "W-L-D"', () => {
+  it('rank 0 (or null) with a record → "W-L", draws appended when nonzero', () => {
     expect(placingOrRecord({ rank: 0, wins: 5, losses: 1, draws: 0 })).toBe(
-      '5-1-0'
+      '5-1'
     )
     expect(placingOrRecord({ rank: null, wins: 3, losses: 3, draws: 1 })).toBe(
       '3-3-1'
+    )
+  })
+
+  it('rank and record together → "placing · record"', () => {
+    expect(placingOrRecord({ rank: 1, wins: 7, losses: 0, draws: 0 })).toBe(
+      '1st · 7-0'
+    )
+    expect(placingOrRecord({ rank: 2, wins: 4, losses: 2, draws: 1 })).toBe(
+      '2nd · 4-2-1'
+    )
+    expect(placingOrRecord({ rank: 21, wins: 0, losses: 1, draws: 0 })).toBe(
+      '21st · 0-1'
     )
   })
 

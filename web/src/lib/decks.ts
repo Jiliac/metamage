@@ -315,17 +315,23 @@ function ordinal(n: number): string {
 }
 
 /**
- * "placing (MTGO rank when present) or W-L-D record": rank 1 → "1st"; rank
- * 0/null with any games → "5-1-0"; an all-zero row (Melee/unranked without a
- * published record) gets no label.
+ * "placing · record" when both exist: rank 1 with a 7-0 record → "1st · 7-0";
+ * only a rank → "1st"; only a record → "5-1" (draws appended when nonzero:
+ * "3-3-1"); an all-zero row gets no label. MTGO records are partial (they
+ * count only matches between published decks) — the tab footnote explains
+ * that once, so the label itself stays bare.
  */
 export function placingOrRecord(
   entry: Pick<DeckSummaryDTO, 'rank' | 'wins' | 'losses' | 'draws'>
 ): string | null {
   const rank = entry.rank ?? 0
-  if (rank > 0) return ordinal(rank)
-  if (entry.wins || entry.losses || entry.draws) {
-    return `${entry.wins}-${entry.losses}-${entry.draws}`
-  }
-  return null
+  const placing = rank > 0 ? ordinal(rank) : null
+  const record =
+    entry.wins || entry.losses || entry.draws
+      ? entry.draws > 0
+        ? `${entry.wins}-${entry.losses}-${entry.draws}`
+        : `${entry.wins}-${entry.losses}`
+      : null
+  if (placing && record) return `${placing} · ${record}`
+  return placing ?? record
 }

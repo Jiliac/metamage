@@ -266,6 +266,17 @@ export function DecklistsTab({
           <CardBreakdown main={detail.mainCards} side={detail.sideCards} />
         )}
       </div>
+
+      {/* One provenance footnote per tab, only when an MTGO event is on
+          screen: MTGO records are partial (matches vs unpublished decks are
+          not stored), Melee records are complete. */}
+      {(deck?.entry.event.source === 'MTGO' ||
+        recentPage.visible.some(e => e.event.source === 'MTGO')) && (
+        <p className="mt-2 text-[12px] text-ink-3">
+          MTGO win–loss records count only matches between published decks, so
+          they are often partial. Melee records are complete.
+        </p>
+      )}
     </DeckNavProvider>
   )
 }

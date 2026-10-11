@@ -81,8 +81,8 @@ export function DecklistView({ deck, featured }: DecklistViewProps) {
             {shortDate(entry.event.date)}
           </span>
         </div>
-        <p className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[13.5px] text-ink-2">
-          <span className="font-semibold text-ink">{entry.player}</span>
+        <p className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[13.5px] text-ink-3">
+          <span>{entry.player}</span>
           {placing && <span className="data">{placing}</span>}
           {sourceHref && (
             <a
