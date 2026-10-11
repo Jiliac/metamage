@@ -36,7 +36,9 @@ import {
   weightOf,
   type IntrinsicRow,
 } from '@/datasource/derive'
-import rawDb from '@/datasource/fixtures/data/db.json'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { decodeDbJsonl } from '@/datasource/fixtures-jsonl'
 
 // ---------------------------------------------------------------------------
 // FixtureDataSource — the read-path firewall (blueprint §3, §5). It loads the
@@ -177,7 +179,27 @@ export type RawDb = {
   formats: RawFormat[]
 }
 
-const db = rawDb as unknown as RawDb
+/** The committed fixture DB, relative to the web app root (the cwd of
+ *  `next` and `vitest`). */
+export const FIXTURE_DB_PATH = join(
+  'src',
+  'datasource',
+  'fixtures',
+  'data',
+  'db.jsonl'
+)
+
+let loadedDb: RawDb | null = null
+
+/** Read and decode the JSONL fixture on first use, not at import: index.ts
+ *  imports this module under DATA_SOURCE=postgres too, where the file is
+ *  never read (and need not be traced into the deployment). */
+export function fixtureDb(): RawDb {
+  loadedDb ??= decodeDbJsonl(
+    readFileSync(join(process.cwd(), FIXTURE_DB_PATH), 'utf8')
+  )
+  return loadedDb
+}
 
 // ---- Small helpers ---------------------------------------------------------
 
@@ -189,7 +211,7 @@ function windowKey(start: string, end: string): string {
 }
 
 function findFormat(format: string): RawFormat | undefined {
-  return db.formats.find(f => f.slug === format)
+  return fixtureDb().formats.find(f => f.slug === format)
 }
 
 function findWindow(
@@ -374,7 +396,7 @@ function entrySummaries(win: RawWindow, raw: RawArchetype): DeckSummaryDTO[] {
 /** One decklist row with the generation-time KTD1 card data from the global
  *  map; a name missing from the map degrades to nulls (R5/R7 text render). */
 function deckCard(row: RawDeckCard, board: DeckCardDTO['board']): DeckCardDTO {
-  const data = db.cardData[row.n] ?? null
+  const data = fixtureDb().cardData[row.n] ?? null
   return {
     cardId: slugifyCardName(row.n),
     // KTD11: the stored display_name wins; the lowercase name is the fallback.
@@ -395,13 +417,14 @@ function deckRows(
   rows: RawDeckCard[] | undefined,
   board: DeckCardDTO['board']
 ): DeckCardDTO[] {
+  const { cardData } = fixtureDb()
   return (rows ?? [])
     .slice()
     .sort(
       (a, b) =>
         b.c - a.c ||
-        (db.cardData[a.n]?.displayName ?? a.n).localeCompare(
-          db.cardData[b.n]?.displayName ?? b.n
+        (cardData[a.n]?.displayName ?? a.n).localeCompare(
+          cardData[b.n]?.displayName ?? b.n
         )
     )
     .map(r => deckCard(r, board))
@@ -423,7 +446,7 @@ let deckIndex: Map<string, DeckHit> | null = null
 function deckIndexOf(): Map<string, DeckHit> {
   if (deckIndex) return deckIndex
   const map = new Map<string, DeckHit>()
-  for (const f of db.formats) {
+  for (const f of fixtureDb().formats) {
     for (const w of f.windows) {
       for (const a of w.archetypes) {
         for (const e of a.entries) {
@@ -445,7 +468,7 @@ function emptyKpis(): WindowKpisDTO {
 export class FixtureDataSource implements MetaDataSource {
   async listFormats(): Promise<FormatDTO[]> {
     return sortFormats(
-      db.formats.map(f => ({
+      fixtureDb().formats.map(f => ({
         slug: f.slug as FormatSlug,
         name: f.name,
         displayName: f.displayName,
@@ -468,7 +491,7 @@ export class FixtureDataSource implements MetaDataSource {
       kpis: win.kpis,
       rows,
       other,
-      generatedAt: db.generatedAt,
+      generatedAt: fixtureDb().generatedAt,
     }
   }
 
@@ -491,7 +514,7 @@ export class FixtureDataSource implements MetaDataSource {
         kpis: win ? win.kpis : emptyKpis(),
         rows: [],
         other: null,
-        generatedAt: db.generatedAt,
+        generatedAt: fixtureDb().generatedAt,
       }
     }
     return this.buildReport(win, q, DEFAULT_SORT)

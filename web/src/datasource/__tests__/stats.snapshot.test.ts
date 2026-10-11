@@ -14,9 +14,11 @@ import {
   wr,
   wrExclDraws,
 } from '@/lib/stats'
-import { compareEntrySummaries, FixtureDataSource } from '@/datasource/fixtures'
-import type { RawDb } from '@/datasource/fixtures'
-import rawDb from '@/datasource/fixtures/data/db.json'
+import {
+  compareEntrySummaries,
+  FixtureDataSource,
+  fixtureDb,
+} from '@/datasource/fixtures'
 import type {
   ArchetypeSlug,
   DeckSummaryDTO,
@@ -278,11 +280,11 @@ describe('FixtureDataSource — derived report snapshot (drift guard)', () => {
 // Decklists tab fixtures (U4, KTD12): the regenerated DB carries synthetic
 // entries with deterministic UUID ids, decklists sampled from the adoption
 // pools, and a generation-time `cardData` map. These cases read the REGENERATED
-// db.json — run `pnpm --dir web gen:fixtures` before `pnpm test` if it is stale.
+// db.jsonl — run `pnpm --dir web gen:fixtures` before `pnpm test` if it is stale.
 // ---------------------------------------------------------------------------
 
 describe('FixtureDataSource — decklists tab fixtures (KTD12)', () => {
-  const db = rawDb as unknown as RawDb
+  const db = fixtureDb()
 
   const entriesOf = (slug: string, q: Partial<MetaQuery> = {}) =>
     new FixtureDataSource().getArchetypeEntries({

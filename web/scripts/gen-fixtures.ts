@@ -3,7 +3,8 @@
  *
  * Emits RAW per-archetype (per-player W/L/D, for clustering) and per-matchup
  * (per unordered pair W/L/D) counts as ONE typed JSON DB at
- * src/datasource/fixtures/data/db.json. It imports the raw schema types from the
+ * src/datasource/fixtures/data/db.jsonl (compact JSONL, a few hundred lines;
+ * see src/datasource/fixtures-jsonl.ts). It imports the raw schema types from the
  * data source, so a fixture that drifts from the contract fails `tsc`. No
  * derived stats are stored — FixtureDataSource computes every rate/CI/tier via
  * @/lib/stats at read time, so the fixture and Postgres backends can never
@@ -24,6 +25,10 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { RawDb } from '../src/datasource/fixtures'
+import {
+  FIXTURE_MAX_LINES,
+  encodeDbJsonl,
+} from '../src/datasource/fixtures-jsonl'
 import { buildFormats } from './gen-fixtures/formats'
 import {
   buildStandardArt,
@@ -42,13 +47,20 @@ function writeDb(dbOut: RawDb): void {
   const here = dirname(fileURLToPath(import.meta.url))
   const outDir = join(here, '..', 'src', 'datasource', 'fixtures', 'data')
   mkdirSync(outDir, { recursive: true })
-  const outFile = join(outDir, 'db.json')
-  writeFileSync(outFile, JSON.stringify(dbOut, null, 2) + '\n', 'utf8')
+  const outFile = join(outDir, 'db.jsonl')
+  const text = encodeDbJsonl(dbOut)
+  const lineCount = text.split('\n').length - 1
+  if (lineCount > FIXTURE_MAX_LINES) {
+    throw new Error(
+      `fixture DB is ${lineCount} lines, over the ${FIXTURE_MAX_LINES}-line cap`
+    )
+  }
+  writeFileSync(outFile, text, 'utf8')
 
   const formats = dbOut.formats
   const totalWindows = formats.reduce((s, f) => s + f.windows.length, 0)
   process.stdout.write(
-    `Wrote ${outFile}\n  ${formats.length} formats, ${totalWindows} windows\n`
+    `Wrote ${outFile}\n  ${formats.length} formats, ${totalWindows} windows, ${lineCount} lines\n`
   )
 }
 
