@@ -118,7 +118,12 @@ export type KnobsPopoverProps = {
 
 export function KnobsPopover({ variant = 'meta' }: KnobsPopoverProps) {
   const { query, matrixTopN, setParams } = useMetaParams()
-  const summary = `Top ${query.topN} · min ${query.minMatches}`
+  // The matrix route's grid is sized by `?n`, not `?top`, so its summary
+  // names the knob that actually shapes the view.
+  const summary =
+    variant === 'matrix'
+      ? `Grid ${matrixTopN} · ≥${query.minMatches} matches`
+      : `Top ${query.topN} · ≥${query.minMatches} matches`
 
   return (
     <Popover>

@@ -70,7 +70,6 @@ export default function RootLayout({
                 the active format from usePathname and preserves the lens via
                 buildHref. The WUBRG hairline sits directly beneath it (§9). */}
             <Navbar />
-            <hr className="wubrg-rule mb-0.5" />
             <main>{children}</main>
           </div>
         </Providers>

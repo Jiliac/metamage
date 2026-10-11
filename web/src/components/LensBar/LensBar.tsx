@@ -41,7 +41,7 @@ import { knobClass } from './styles'
 export type LensBarProps = {
   formats: FormatDTO[]
   archetypes: ArchetypeRef[]
-  variant?: 'meta' | 'matrix' | 'changes' | 'tournaments'
+  variant?: 'meta' | 'matrix' | 'changes' | 'tournaments' | 'archetype'
 }
 
 export function LensBar({
@@ -54,15 +54,21 @@ export function LensBar({
   // are meta+matrix concerns; the window knob also applies on tournaments
   // (its table is window-scoped); changes is format + share only.
   const showWindow =
-    variant === 'meta' || variant === 'matrix' || variant === 'tournaments'
+    variant === 'meta' ||
+    variant === 'matrix' ||
+    variant === 'tournaments' ||
+    variant === 'archetype'
+  // The archetype page is already inside one format (the slug is per
+  // format), so the format chips would only lead to 404s there.
+  const showFormats = variant !== 'archetype'
   // Knobs (topN / minMatches / weight / buckets) and the archetype adder are
   // meta+matrix concerns (R7); the type narrowing below is what KnobsPopover
   // relies on, so it never has to gate itself.
   const knobsVariant =
     variant === 'meta' || variant === 'matrix' ? variant : null
-  const showDivider = showWindow || knobsVariant !== null
+  const showDivider = showFormats && (showWindow || knobsVariant !== null)
 
-  const { query } = useMetaParams()
+  const { query, matrixTopN } = useMetaParams()
   const [open, setOpen] = useState(false)
   const controlsId = useId()
 
@@ -75,7 +81,8 @@ export function LensBar({
     formatName,
     showWindow &&
       (preset ? PRESET_LABELS[preset] : windowLabel(query.start, query.end)),
-    knobsVariant && `Top ${query.topN}`,
+    knobsVariant === 'matrix' && `Grid ${matrixTopN}`,
+    knobsVariant === 'meta' && `Top ${query.topN}`,
     knobsVariant && `≥${query.minMatches} matches`,
   ]
     .filter(Boolean)
@@ -116,7 +123,12 @@ export function LensBar({
           !open && 'max-md:hidden'
         )}
       >
-        <FormatPicker formats={formats} allowAll={variant === 'tournaments'} />
+        {showFormats && (
+          <FormatPicker
+            formats={formats}
+            allowAll={variant === 'tournaments'}
+          />
+        )}
         {showDivider && (
           <div role="none" className="mx-1 w-px self-stretch bg-line" />
         )}

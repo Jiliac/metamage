@@ -242,6 +242,22 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Keyboard focus is the gold ring everywhere (§9: every control has a
+   * visible gold focus ring). Utilities on a component still win over this
+   * base rule, so a control that draws its own ring is unaffected. */
+  a:focus-visible,
+  button:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+  }
+
+  /* Text selection in the ledger's own ink. */
+  ::selection {
+    background: var(--gold-wash);
+    color: var(--ink);
+  }
+
   /* Radix Select renders a visually hidden, unfocusable native select bubble
    * (aria-hidden, tabindex=-1) that inherits body size; pin it at the 16px
    * iOS-zoom floor so the R9 input assertion holds over every select node. */

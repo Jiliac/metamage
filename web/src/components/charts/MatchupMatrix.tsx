@@ -176,7 +176,9 @@ export function MatchupMatrix({
                     onMouseEnter: () => setHover({ r, c }),
                     className: cn(
                       'relative grid min-h-[48px] cursor-default place-content-center text-center no-underline transition-transform',
-                      'hover:z-[3] focus-visible:z-[3] outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]',
+                      // `outline-none` zeroes Tailwind's outline-style var, so
+                      // the ring must re-declare `outline-solid`, not `outline`.
+                      'hover:z-[3] focus-visible:z-[3] outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--gold)]',
                       low && 'text-ink-3'
                     ),
                     style: {
@@ -203,7 +205,7 @@ export function MatchupMatrix({
                       <span className="data text-[13.5px] font-bold">
                         {pctI(wr)}
                       </span>
-                      <span className="data text-[10px] text-ink-2">
+                      <span className="data text-[11px] text-ink-2">
                         {rec(wins, losses)}
                       </span>
                     </>

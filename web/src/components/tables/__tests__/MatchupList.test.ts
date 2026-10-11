@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest'
 
 import type { MatchupCellDTO, MatrixOrderEntryDTO } from '@/datasource/types'
 import { asArchetypeSlug } from '@/lib/params'
-import { selectRowCells, sortCells } from '@/components/tables/MatchupList'
+import {
+  needsLowSampleHedge,
+  selectRowCells,
+  sortCells,
+} from '@/components/tables/MatchupList'
 
 // ---------------------------------------------------------------------------
 // The pure halves of MatchupList: slicing a `?row` out of the zero-filled
@@ -119,5 +123,28 @@ describe('sortCells', () => {
       'a',
       'c',
     ])
+  })
+})
+
+describe('needsLowSampleHedge', () => {
+  const cell = (games: number, lowN: boolean) =>
+    ({ games, lowN }) as unknown as MatchupCellDTO
+
+  it('hedges when most of the games sit in low-N pairings', () => {
+    expect(
+      needsLowSampleHedge([cell(3, true), cell(4, true), cell(5, false)])
+    ).toBe(true)
+  })
+
+  it('does not hedge a well-sampled archetype with a long thin tail', () => {
+    const tail = Array.from({ length: 40 }, () => cell(2, true))
+    expect(
+      needsLowSampleHedge([cell(241, false), cell(188, false), ...tail])
+    ).toBe(false)
+  })
+
+  it('hedges an empty row', () => {
+    expect(needsLowSampleHedge([])).toBe(true)
+    expect(needsLowSampleHedge([cell(0, true)])).toBe(true)
   })
 })

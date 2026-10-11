@@ -20,7 +20,7 @@ export function BucketBadge({ kind, className }: BucketBadgeProps) {
   return (
     <span
       className={cn(
-        'border-line-strong text-ink-3 inline-block border px-2 py-0.5 text-[10.5px] font-bold tracking-[0.08em] uppercase',
+        'border-line-strong text-ink-3 inline-block border px-2 py-0.5 text-[11px] font-bold tracking-[0.08em] uppercase',
         className
       )}
       title="Catch-all bucket — excluded from tier math"

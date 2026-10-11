@@ -67,6 +67,20 @@ export function sortCells(
   return [...cells].sort((a, b) => b.games - a.games || b.wr - a.wr)
 }
 
+/**
+ * Whether the list needs the thin-sample hedge: when more than half of the
+ * games behind it sit in low-N pairings, or there are none at all. Counted
+ * in games, not rows — a 3,000-match archetype with a long tail of 0–4-game
+ * opponents is not a thin sample, and saying so would contradict the figure
+ * printed beside the notice.
+ */
+export function needsLowSampleHedge(cells: readonly MatchupCellDTO[]): boolean {
+  const total = cells.reduce((s, c) => s + c.games, 0)
+  if (total === 0) return true
+  const thin = cells.filter(c => c.lowN).reduce((s, c) => s + c.games, 0)
+  return thin * 2 > total
+}
+
 /** Win-rate tone: the interval, not the point estimate, decides the color —
  *  shared with the grid's tooltip semantics (§9 rule 5). */
 const wrTone = (c: MatchupCellDTO): string =>
@@ -85,13 +99,13 @@ function MatchupRow({
 }) {
   return (
     <tr className="hover:bg-[var(--gold-wash)]">
-      <td className={cn(tdClass, 'text-ink')}>
+      <td className={cn(tdClass, 'min-w-[9rem] text-ink')}>
         {rank !== undefined && (
           <span className="num mr-2 text-[11px] text-ink-3">#{rank}</span>
         )}
         {c.colName}
       </td>
-      <td className={cn(tdClass, 'text-right')}>
+      <td className={cn(tdClass, 'text-right whitespace-nowrap')}>
         {c.lowN ? (
           <span className="data text-ink-3">–</span>
         ) : (
@@ -108,7 +122,7 @@ function MatchupRow({
         {!c.lowN && c.games > 0 && (
           <span
             aria-hidden
-            className="mt-1 ml-auto block h-[3px] w-16 overflow-hidden rounded-full"
+            className="mt-1 ml-auto block h-[3px] w-16 overflow-hidden"
             style={{ background: 'var(--raised)' }}
           >
             <span
@@ -121,7 +135,7 @@ function MatchupRow({
           </span>
         )}
       </td>
-      <td className={cn(tdClass, 'text-right')}>
+      <td className={cn(tdClass, 'text-right whitespace-nowrap')}>
         <span className="data">
           {rec(c.wins, c.losses)}
           {c.draws ? `–${c.draws}` : ''}
@@ -149,10 +163,9 @@ export function MatchupList({
     )
   }
 
-  // One-line hedge when most of the grid is `–` (§9: under-sampled claims are
-  // hedged, not hidden).
-  const lowCount = cells.filter(c => c.lowN).length
-  const showLowSample = lowCount * 2 > cells.length
+  // One-line hedge when most of the games sit in `–` cells (§9: under-sampled
+  // claims are hedged, not hidden).
+  const showLowSample = needsLowSampleHedge(cells)
   const totalGames = cells.reduce((s, c) => s + c.games, 0)
 
   return (

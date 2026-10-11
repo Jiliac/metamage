@@ -24,12 +24,14 @@ import {
   parseSort,
 } from '@/lib/params'
 import { buildPageMetadata } from '@/lib/seo'
+import { windowLabel } from '@/lib/dates'
 
 import { LensBar } from '@/components/LensBar/LensBar'
 import { DeckTile } from '@/components/DeckTile'
 import { KpiStat } from '@/components/KpiStat'
 import { EmptyState } from '@/components/EmptyState'
 import { LowSampleNotice } from '@/components/LowSampleNotice'
+import { LedgerRow } from '@/components/LedgerRow'
 import { MetaTable } from '@/components/tables/MetaTable'
 import { WrPresenceScatter } from '@/components/charts/WrPresenceScatter'
 import { MatchupMatrix } from '@/components/charts/MatchupMatrix'
@@ -52,11 +54,6 @@ import { MatchupList, selectRowCells } from '@/components/tables/MatchupList'
 type RouteParams = { format: string }
 type SearchParams = Record<string, string | string[] | undefined>
 
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-] // prettier-ignore
-
 function titleCase(slug: string): string {
   return slug
     .split('-')
@@ -66,18 +63,6 @@ function titleCase(slug: string): string {
 
 function formatName(formats: FormatDTO[], slug: string): string {
   return formats.find(f => f.slug === slug)?.name ?? titleCase(slug)
-}
-
-/** 'June 2026' for a whole calendar month, else 'Jun 1 → Jun 30, 2026'. */
-function windowLabel(start: string, end: string): string {
-  const [ys, ms, ds] = start.split('-').map(Number)
-  const [ye, me, de] = end.split('-').map(Number)
-  const lastDay = new Date(Date.UTC(ye, me, 0)).getUTCDate()
-  if (ys === ye && ms === me && ds === 1 && de === lastDay) {
-    return `${MONTHS[ms - 1]} ${ys}`
-  }
-  const short = (m: number, d: number) => `${MONTHS[m - 1].slice(0, 3)} ${d}`
-  return `${short(ms, ds)} → ${short(me, de)}, ${ye}`
 }
 
 const pct1 = (x: number) => `${(x * 100).toFixed(1)}%`
@@ -482,26 +467,6 @@ async function MatchupMatrixHero({
           <MatchupList cells={picked.cells} sort="wrAsc" ranks={picked.ranks} />
         </MatrixRowPicker>
       </div>
-    </>
-  )
-}
-
-// One line of the headline ledger: a small tracked label, then the figures.
-function LedgerRow({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  // dt/dd are direct grid children of the <dl>, so every label shares one
-  // max-content column and none of them wrap.
-  return (
-    <>
-      <dt className="text-ink-3 text-[11px] leading-[1.9] tracking-[0.12em] whitespace-nowrap uppercase max-[460px]:mt-1.5">
-        {label}
-      </dt>
-      <dd className="leading-[1.55]">{children}</dd>
     </>
   )
 }

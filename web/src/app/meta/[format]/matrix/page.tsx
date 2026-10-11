@@ -115,14 +115,14 @@ export default async function MatrixPage({
       </Suspense>
 
       <section className="mt-10">
-        <p className="eyebrow mb-1.5">The moat</p>
-        <h2 className="font-display text-[clamp(24px,4vw,34px)] font-bold">
+        <p className="eyebrow mb-1.5">Matchups</p>
+        <h1 className="font-display text-[clamp(24px,4vw,34px)] font-bold">
           {fmtName} matchup matrix
-        </h2>
+        </h1>
         <p className="mt-0.5 max-w-[65ch] text-[13.5px] text-ink-2">
-          Row beats column. Ink density is confidence — pale cells are small
-          samples; a dash means fewer than five matches. Nobody else publishes
-          this.
+          Row beats column. Ink density is sample size: pale cells are thin
+          samples; a dash means fewer than five matches. Hover a cell for the
+          record and its 95% interval.
         </p>
 
         {matrix.order.length === 0 ? (

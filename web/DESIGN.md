@@ -343,7 +343,7 @@ A rounded card (12px) on surface with a border mixed from 34% gold into the hair
 
 ### KPI Stat (signature)
 
-Surface tiles joined by 1px `--line` seams inside a hairline border. Each tile: a 26px semibold mono figure over an 11.5px tracked uppercase caption in tertiary ink. Three tiles for the window totals.
+Surface tiles joined by 1px `--line` seams inside a hairline border. Each tile: a 26px semibold mono figure over an 11.5px tracked uppercase caption in tertiary ink. Three tiles for the window totals. A tile whose value is a name rather than a figure (the event page's winner) sets it in the display face, bold, truncated: mono is for measurement.
 
 ### Matchup Matrix (signature)
 
@@ -355,7 +355,11 @@ A 14px raised trough with a gold-soft fill inset 2px and a 3px gold cap at its r
 
 ### Tabs
 
-The archetype page's tab strip uses the stock shadcn treatment resolved to the palette: a raised strip, square corners, the active trigger on the ground colour with a small shadow. Single usage; treat as provisional.
+The archetype page's tab row is a hairline rule with the active tab underlined in gold, the same treatment as the primary nav's active link: 13.5px triggers in secondary ink, 0.04em tracking, a 2px transparent bottom border that turns gold (with semibold text) when active, 44px tall below `md`. Every tab panel opens with the eyebrow → serif H2 → description stack.
+
+### Pager
+
+The page strip for long server-rendered lists (the event standings, 50 rows a page): a range line ("Players 51–100 of 1,491", tertiary ink with mono figures) and a row of knob-styled page links — hairline border, secondary ink, the current page as a gold-filled chip, Prev/Next at the ends (disabled at the edges at 50% opacity, never removed). Every page is a URL (`?page=n`), the current page carries `aria-current`.
 
 ### Feedback
 

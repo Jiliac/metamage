@@ -22,13 +22,13 @@ import { shortDate } from './DecklistView'
 // ---------------------------------------------------------------------------
 
 const FEATURED_TAG = (
-  <span className="inline-block shrink-0 border border-gold-soft px-1.5 py-px text-[10px] font-bold tracking-[0.08em] text-gold">
+  <span className="inline-block shrink-0 border border-gold-soft px-1.5 py-px text-[11px] font-bold tracking-[0.08em] text-gold">
     Featured
   </span>
 )
 
 const NO_LIST_TAG = (
-  <span className="inline-block shrink-0 border border-line px-1.5 py-px text-[10px] font-bold tracking-[0.08em] text-ink-3">
+  <span className="inline-block shrink-0 border border-line px-1.5 py-px text-[11px] font-bold tracking-[0.08em] text-ink-3">
     no list published
   </span>
 )

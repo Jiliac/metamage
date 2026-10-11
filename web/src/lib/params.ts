@@ -338,6 +338,15 @@ export function parseDecksPage(sp: SearchParamsInput): number {
   return intField(readParam(sp, 'decks'), 1, 1, MAX_DECKS_PAGE)
 }
 
+/**
+ * `?page=<n>`: a 1-based page of a long server-rendered list (the event
+ * standings). 0, negative, junk and blank clamp to 1; the list's own slicer
+ * clamps anything past its last page, so no upper bound is needed here.
+ */
+export function parsePage(sp: SearchParamsInput): number {
+  return intField(readParam(sp, 'page'), 1, 1, 100_000)
+}
+
 export type BuildHrefOpts = {
   /** Appended after `/meta/{format}`, e.g. `/matrix` or `/archetype/{slug}`. */
   path?: string
@@ -360,6 +369,9 @@ export type BuildHrefOpts = {
   /** Recent-decks page (`?decks`, KTD8). 1 is the default → omitted;
    *  the parsed value is clamped by `parseDecksPage`. */
   decks?: number
+  /** Page of a long list (`?page`, the event standings). 1 is the default →
+   *  omitted; larger pages serialize verbatim and `parsePage` reads them. */
+  page?: number
   /** Injected clock so the window-omission check is testable. */
   now?: Date
 }
@@ -413,6 +425,11 @@ export function buildHref(
   // clean (KTD8). Larger pages serialize verbatim.
   if (opts.decks !== undefined && opts.decks > 1) {
     params.set('decks', String(opts.decks))
+  }
+  // `?page` rides last: the standings page is the most local piece of state
+  // and every other param keeps its place when it changes.
+  if (opts.page !== undefined && opts.page > 1) {
+    params.set('page', String(opts.page))
   }
 
   const qs = params.toString()

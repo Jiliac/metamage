@@ -18,7 +18,8 @@ import type { MetaChangeDTO, TrendPointDTO } from '@/datasource/types'
 
 // ---------------------------------------------------------------------------
 // TrendChart (blueprint §4) — a 2D time series, so Recharts. Dual line:
-// presence % (gold, left axis — structure) and win rate % (ink, right axis),
+// presence % (solid ink, left axis) and win rate % (dashed ink-2, right axis)
+// — gold is structure, never a series (§9 rule 1) —
 // with a dashed --ref line at 50% and vertical ReferenceLines annotating meta
 // changes (bans / set releases). Win-rate gaps (zero-game weeks) stay broken —
 // `connectNulls={false}` — so the eye never invents data across an empty week.
@@ -53,7 +54,7 @@ function TrendTip({ active, payload }: TrendTipProps) {
       <div className="opacity-75">
         {d.wr == null
           ? 'No games this week'
-          : `WR ${d.wr.toFixed(1)}% over ${d.games} games`}
+          : `Win rate ${d.wr.toFixed(1)}% over ${d.games} games`}
       </div>
     </div>
   )
@@ -94,6 +95,32 @@ export function TrendChart({ trends, changes, className }: TrendChartProps) {
         className
       )}
     >
+      {/* Text legend: the two series are told apart by stroke, and the
+          rotated axis labels alone are too small to carry it. */}
+      <p className="mb-2 flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-[12px] text-ink-2">
+        <span className="inline-flex items-center gap-2">
+          <span
+            aria-hidden
+            className="inline-block h-[2px] w-5"
+            style={{ background: 'var(--ink)' }}
+          />
+          Presence, share of matches
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <span
+            aria-hidden
+            className="inline-block h-[2px] w-5 border-t-2 border-dashed border-ink-2"
+          />
+          Win rate
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <span
+            aria-hidden
+            className="inline-block h-[2px] w-5 border-t border-dashed border-ref"
+          />
+          50%
+        </span>
+      </p>
       <ResponsiveContainer width="100%" height={chartHeight}>
         <LineChart
           data={data}
@@ -117,8 +144,8 @@ export function TrendChart({ trends, changes, className }: TrendChartProps) {
               angle: -90,
               position: 'insideLeft',
               style: {
-                fill: 'var(--gold)',
-                fontSize: 10,
+                fill: 'var(--ink-3)',
+                fontSize: 11,
                 letterSpacing: '0.1em',
               },
             }}
@@ -136,8 +163,8 @@ export function TrendChart({ trends, changes, className }: TrendChartProps) {
               angle: 90,
               position: 'insideRight',
               style: {
-                fill: 'var(--ink-2)',
-                fontSize: 10,
+                fill: 'var(--ink-3)',
+                fontSize: 11,
                 letterSpacing: '0.1em',
               },
             }}
@@ -158,7 +185,7 @@ export function TrendChart({ trends, changes, className }: TrendChartProps) {
               label={{
                 value: c.type === 'BAN' ? 'ban' : 'set',
                 position: 'top',
-                style: { fill: 'var(--gold)', fontSize: 10 },
+                style: { fill: 'var(--gold)', fontSize: 11 },
               }}
             />
           ))}
@@ -167,9 +194,9 @@ export function TrendChart({ trends, changes, className }: TrendChartProps) {
             yAxisId="presence"
             type="monotone"
             dataKey="presence"
-            stroke="var(--gold)"
+            stroke="var(--ink)"
             strokeWidth={2}
-            dot={{ r: 2.5, fill: 'var(--gold)', strokeWidth: 0 }}
+            dot={{ r: 2.5, fill: 'var(--ink)', strokeWidth: 0 }}
             activeDot={{ r: 4 }}
             isAnimationActive={false}
           />

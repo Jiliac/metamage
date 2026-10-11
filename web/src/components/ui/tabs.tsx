@@ -5,6 +5,12 @@ import * as TabsPrimitive from '@radix-ui/react-tabs'
 
 import { cn } from '@/lib/utils'
 
+// ---------------------------------------------------------------------------
+// Tabs — the Ledger's tab row (§9): a hairline rule with the active tab
+// underlined in gold, the same treatment as the primary nav's active link,
+// instead of shadcn's raised pill strip. Radix primitives underneath.
+// ---------------------------------------------------------------------------
+
 function Tabs({
   className,
   ...props
@@ -26,7 +32,7 @@ function TabsList({
     <TabsPrimitive.List
       data-slot="tabs-list"
       className={cn(
-        'bg-muted text-muted-foreground inline-flex h-9 w-fit items-center justify-center rounded-lg p-[3px]',
+        'flex w-full items-end gap-6 overflow-x-auto border-b border-line',
         className
       )}
       {...props}
@@ -42,7 +48,12 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "data-[state=active]:bg-background dark:data-[state=active]:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:outline-ring dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30 text-foreground dark:text-muted-foreground inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:shadow-sm [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        '-mb-px inline-flex items-center gap-1.5 border-b-2 border-transparent py-2 text-[13.5px] tracking-[0.04em] whitespace-nowrap text-ink-2 no-underline transition-colors',
+        'max-md:min-h-[44px]',
+        'hover:text-ink',
+        'data-[state=active]:border-gold data-[state=active]:font-semibold data-[state=active]:text-gold',
+        'focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold',
+        'disabled:pointer-events-none disabled:opacity-50',
         className
       )}
       {...props}

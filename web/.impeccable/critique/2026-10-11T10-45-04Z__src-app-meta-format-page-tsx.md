@@ -10,6 +10,7 @@ target_fingerprint: "sha256:92c681ec8660a46d0933c265c8be2dfa01d38ee18b9b6282ec24
 target_path: /Users/valentin/Development/mtg/metamage/web/src/app/meta/[format]/page.tsx
 timestamp: 2026-10-11T10-45-04Z
 slug: src-app-meta-format-page-tsx
+closed: true
 ---
 Method: dual-agent (A: design review · B: detector + overlay), both Fable subagents.
 

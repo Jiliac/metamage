@@ -9,6 +9,7 @@ import {
   parseDecksPage,
   parseMatrixTopN,
   parseMetaQuery,
+  parsePage,
   parseRow,
 } from '@/lib/params'
 
@@ -224,5 +225,46 @@ describe('buildHref deck + decks round-trip (KTD6/KTD8)', () => {
   it('deck and decks never leak into parseMetaQuery output', () => {
     const withDeck = parseMetaQuery('pauper', SP('deck=x&decks=2'), NOW)
     expect(withDeck).toEqual(parseMetaQuery('pauper', SP(''), NOW))
+  })
+})
+
+// ---------------------------------------------------------------------------
+// `?page`: the event standings page. Clamps to 1 on junk, rides last in the
+// fixed buildHref order, is omitted at 1 and never enters `MetaQuery`.
+// ---------------------------------------------------------------------------
+
+describe('parsePage', () => {
+  it('defaults to 1; 0, negative, junk and blank clamp to 1', () => {
+    expect(parsePage(SP(''))).toBe(1)
+    expect(parsePage(SP('page=1'))).toBe(1)
+    expect(parsePage(SP('page=0'))).toBe(1)
+    expect(parsePage(SP('page=-3'))).toBe(1)
+    expect(parsePage(SP('page=junk'))).toBe(1)
+    expect(parsePage(SP('page=2.5'))).toBe(1)
+  })
+
+  it('parses real pages', () => {
+    expect(parsePage(SP('page=2'))).toBe(2)
+    expect(parsePage(SP('page=30'))).toBe(30)
+  })
+})
+
+describe('buildHref page round-trip', () => {
+  it('emits page last and round-trips it', () => {
+    const href = fmtHref({ path: '/tournaments/abc', page: 3 })
+    expect(href).toBe('/meta/pauper/tournaments/abc?page=3')
+    expect(parsePage(SP(href.split('?')[1] ?? ''))).toBe(3)
+  })
+
+  it('omits page=1 as the default', () => {
+    expect(fmtHref({ path: '/tournaments/abc', page: 1 })).toBe(
+      '/meta/pauper/tournaments/abc'
+    )
+  })
+
+  it('never leaks into parseMetaQuery output', () => {
+    expect(parseMetaQuery('pauper', SP('page=4'), NOW)).toEqual(
+      parseMetaQuery('pauper', SP(''), NOW)
+    )
   })
 })

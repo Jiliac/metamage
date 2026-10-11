@@ -12,7 +12,7 @@ import type {
   TournamentDTO,
 } from '@/datasource/types'
 import { asIsoDate, buildHref } from '@/lib/params'
-import { presenceRank, wr as wrOf } from '@/lib/stats'
+import { wr as wrOf } from '@/lib/stats'
 
 // ---------------------------------------------------------------------------
 // Event (single-tournament) view logic: standings order, labels, the event's
@@ -58,6 +58,58 @@ export function sortStandings(
       a.player.localeCompare(b.player)
     )
   })
+}
+
+/** A standing with the placing the table shows: the published one, or a
+ *  competition rank derived from the record when the source has none. */
+export type RankedStanding = {
+  standing: StandingDTO
+  /** 1-based placing. Tied derived records share a place ("1224" ranking). */
+  place: number
+  /** True when `place` was derived from match points rather than published. */
+  derived: boolean
+}
+
+/** Standings table page size: a 50-row page keeps one event's long tail
+ *  (1,500-player Regional Championships) off the first paint. */
+export const STANDINGS_PAGE_SIZE = 50
+
+/**
+ * Sorted standings with an explicit place on every row. Published placings
+ * are kept verbatim; entries without one are ranked after them by match
+ * points (3 per win, 1 per draw), then fewer losses — the same order
+ * `sortStandings` uses — and equal records share a place, so the number never
+ * implies a tiebreak the data cannot support. Returns a new array.
+ */
+export function rankStandings(
+  standings: readonly StandingDTO[]
+): RankedStanding[] {
+  const sorted = sortStandings(standings)
+  const out: RankedStanding[] = []
+  let prev: RankedStanding | null = null
+  sorted.forEach((s, i) => {
+    if (s.rank !== null) {
+      prev = { standing: s, place: s.rank, derived: false }
+      out.push(prev)
+      return
+    }
+    const tied =
+      prev !== null &&
+      prev.derived &&
+      points(prev.standing) === points(s) &&
+      prev.standing.losses === s.losses
+    prev = { standing: s, place: tied ? prev!.place : i + 1, derived: true }
+    out.push(prev)
+  })
+  return out
+}
+
+/** MTGO publishes only the top decks, so its records count only matches
+ *  against other published decks; every other source's records are whole. */
+export function isPartialRecordSource(
+  source: TournamentDTO['source']
+): boolean {
+  return source === 'MTGO'
 }
 
 /** '1st', '2nd', '11th', '21st'; null when the source has no placing. */
@@ -133,17 +185,14 @@ export function eventStats(
         a.name.localeCompare(b.name)
     )
 
-  // Dense identity ranks: non-buckets 1..k by decks, buckets after (same
-  // scheme as the window's presenceRankMap).
-  const nonBucket = rows.filter(r => !r.isBucket)
-  const buckets = rows.filter(r => r.isBucket)
-  const nbRanks = presenceRank(nonBucket.map(r => r.decks))
-  const bRanks = presenceRank(buckets.map(r => r.decks))
-  const offset = nbRanks.length ? Math.max(...nbRanks) : 0
-  const field: EventFieldRow[] = [
-    ...nonBucket.map((r, i) => ({ ...r, presenceRank: nbRanks[i] })),
-    ...buckets.map((r, i) => ({ ...r, presenceRank: offset + bRanks[i] })),
-  ]
+  // Identity ranks: one number per archetype, in field order (decks desc,
+  // name asc), non-buckets first. An event's field is full of ties (five
+  // decks with 2 entries each), and the matrix column heads carry only this
+  // number, so it must identify a single archetype rather than a tie group.
+  const field: EventFieldRow[] = rows.map((r, i) => ({
+    ...r,
+    presenceRank: i + 1,
+  }))
 
   return { field, matrix: eventMatrix(field, matchups, date, opts) }
 }
