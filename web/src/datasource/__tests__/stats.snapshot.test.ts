@@ -500,6 +500,31 @@ describe('FixtureDataSource — the platform lens on fixtures', () => {
     expect(top.share).toBeCloseTo(top.matches / online.kpis.matches, 4)
   })
 
+  it('slices the matrix and archetype reads the same way as the report', async () => {
+    const ds = new FixtureDataSource()
+    const q = stdQuery({ platform: 'online' })
+    const [report, all, matrix] = await Promise.all([
+      ds.getMetaReport(q),
+      ds.getMatchupMatrix({ ...stdQuery(), matrixTopN: 10 }),
+      ds.getMatchupMatrix({ ...q, matrixTopN: 10 }),
+    ])
+    // The matrix order reprints the lens's figures, not the 'all' window's.
+    const top = report.rows[0]!
+    const head = matrix.order.find(o => o.slug === top.slug)!
+    expect(head.matches).toBe(top.matches)
+    const games = (m: typeof matrix) => m.cells.reduce((s, c) => s + c.games, 0)
+    expect(games(matrix)).toBeLessThan(games(all))
+
+    const detail = await ds.getArchetypeDetail({ ...q, slug: top.slug })
+    expect(detail!.kpis).toEqual(report.kpis)
+    expect(detail!.summary.matches).toBe(top.matches)
+
+    // Entries carry their event, so they filter exactly.
+    const entries = await ds.getArchetypeEntries({ ...q, slug: top.slug })
+    expect(entries.entries.length).toBeGreaterThan(0)
+    expect(entries.entries.every(e => e.event.source === 'MTGO')).toBe(true)
+  })
+
   it('counts sub-floor archetypes over the full field', async () => {
     const ds = new FixtureDataSource()
     const report = await ds.getMetaReport(stdQuery())
@@ -601,6 +626,15 @@ describe('FixtureDataSource — the platform lens on fixtures', () => {
       )
       expect(report.rows).toHaveLength(0)
       expect(report.kpis.matches).toBe(0)
+      const matrix = await ds.getMatchupMatrix({
+        ...stdQuery({
+          start: '2026-09-01' as IsoDate,
+          end: '2026-09-30' as IsoDate,
+          platform: 'online',
+        }),
+        matrixTopN: 10,
+      })
+      expect(matrix.order).toHaveLength(0)
     } finally {
       setFixtureDb(null)
     }
