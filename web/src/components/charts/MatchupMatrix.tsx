@@ -99,7 +99,7 @@ export function MatchupMatrix({
                   a flat CSS grid has no row/grid roles to host `columnheader`. */}
               <span
                 aria-hidden
-                className="data grid size-[19px] place-items-center rounded-full text-[10px] font-bold text-bg"
+                className="data grid size-[19px] place-items-center rounded-full text-[11px] font-bold text-bg"
                 style={{ background: 'var(--ink-3)' }}
               >
                 {rankBySlug.get(col.slug)}
@@ -193,7 +193,7 @@ export function MatchupMatrix({
                         –
                       </span>
                       {games > 0 && (
-                        <span className="data text-[10px] text-ink-2">
+                        <span className="data text-[11px] text-ink-2">
                           {rec(wins, losses)}
                         </span>
                       )}

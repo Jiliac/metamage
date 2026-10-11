@@ -49,7 +49,8 @@ function formatDay(iso: string): string {
   return `${MONTHS[m - 1]} ${d}`
 }
 
-function windowLabel(start: string, end: string): string {
+/** 'Sep 12 → Oct 11' — the knob's label; the LensBar's phone summary reuses it. */
+export function windowLabel(start: string, end: string): string {
   return `${formatDay(start)} → ${formatDay(end)}`
 }
 

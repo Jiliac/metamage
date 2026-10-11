@@ -1,1 +1,6 @@
 pnpm-lock.yaml
+
+# Impeccable run artifacts (hook cache, critique snapshots)
+.impeccable/hook.cache.json
+.impeccable/config.json
+.impeccable/critique/

@@ -43,12 +43,12 @@
   --line-strong: #c5b892;
   --ink: #292418;
   --ink-2: #5f5741;
-  --ink-3: #74694c;
-  --gold: #8c6d23;
+  --ink-3: #6a6045;
+  --gold: #7a5e1c;
   --gold-soft: #b3924d;
-  --gold-wash: rgba(140, 109, 35, 0.1);
-  --good: #0e8a72;
-  --bad: #bc4066;
+  --gold-wash: rgba(122, 94, 28, 0.1);
+  --good: #0b6f5c;
+  --bad: #b03a5e;
   --mid: #8a8574;
   --ref: #7d97b8;
   --shadow:
@@ -100,7 +100,7 @@
     --line-strong: #4d422a;
     --ink: #eae3ce;
     --ink-2: #a99f85;
-    --ink-3: #8c836b;
+    --ink-3: #9a9178;
     --gold: #c9a855;
     --gold-soft: #98803f;
     --gold-wash: rgba(201, 168, 85, 0.09);
@@ -123,7 +123,7 @@
   --line-strong: #4d422a;
   --ink: #eae3ce;
   --ink-2: #a99f85;
-  --ink-3: #8c836b;
+  --ink-3: #9a9178;
   --gold: #c9a855;
   --gold-soft: #98803f;
   --gold-wash: rgba(201, 168, 85, 0.09);
@@ -144,12 +144,12 @@
   --line-strong: #c5b892;
   --ink: #292418;
   --ink-2: #5f5741;
-  --ink-3: #74694c;
-  --gold: #8c6d23;
+  --ink-3: #6a6045;
+  --gold: #7a5e1c;
   --gold-soft: #b3924d;
-  --gold-wash: rgba(140, 109, 35, 0.1);
-  --good: #0e8a72;
-  --bad: #bc4066;
+  --gold-wash: rgba(122, 94, 28, 0.1);
+  --good: #0b6f5c;
+  --bad: #b03a5e;
   --mid: #8a8574;
   --ref: #7d97b8;
   --shadow:
@@ -170,8 +170,11 @@
   --radius-lg: 0px;
   --radius-xl: 0px;
 
-  /* type stacks (§9) — system fonts, no next/font */
-  --font-display: 'Optima', 'Candara', 'Segoe UI', system-ui, sans-serif;
+  /* type stacks (§9) — display is Newsreader, self-hosted via next/font in
+     layout.tsx (--font-display-face); body and data stay system stacks */
+  --font-display:
+    var(--font-display-face), 'Optima', 'Candara', 'Segoe UI', system-ui,
+    sans-serif;
   --font-sans: 'Avenir Next', 'Avenir', 'Segoe UI', system-ui, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 

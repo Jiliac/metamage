@@ -6,5 +6,21 @@
       "maxChars": 8000
     }
   },
-  "buildPath": "code"
+  "buildPath": "code",
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "kicker-above-heading",
+        "value": "*",
+        "files": [
+          "src/app/**/*.tsx",
+          "src/components/**/*.tsx"
+        ],
+        "createdAt": "2026-10-11T10:51:02.180Z",
+        "reason": "Agent: gold eyebrow labels are a named rule of the committed Gathering Ledger world (blueprint §9 rule 1; user confirmed the North Star on 2026-10-11)"
+      }
+    ]
+  }
 }

@@ -33,6 +33,9 @@ export type DeckTileProps = {
   rank?: number
   /** Eager-load the art (above-the-fold top-6 grid). */
   priority?: boolean
+  /** `compact` is the six-up strip under the matrix: smaller type, the
+   *  share/win-rate line stacked under the name so narrow tiles never clip. */
+  variant?: 'default' | 'compact'
   className?: string
 }
 
@@ -41,10 +44,12 @@ export function DeckTile({
   href,
   rank,
   priority,
+  variant = 'default',
   className,
 }: DeckTileProps) {
   const tone = wrPolarity(row.wrLo, row.wrHi)
   const rankNum = rank ?? row.presenceRank
+  const compact = variant === 'compact'
   return (
     <Link
       href={href}
@@ -66,7 +71,11 @@ export function DeckTile({
           cardName={row.art?.cardName}
           radius={0}
           priority={priority}
-          sizes="(max-width: 700px) 100vw, 360px"
+          sizes={
+            compact
+              ? '(max-width: 700px) 50vw, 200px'
+              : '(max-width: 700px) 100vw, 360px'
+          }
         />
         {/* bottom scrim so pips + edge read over bright art */}
         <div
@@ -75,7 +84,10 @@ export function DeckTile({
           style={{ boxShadow: 'inset 0 -34px 30px -20px rgba(10,8,4,.66)' }}
         />
         <span
-          className="num absolute top-2.5 left-2.5 z-[2] grid size-6 place-items-center rounded-full text-[12px] font-bold"
+          className={cn(
+            'num absolute top-2.5 left-2.5 z-[2] grid place-items-center rounded-full font-bold',
+            compact ? 'size-5 text-[11px]' : 'size-6 text-[12px]'
+          )}
           style={{
             background: 'rgba(12,10,6,.72)',
             color: '#eadfbe',
@@ -85,22 +97,43 @@ export function DeckTile({
           {rankNum}
         </span>
         <span className="absolute right-2.5 bottom-2 z-[2]">
-          <ManaPips colors={row.color} size={17} />
+          <ManaPips colors={row.color} size={compact ? 14 : 17} />
         </span>
       </div>
-      <div className="flex items-baseline gap-2.5 px-3.5 pt-2.5 pb-3">
-        <span className="font-display text-ink text-[16.5px] font-bold tracking-[0.01em]">
-          {row.name}
-        </span>
-        <span className="ml-auto flex items-baseline gap-3 whitespace-nowrap">
-          <span className="num text-ink-2 text-[13px]">
-            {pct1(row.share)} meta
+      {compact ? (
+        <div className="px-2.5 pt-2 pb-2.5">
+          <span className="font-display text-ink block truncate text-[14px] font-bold tracking-[0.01em]">
+            {row.name}
           </span>
-          <span className={cn('num text-[13px] font-bold', TONE_CLASS[tone])}>
-            {pct1(row.wr)}
+          <span className="mt-0.5 flex items-baseline gap-2 whitespace-nowrap">
+            <span className="num text-ink-2 text-[12px]">
+              {pct1(row.share)} meta
+            </span>
+            <span
+              className={cn(
+                'num ml-auto text-[12px] font-bold',
+                TONE_CLASS[tone]
+              )}
+            >
+              {pct1(row.wr)}
+            </span>
           </span>
-        </span>
-      </div>
+        </div>
+      ) : (
+        <div className="flex items-baseline gap-2.5 px-3.5 pt-2.5 pb-3">
+          <span className="font-display text-ink text-[16.5px] font-bold tracking-[0.01em]">
+            {row.name}
+          </span>
+          <span className="ml-auto flex items-baseline gap-3 whitespace-nowrap">
+            <span className="num text-ink-2 text-[13px]">
+              {pct1(row.share)} meta
+            </span>
+            <span className={cn('num text-[13px] font-bold', TONE_CLASS[tone])}>
+              {pct1(row.wr)}
+            </span>
+          </span>
+        </div>
+      )}
     </Link>
   )
 }

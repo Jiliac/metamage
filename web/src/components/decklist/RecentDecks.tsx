@@ -60,7 +60,9 @@ export function RecentDecks({
     <div
       className={cn('border border-line bg-surface shadow-ledger', className)}
     >
-      <p className="eyebrow border-b border-line px-4 py-3">Recent decks</p>
+      {/* A real h2: the per-event h3s below sit under it, so the outline runs
+          h1 (archetype) → h2 → h3 with no skipped level. */}
+      <h2 className="eyebrow border-b border-line px-4 py-3">Recent decks</h2>
       {groups.length === 0 ? (
         <p className="px-4 py-6 text-[13px] text-ink-3">
           No decks recorded for this window.

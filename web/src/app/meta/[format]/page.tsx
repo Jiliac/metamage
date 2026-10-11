@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 
@@ -16,6 +17,7 @@ import {
   buildArchetypeHrefs,
   buildHref,
   defaultWindow,
+  expandPreset,
   parseMetaQuery,
   parseMatrixTopN,
   parseRow,
@@ -27,6 +29,7 @@ import { LensBar } from '@/components/LensBar/LensBar'
 import { DeckTile } from '@/components/DeckTile'
 import { KpiStat } from '@/components/KpiStat'
 import { EmptyState } from '@/components/EmptyState'
+import { LowSampleNotice } from '@/components/LowSampleNotice'
 import { MetaTable } from '@/components/tables/MetaTable'
 import { WrPresenceScatter } from '@/components/charts/WrPresenceScatter'
 import { MatchupMatrix } from '@/components/charts/MatchupMatrix'
@@ -36,11 +39,13 @@ import { MatchupList, selectRowCells } from '@/components/tables/MatchupList'
 
 // ---------------------------------------------------------------------------
 // Meta overview landing (WP5). All RSC: parse the lens once, resolve the data
-// source, compose per the SPIKE order —
-//   LensBar → editorial headline + KPI grid → 'Top of the field' DeckTile grid
-//   → matrix hero (notched gold frame) → MetaTable panel → scatter panel
-//   → footer.
-// Empty window → LensBar + EmptyState (§5).
+// source, compose —
+//   LensBar → ledger headline + KPI grid → matrix hero (notched gold frame)
+//   → 'Top of the field' compact DeckTile strip → MetaTable panel
+//   → scatter panel → footer.
+// The matrix comes first because matchups are the moat (PRODUCT.md principle
+// 3); the headline states the leader's share and win rate with its interval
+// instead of an editorial claim (principle 4). Empty window → EmptyState (§5).
 // ---------------------------------------------------------------------------
 
 type RouteParams = { format: string }
@@ -75,6 +80,14 @@ function windowLabel(start: string, end: string): string {
 }
 
 const pct1 = (x: number) => `${(x * 100).toFixed(1)}%`
+const int = (n: number) => n.toLocaleString('en-US')
+/** '52.0–55.4%' — the 95% interval as one tabular token. */
+const ciRange = (r: ArchetypeRowDTO) =>
+  `${(r.wrLo * 100).toFixed(1)}–${pct1(r.wrHi)}`
+
+// A 95% interval ten points wide or more (±5) on the leader is the honest
+// signal of a thin window: hedge the headline rather than hide it.
+const WIDE_CI = 0.1
 
 // ISR: the default-window landing is prebuilt per format (generateStaticParams);
 // any other window/knobs render on demand and are memoized by the data layer
@@ -172,7 +185,13 @@ export default async function MetaOverviewPage({
         </Suspense>
         <EmptyState
           title="No tournaments in this window"
-          message={`We have no ${fmtName} results for ${win}. Widen the window or clear the filters to see the field.`}
+          message={`We have no ${fmtName} results for ${win}. Widen the window to see the field.`}
+          widenHref={buildHref(
+            query.format,
+            { ...query, ...expandPreset('last-3m') },
+            { sort }
+          )}
+          widenLabel="Show the last 3 months"
         />
       </>
     )
@@ -185,30 +204,64 @@ export default async function MetaOverviewPage({
         </Suspense>
         <EmptyState
           title="No archetypes clear the current filters"
-          message={`${fmtName} has results for ${win}, but nothing clears your current filters. Lower the match floor (min) or clear the filters to see the field.`}
+          message={`${fmtName} has results for ${win}, but no archetype reaches the ${query.minMatches}-match floor. Lower the floor to see the field.`}
+          widenHref={buildHref(
+            query.format,
+            { ...query, minMatches: 0 },
+            { sort }
+          )}
+          widenLabel="Lower the floor"
         />
       </>
     )
   }
 
-  // ---- Editorial headline, derived from the window's data (§9 rule 7) ------
+  // ---- Ledger headline: the leader and the best record as facts with their
+  // intervals. No "edge" claim is made; the reader compares the intervals.
   const live = report.rows.filter(r => !r.isBucket)
   const byShare = [...live].sort((a, b) => b.share - a.share)
   const byWr = [...live].sort((a, b) => b.wr - a.wr)
   const mostPlayed: ArchetypeRowDTO | undefined = byShare[0]
-  const bestPerforming: ArchetypeRowDTO | undefined = byWr.find(
-    r => r.slug !== mostPlayed?.slug
-  )
-  const runnerUp: ArchetypeRowDTO | undefined = byWr.find(
-    r => r.slug !== mostPlayed?.slug && r.slug !== bestPerforming?.slug
-  )
+  const topWr: ArchetypeRowDTO | undefined = byWr[0]
+  const leaderIsTopWr =
+    mostPlayed !== undefined && topWr?.slug === mostPlayed.slug
+  const thinWindow =
+    mostPlayed !== undefined && mostPlayed.wrHi - mostPlayed.wrLo >= WIDE_CI
 
   const top6 = byShare.slice(0, 6)
 
-  const perfLine =
-    bestPerforming && mostPlayed && bestPerforming.wr > mostPlayed.wr
-      ? 'The performance edge lies elsewhere.'
-      : 'And winning the room too.'
+  // ---- Honest buckets + floor (principles 4/5): the landing hides unknown/
+  // conflict and anything under the match floor; say so under the table and
+  // link to the lens that reveals them. One extra read, memoized like the rest.
+  const unfiltered: MetaReportDTO =
+    query.hideBuckets || query.minMatches > 0
+      ? await ds.getMetaReport({ ...query, hideBuckets: false, minMatches: 0 })
+      : report
+  const bucketShare = (key: 'unknown' | 'conflict') =>
+    unfiltered.rows.find(
+      r => r.isBucket && (r.slug === key || r.name.toLowerCase() === key)
+    )?.share
+  const unknownShare = bucketShare('unknown')
+  const conflictShare = bucketShare('conflict')
+  const hiddenBuckets =
+    query.hideBuckets &&
+    (unknownShare !== undefined || conflictShare !== undefined)
+      ? { unknown: unknownShare, conflict: conflictShare }
+      : null
+  const showBucketsHref = hiddenBuckets
+    ? buildHref(query.format, { ...query, hideBuckets: false }, { sort })
+    : undefined
+  const shownSlugs = new Set(report.rows.map(r => r.slug))
+  const belowFloorCount = unfiltered.rows.filter(
+    r => !r.isBucket && !shownSlugs.has(r.slug)
+  ).length
+  const belowFloor =
+    query.minMatches > 0 && belowFloorCount > 0
+      ? {
+          count: belowFloorCount,
+          href: buildHref(query.format, { ...query, minMatches: 0 }, { sort }),
+        }
+      : null
 
   return (
     <>
@@ -220,79 +273,78 @@ export default async function MetaOverviewPage({
       <div className="mt-10 grid items-end gap-9 md:grid-cols-[1.5fr_1fr]">
         <div>
           <p className="eyebrow mb-1.5">
-            The Ledger · {fmtName} · {win}
+            {fmtName} · {win}
           </p>
           <h1 className="font-display text-[clamp(30px,4.5vw,44px)] leading-[1.08] font-bold text-balance">
-            {mostPlayed
-              ? `${mostPlayed.name} holds the room.`
-              : 'The field is open.'}
-            <br />
-            <span className="font-normal text-ink-2">{perfLine}</span>
+            {mostPlayed ? (
+              <>
+                {mostPlayed.name}
+                <span className="text-ink-2 font-normal">
+                  {' '}
+                  is the most-played deck.
+                </span>
+              </>
+            ) : (
+              'The field is open.'
+            )}
           </h1>
           {mostPlayed && (
-            <p className="mt-3.5 max-w-[58ch] text-[15.5px] text-ink-2">
-              <b className="text-ink">{mostPlayed.name}</b> is the most-played
-              deck at <b className="text-ink">{pct1(mostPlayed.share)}</b> of
-              all matches — winning{' '}
-              <b className="text-ink">{pct1(mostPlayed.wr)}</b> of them.
-              {bestPerforming && (
-                <>
-                  {' '}
-                  The performance edge sits with{' '}
-                  <b className="text-ink">{bestPerforming.name}</b> (
-                  {pct1(bestPerforming.wr)})
-                  {runnerUp && (
-                    <>
-                      {' '}
-                      and <b className="text-ink">{runnerUp.name}</b> (
-                      {pct1(runnerUp.wr)})
-                    </>
-                  )}
-                  .
-                </>
+            <dl className="text-ink-2 mt-4 grid max-w-[64ch] grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5 text-[13.5px] max-[460px]:grid-cols-1 max-[460px]:gap-y-0.5">
+              <LedgerRow label="Share">
+                <b className="num text-ink">{pct1(mostPlayed.share)}</b> of all
+                matches · <span className="num">{int(mostPlayed.matches)}</span>{' '}
+                matches
+              </LedgerRow>
+              <LedgerRow
+                label={
+                  leaderIsTopWr ? 'Win rate · highest in field' : 'Win rate'
+                }
+              >
+                <b className="num text-ink">{pct1(mostPlayed.wr)}</b> · 95% CI{' '}
+                <span className="num">{ciRange(mostPlayed)}</span>
+              </LedgerRow>
+              {topWr && !leaderIsTopWr && (
+                <LedgerRow label="Highest win rate">
+                  <b className="text-ink">{topWr.name}</b> ·{' '}
+                  <b className="num text-ink">{pct1(topWr.wr)}</b> · 95% CI{' '}
+                  <span className="num">{ciRange(topWr)}</span> ·{' '}
+                  <span className="num">{int(topWr.matches)}</span> matches
+                </LedgerRow>
               )}
-            </p>
+            </dl>
+          )}
+          {thinWindow && mostPlayed && (
+            <LowSampleNotice matches={mostPlayed.matches} className="mt-3" />
           )}
         </div>
         <div className="grid grid-cols-3 gap-px border border-line bg-line">
           <KpiStat label="Tournaments" value={report.kpis.tournaments} />
-          <KpiStat label="Decks" value={report.kpis.entries} />
+          <KpiStat label="Deck entries" value={report.kpis.entries} />
           <KpiStat label="Matches" value={report.kpis.matches} />
         </div>
       </div>
 
-      {/* ---- TOP OF THE FIELD — DeckTile grid ---- */}
+      {/* ---- MATCHUP MATRIX — first after the headline (principle 3), inside
+          the notched gold frame (§9 rule 4) ---- */}
       <section className="mt-14">
-        <p className="eyebrow mb-1.5">The decks to beat</p>
-        <h2 className="font-display text-[23px] font-bold">Top of the field</h2>
-        <p className="mt-0.5 text-[13.5px] text-ink-2">
-          The six most-played archetypes of the window. Art follows each
-          deck&rsquo;s signature card.
-        </p>
-        <div className="mt-[18px] grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr))]">
-          {top6.map((row, i) => (
-            <DeckTile
-              key={row.slug}
-              row={row}
-              rank={row.presenceRank}
-              priority={i < 3}
-              href={buildHref(query.format, query, {
-                path: `/archetype/${row.slug}`,
-              })}
-            />
-          ))}
+        <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+          <div>
+            <p className="eyebrow mb-1.5">Matchups</p>
+            <h2 className="font-display text-[23px] font-bold">
+              Matchup matrix
+            </h2>
+            <p className="text-ink-2 mt-0.5 max-w-[64ch] text-[13.5px]">
+              Row beats column. Ink density is sample size: pale cells are thin
+              samples; a dash means fewer than five matches.
+            </p>
+          </div>
+          <Link
+            href={buildHref(query.format, query, { path: '/matrix' })}
+            className="border-gold-soft text-gold hover:bg-gold-wash inline-flex items-center border px-3 py-1.5 text-[13px] whitespace-nowrap"
+          >
+            Full matrix →
+          </Link>
         </div>
-      </section>
-
-      {/* ---- MATCHUP MATRIX — hero inside the notched gold frame (§9 rule 4) ---- */}
-      <section className="mt-14">
-        <p className="eyebrow mb-1.5">The moat</p>
-        <h2 className="font-display text-[23px] font-bold">Matchup matrix</h2>
-        <p className="mt-0.5 text-[13.5px] text-ink-2">
-          Row beats column. Ink density is confidence — pale cells are small
-          samples; a dash means fewer than five matches. Nobody else publishes
-          this.
-        </p>
         <div
           className="clip-notch-lg mt-4 p-px"
           style={{
@@ -310,13 +362,36 @@ export default async function MetaOverviewPage({
         </div>
       </section>
 
+      {/* ---- TOP OF THE FIELD — compact DeckTile strip ---- */}
+      <section className="mt-14">
+        <p className="eyebrow mb-1.5">Most played</p>
+        <h2 className="font-display text-[23px] font-bold">Top of the field</h2>
+        <p className="text-ink-2 mt-0.5 text-[13.5px]">
+          The six most-played archetypes of the window. Art is each deck&rsquo;s
+          signature card.
+        </p>
+        <div className="mt-[18px] grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(150px,100%),1fr))]">
+          {top6.map(row => (
+            <DeckTile
+              key={row.slug}
+              row={row}
+              rank={row.presenceRank}
+              variant="compact"
+              href={buildHref(query.format, query, {
+                path: `/archetype/${row.slug}`,
+              })}
+            />
+          ))}
+        </div>
+      </section>
+
       {/* ---- THE FIELD, RANKED — MetaTable ---- */}
       <section className="mt-14">
-        <p className="eyebrow mb-1.5">Presence &amp; performance</p>
+        <p className="eyebrow mb-1.5">Ranking</p>
         <h2 className="font-display text-[23px] font-bold">
           The field, ranked
         </h2>
-        <p className="mt-0.5 text-[13.5px] text-ink-2">
+        <p className="text-ink-2 mt-0.5 text-[13.5px]">
           Match-weighted share of the metagame. Win rate carries a 95%
           confidence interval, clustered by player.
         </p>
@@ -327,6 +402,9 @@ export default async function MetaOverviewPage({
             format={query.format}
             query={query}
             sort={sort}
+            hiddenBuckets={hiddenBuckets}
+            showBucketsHref={showBucketsHref}
+            belowFloor={belowFloor}
           />
         </div>
       </section>
@@ -402,6 +480,26 @@ async function MatchupMatrixHero({
           <MatchupList cells={picked.cells} sort="wrAsc" ranks={picked.ranks} />
         </MatrixRowPicker>
       </div>
+    </>
+  )
+}
+
+// One line of the headline ledger: a small tracked label, then the figures.
+function LedgerRow({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  // dt/dd are direct grid children of the <dl>, so every label shares one
+  // max-content column and none of them wrap.
+  return (
+    <>
+      <dt className="text-ink-3 text-[11px] leading-[1.9] tracking-[0.12em] whitespace-nowrap uppercase max-[460px]:mt-1.5">
+        {label}
+      </dt>
+      <dd className="leading-[1.55]">{children}</dd>
     </>
   )
 }
