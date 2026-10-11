@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
-  DEFAULT_WINDOW_CHIP,
+  buildHref,
   defaultWindow,
   expandPreset,
   matchPreset,
-  matchWindowChip,
+  parseMetaQuery,
   PRESETS,
   PRESET_LABELS,
 } from '@/lib/params'
@@ -139,30 +139,33 @@ describe('matchPreset', () => {
   })
 })
 
-describe('matchWindowChip', () => {
-  it('highlights "This month" on the default window and no preset (mid-month)', () => {
-    const now = at('2026-09-15')
-    expect(matchWindowChip(defaultWindow(now), now)).toBe(DEFAULT_WINDOW_CHIP)
-    for (const p of PRESETS) {
-      expect(matchWindowChip(expandPreset(p, now), now)).toBe(p)
-    }
+describe('defaultWindow', () => {
+  it('is "Last 30 days" ending today, not the calendar month', () => {
+    const now = at('2026-10-11')
+    expect(defaultWindow(now)).toEqual({
+      start: '2026-09-12',
+      end: '2026-10-11',
+    })
+    expect(matchPreset(defaultWindow(now), now)).toBe('last-30d')
   })
 
-  it('prefers the default chip when "Last 30 days" is the same window', () => {
-    // Sep 30 of a 30-day month: "Last 30 days" expands to Sep 1 → Sep 30,
-    // i.e. exactly the default window. Only the default chip is highlighted.
-    const now = at('2026-09-30')
-    const def = defaultWindow(now)
-    expect(expandPreset('last-30d', now)).toEqual(def)
-    expect(matchPreset(def, now)).toBe('last-30d')
-    expect(matchWindowChip(def, now)).toBe(DEFAULT_WINDOW_CHIP)
+  it('is what a bare URL parses to, and is omitted from built URLs', () => {
+    const now = at('2026-10-11')
+    const q = parseMetaQuery('modern', {}, now)
+    expect({ start: q.start, end: q.end }).toEqual(defaultWindow(now))
+    expect(buildHref('modern', q, { now })).toBe('/meta/modern')
   })
 
-  it('returns undefined for a custom window', () => {
-    const now = at('2026-09-15')
-    expect(
-      matchWindowChip({ start: '2026-08-01', end: '2026-08-31' }, now)
-    ).toBeUndefined()
+  it('keeps a calendar-month window explicit in the URL', () => {
+    const now = at('2026-10-11')
+    const q = {
+      ...parseMetaQuery('modern', {}, now),
+      start: '2026-10-01',
+      end: '2026-10-31',
+    } as ReturnType<typeof parseMetaQuery>
+    expect(buildHref('modern', q, { now })).toBe(
+      '/meta/modern?start=2026-10-01&end=2026-10-31'
+    )
   })
 })
 

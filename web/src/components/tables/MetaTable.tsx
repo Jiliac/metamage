@@ -111,7 +111,7 @@ function NameCell({
       {/* Signature-card thumb (same art + mana-gradient fallback as DeckTile).
           Hidden below `sm` so the table doesn't get wider on phones. */}
       <span
-        className="border-line-strong bg-raised relative hidden h-10 w-[60px] flex-none overflow-hidden rounded-[4px] border sm:block"
+        className="border-line-strong bg-raised relative hidden aspect-[626/457] h-10 flex-none overflow-hidden rounded-[4px] border sm:block"
         aria-hidden
       >
         <ArtCrop
@@ -119,7 +119,7 @@ function NameCell({
           colors={row.color}
           cardName={row.art?.cardName}
           radius={4}
-          sizes="60px"
+          sizes="55px"
         />
       </span>
       <ManaPips colors={row.color} />
