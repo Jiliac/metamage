@@ -13,11 +13,16 @@ import sys
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, text
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from models import Base, Tournament, Match, DeckCard, MetaChange  # noqa: E402
+from migrate_tournament_to_postgres import (  # noqa: E402
+    assert_cards_columns_match_model,
+    bootstrap_schema,
+)
 
 EXPECTED_TABLES = {
     "formats",
@@ -93,3 +98,41 @@ def test_create_all_postgres():
             assert "VARCHAR" in str(col["type"]).upper()
     finally:
         Base.metadata.drop_all(engine)
+
+
+def test_cards_columns_preflight_passes_on_fresh_create_all():
+    engine = _bootstrap("sqlite://")
+    # A fresh target has every model column, so stamping may proceed.
+    assert_cards_columns_match_model(engine)
+
+
+def test_bootstrap_refuses_stamp_when_cards_table_lacks_model_column():
+    # An unmigrated target (e.g. Neon before the card-display migration) keeps
+    # its old cards table: create_all skips it, and stamping head would mark
+    # the new revision applied without ever adding the columns.
+    engine = create_engine("sqlite://")
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "CREATE TABLE cards ("
+                "id VARCHAR(36) PRIMARY KEY, "
+                "name VARCHAR(200) NOT NULL, "
+                "scryfall_oracle_id VARCHAR(36) NOT NULL, "
+                "is_land BOOLEAN NOT NULL)"
+            )
+        )
+
+    with pytest.raises(RuntimeError) as exc:
+        bootstrap_schema(engine, "sqlite://")
+    message = str(exc.value)
+    for column in (
+        "display_name",
+        "type_line",
+        "mana_cost",
+        "cmc",
+        "image_normal",
+        "image_back",
+        "scryfall_uri",
+        "scryfall_id",
+    ):
+        assert column in message
