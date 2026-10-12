@@ -30,7 +30,7 @@ import {
 } from '@/lib/events'
 import { int } from '@/lib/format'
 import { slicePage } from '@/lib/paging'
-import { buildHref, parseMetaQuery, parsePage, parseRow } from '@/lib/params'
+import { buildHref, parseMetaQuery, parsePage } from '@/lib/params'
 import { longDate } from '@/lib/dates'
 import { buildPageMetadata } from '@/lib/seo'
 import { cn } from '@/lib/utils'
@@ -148,7 +148,6 @@ export default async function TournamentPage({
           // Archetype links always target the event's real format.
           query={{ ...query, format: t.format }}
           page={parsePage(sp)}
-          sp={sp}
         />
       )}
 
@@ -173,7 +172,6 @@ function EventBody({
   routeFormat,
   query,
   page,
-  sp,
 }: {
   detail: TournamentDetailDTO
   /** The `{format}` path segment the page was reached at (`all` included),
@@ -181,7 +179,6 @@ function EventBody({
   routeFormat: string
   query: MetaQuery
   page: number
-  sp: SearchParams
 }) {
   const t = detail.tournament
   const ranked = rankStandings(detail.standings)
@@ -190,14 +187,10 @@ function EventBody({
   const hrefFor = (slug: string) => archetypeHref(t.format, query, slug, t.date)
 
   const slice = slicePage(ranked, page, STANDINGS_PAGE_SIZE)
-  const row = parseRow(sp, matrix.order)
-  // `row` rides so paging keeps the mobile matchup list's selection (KTD4).
   const pageHref = (n: number) =>
     `${buildHref(routeFormat, query, {
       path: `/tournaments/${t.id}`,
       page: n,
-      row,
-      matrixOrder: matrix.order,
     })}#${STANDINGS_ID}`
   const hasPublished = ranked.some(r => !r.derived)
   const hasDerived = ranked.some(r => r.derived)
@@ -250,7 +243,7 @@ function EventBody({
         </section>
         <FieldPanel field={field} hrefFor={hrefFor} />
       </div>
-      <MatchupsSection matrix={matrix} row={row} hrefFor={hrefFor} />
+      <MatchupsSection matrix={matrix} hrefFor={hrefFor} />
     </>
   )
 }
@@ -379,12 +372,9 @@ function FieldPanel({
 
 function MatchupsSection({
   matrix,
-  row,
   hrefFor,
 }: {
   matrix: MatrixDTO
-  /** `?row`, the phone list's selected archetype (rank 1 when absent). */
-  row: string | undefined
   hrefFor: (slug: string) => string
 }) {
   return (
@@ -401,8 +391,8 @@ function MatchupsSection({
         <div className="border border-line bg-surface p-3 shadow-ledger">
           {/* The same `matrix:` seam as the overview and matrix routes (§9
               Matrix Seam Rule): the N×N grid only on a wide, hover-capable
-              screen; the per-archetype list with inline CIs elsewhere. */}
-          <MatchupSurface matrix={matrix} row={row} hrefFor={hrefFor} />
+              screen; the compact numbered grid with a tap readout elsewhere. */}
+          <MatchupSurface matrix={matrix} hrefFor={hrefFor} />
         </div>
       ) : (
         <p className="border border-line bg-surface p-6 text-[13.5px] text-ink-2">

@@ -1,38 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import type { MatchupCellDTO, MatrixOrderEntryDTO } from '@/datasource/types'
+import type { MatchupCellDTO } from '@/datasource/types'
 import { asArchetypeSlug } from '@/lib/params'
-import {
-  needsLowSampleHedge,
-  selectRowCells,
-  sortCells,
-} from '@/components/tables/MatchupList'
+import { needsLowSampleHedge, sortCells } from '@/components/tables/MatchupList'
 
 // ---------------------------------------------------------------------------
-// The pure halves of MatchupList: slicing a `?row` out of the zero-filled
-// matrix (KTD4) and the two list orderings. Rendering is left to the smoke
+// The pure halves of MatchupList: the two list orderings and the hedge. Rendering is left to the smoke
 // matrix; these lock the facts the list is built from.
 // ---------------------------------------------------------------------------
-
-const entry = (
-  slug: string,
-  name: string,
-  presenceRank: number
-): MatrixOrderEntryDTO => ({
-  slug: asArchetypeSlug(slug),
-  name,
-  color: null,
-  globalWr: null,
-  share: 0.1,
-  matches: 100,
-  presenceRank,
-})
-
-const ORDER = [
-  entry('mono-blue-faeries', 'Mono Blue Faeries', 1),
-  entry('boros-dwarves', 'Boros Dwarves', 2),
-  entry('dimir-control', 'Dimir Control', 3),
-]
 
 const cell = (
   row: string,
@@ -59,44 +34,6 @@ const cell = (
     ...over,
   }
 }
-
-const FULL_GRID = ORDER.flatMap(r =>
-  ORDER.map(c => cell(r.slug, c.slug, { isMirror: r.slug === c.slug }))
-)
-
-describe('selectRowCells', () => {
-  it('slices the selected row, dropping the mirror cell', () => {
-    const picked = selectRowCells(
-      { order: ORDER, cells: FULL_GRID },
-      'boros-dwarves'
-    )
-    expect(picked.slug).toBe('boros-dwarves')
-    expect(picked.name).toBe('Boros Dwarves')
-    expect(picked.cells.map(c => c.colSlug)).toEqual([
-      'mono-blue-faeries',
-      'dimir-control',
-    ])
-    expect(picked.cells.every(c => c.rowSlug === 'boros-dwarves')).toBe(true)
-  })
-
-  it('falls back to presence rank 1 for null or unknown rows', () => {
-    const grid = { order: ORDER, cells: FULL_GRID }
-    expect(selectRowCells(grid, null).slug).toBe('mono-blue-faeries')
-    expect(selectRowCells(grid, undefined).slug).toBe('mono-blue-faeries')
-    expect(selectRowCells(grid, 'goblin-bikeshed').slug).toBe(
-      'mono-blue-faeries'
-    )
-  })
-
-  it('maps every ordered archetype to its presence rank', () => {
-    const { ranks } = selectRowCells({ order: ORDER, cells: FULL_GRID }, null)
-    expect(ranks).toEqual({
-      'mono-blue-faeries': 1,
-      'boros-dwarves': 2,
-      'dimir-control': 3,
-    })
-  })
-})
 
 describe('sortCells', () => {
   const a = cell('x', 'a', { games: 40, wr: 0.6 })

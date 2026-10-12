@@ -20,19 +20,31 @@ export function MatrixSkeleton({
 }: MatrixSkeletonProps) {
   return (
     <div aria-hidden>
-      {/* list variant — matches MatchupList + MatrixRowPicker proportions */}
+      {/* compact variant — matches CompactMatrix proportions */}
       <div className="matrix:hidden">
-        <div className="mb-3 h-8 w-[260px] rounded-md border border-line bg-raised" />
-        <div className="border border-line bg-surface shadow-ledger">
-          <div className="h-[42px] border-b border-line-strong" />
+        <div
+          className="grid gap-px"
+          style={{
+            gridTemplateColumns: `22px repeat(${n}, minmax(24px, 1fr))`,
+          }}
+        >
+          <div className="h-[23px]" />
           {Array.from({ length: n }, (_, i) => (
-            <div
-              key={`l-${i}`}
-              className="h-[44px] border-b border-line"
-              style={{ background: i % 2 ? 'var(--surface)' : 'var(--raised)' }}
-            />
+            <div key={`ch-${i}`} className="h-[23px]" />
           ))}
+          {Array.from({ length: n * (n + 1) }, (_, i) =>
+            i % (n + 1) === 0 ? (
+              <div key={`cc-${i}`} />
+            ) : (
+              <div key={`cc-${i}`} className="h-[30px] bg-raised sm:h-[40px]" />
+            )
+          )}
         </div>
+        <div className="mt-3 h-[60px]" />
+        <div
+          className="mt-3 border-t border-line pt-2"
+          style={{ height: Math.ceil(n / 2) * 32 + 9 }}
+        />
       </div>
       {/* grid variant — matches MatchupMatrix proportions */}
       <div className="hidden matrix:block">

@@ -210,12 +210,14 @@ export function WrPresenceScatter({
           '.mm-scatter-link:focus{outline:none}.mm-scatter-link:focus-visible circle{stroke:var(--gold);stroke-width:3}@media (prefers-reduced-motion: no-preference){.mm-scatter-dot{animation:mm-pop .45s cubic-bezier(.16,1,.3,1) backwards}@keyframes mm-pop{from{opacity:0;transform:scale(.6)}}}'
         }
       </style>
-      <div className="border-b border-line px-4 py-3 md:border-b-0 md:border-r md:py-4">
-        <ol className="m-0 list-none p-0 text-[12.5px]">
+      {/* Legend: a side column at md+; below, it follows the chart as a
+          two-column key so the plot lands first. */}
+      <div className="max-md:order-2 border-t border-line px-4 py-3 md:border-t-0 md:border-r md:py-4">
+        <ol className="m-0 grid list-none grid-cols-2 gap-x-4 p-0 text-[12.5px] md:grid-cols-1">
           {legend.map(d => (
             <li
               key={d.slug}
-              className="flex items-center gap-2 py-2 md:py-[3.5px]"
+              className="flex min-w-0 items-center gap-2 py-1.5 md:py-[3.5px]"
             >
               <span
                 className="data grid size-[19px] flex-none place-items-center rounded-full text-[11px] font-bold"
@@ -226,20 +228,24 @@ export function WrPresenceScatter({
               {d.href ? (
                 <Link
                   href={d.href}
-                  className="text-ink-2 no-underline hover:text-gold hover:underline"
+                  className="min-w-0 truncate text-ink-2 no-underline hover:text-gold hover:underline"
                   style={{ textUnderlineOffset: 3 }}
                 >
                   {d.name}
                 </Link>
               ) : (
-                <span>{d.name}</span>
+                <span className="min-w-0 truncate">{d.name}</span>
               )}
-              <ManaPips colors={d.color} size={13} />
+              <ManaPips
+                colors={d.color}
+                size={13}
+                className="flex-none max-sm:hidden"
+              />
             </li>
           ))}
         </ol>
       </div>
-      <div className="p-3">
+      <div className="p-3 max-md:order-1">
         <ResponsiveContainer width="100%" height={chartHeight}>
           <ScatterChart margin={{ top: 16, right: 18, bottom: 24, left: 4 }}>
             <CartesianGrid stroke="var(--line)" />

@@ -37,12 +37,21 @@ const pct1 = (x: number) => `${(x * 100).toFixed(1)}%`
 const RIGHT = new Set(['wrlo', 'ci', 'record', 'matches'])
 const SORTABLE = new Set(['rank', 'share', 'wrlo', 'matches'])
 // Columns collapsed away below `md` (R12): share is a luxury; the standalone
-// CI column folds into the wrlo cell as a second line so the interval renders
-// exactly once at every width (KTD6).
+// CI column folds into the wrlo cell and the record into the matches cell as
+// second lines, so each fact renders exactly once at every width (KTD6) and
+// the phone table fits without a sideways scroll.
 const HIDE_BELOW_MD: Record<string, true> = {
   share: true,
   ci: true,
+  record: true,
 }
+// Phone cells: tighter gutters, and the pinned columns unpin (nothing scrolls
+// sideways once the table fits, and the 58px offset would misalign them).
+const CELL_PAD = 'px-2 md:px-3.5'
+const UNPIN_BELOW_MD = 'max-md:static'
+
+const recordText = (r: ArchetypeRowDTO) =>
+  `${r.wins}–${r.losses}${r.draws > 0 ? `–${r.draws}` : ''}`
 
 // Numeric sort accessors per sortable column — mirror the column accessorFns.
 // Sorting is applied manually (below) over non-bucket rows only, so buckets
@@ -107,7 +116,7 @@ function NameCell({
     path: `/archetype/${row.slug}`,
   })
   return (
-    <div className="flex items-center gap-2.5">
+    <div className="flex items-center gap-2.5 max-sm:flex-col-reverse max-sm:items-start max-sm:gap-1">
       {/* Signature-card thumb (same art + mana-gradient fallback as DeckTile).
           Hidden below `sm` so the table doesn't get wider on phones. */}
       <span
@@ -122,7 +131,8 @@ function NameCell({
           sizes="55px"
         />
       </span>
-      <ManaPips colors={row.color} />
+      <ManaPips colors={row.color} size={13} className="sm:hidden" />
+      <ManaPips colors={row.color} className="max-sm:hidden" />
       {row.isBucket ? (
         <span className="text-ink-3 inline-flex items-center gap-2 font-semibold">
           {row.name}
@@ -131,7 +141,7 @@ function NameCell({
       ) : (
         <Link
           href={href}
-          className="text-ink hover:text-gold font-semibold hover:underline hover:underline-offset-[3px] max-md:inline-flex max-md:min-h-[44px] max-md:items-center"
+          className="text-ink hover:text-gold leading-snug font-semibold hover:underline hover:underline-offset-[3px] max-md:inline-flex max-md:min-h-[28px] max-md:items-center"
         >
           {row.name}
         </Link>
@@ -267,12 +277,7 @@ export function MetaTable({
         enableSorting: false,
         cell: ({ row }) => {
           const r = row.original
-          return (
-            <span className="num text-ink">
-              {r.wins}–{r.losses}
-              {r.draws > 0 ? `–${r.draws}` : ''}
-            </span>
-          )
+          return <span className="num text-ink">{recordText(r)}</span>
         },
       },
       {
@@ -281,8 +286,14 @@ export function MetaTable({
         accessorFn: r => r.matches,
         sortDescFirst: true,
         cell: ({ row }) => (
-          <span className="num text-ink">
-            {row.original.matches.toLocaleString('en-US')}
+          <span className="block">
+            <span className="num text-ink">
+              {row.original.matches.toLocaleString('en-US')}
+            </span>
+            {/* Folded-in record — replaces the `record` column below `md`. */}
+            <span className="num text-ink-2 block text-[11.5px] whitespace-nowrap md:hidden">
+              {recordText(row.original)}
+            </span>
           </span>
         ),
       },
@@ -306,9 +317,9 @@ export function MetaTable({
     <div
       className={cn('bg-surface border-line shadow-ledger border', className)}
     >
-      {/* Scroll affordance: right-edge fade below `md` only — desktop keeps
-          its hard edge (R14(f)). */}
-      <div className="overflow-x-auto max-md:[mask-image:linear-gradient(to_right,#000_calc(100%_-_24px),transparent)] max-md:[-webkit-mask-image:linear-gradient(to_right,#000_calc(100%_-_24px),transparent)]">
+      {/* Phones get the folded columns above, so the table fits the screen;
+          the scroller only catches the narrowest viewports. */}
+      <div className="overflow-x-auto">
         <table className="w-full border-collapse text-[13.5px]">
           <thead>
             {table.getHeaderGroups().map(hg => (
@@ -346,12 +357,13 @@ export function MetaTable({
                           : undefined
                       }
                       className={cn(
-                        'border-line-strong text-ink-2 border-b px-3.5 pt-3 pb-[9px] text-[11px] font-semibold tracking-[0.13em] whitespace-nowrap uppercase select-none',
+                        'border-line-strong text-ink-2 border-b pt-3 pb-[9px] text-[11px] font-semibold tracking-[0.13em] whitespace-nowrap uppercase select-none max-md:tracking-[0.08em]',
+                        CELL_PAD,
                         RIGHT.has(id) ? 'text-right' : 'text-left',
-                        id === 'name' && 'min-w-[240px]',
+                        id === 'name' && 'md:min-w-[240px]',
                         HIDE_BELOW_MD[id] && 'hidden md:table-cell',
-                        id === 'rank' && STICKY_COL_1_STRONG,
-                        id === 'name' && STICKY_COL_2_STRONG,
+                        id === 'rank' && [STICKY_COL_1_STRONG, UNPIN_BELOW_MD],
+                        id === 'name' && [STICKY_COL_2_STRONG, UNPIN_BELOW_MD],
                         sortable &&
                           'hover:text-ink focus-visible:text-ink cursor-pointer'
                       )}
@@ -397,11 +409,12 @@ export function MetaTable({
                     <td
                       key={cell.id}
                       className={cn(
-                        'border-line border-b px-3.5 py-[7px] align-middle',
+                        'border-line border-b py-[7px] align-middle',
+                        CELL_PAD,
                         RIGHT.has(cid) && 'text-right',
                         HIDE_BELOW_MD[cid] && 'hidden md:table-cell',
-                        cid === 'rank' && STICKY_COL_1_STRONG,
-                        cid === 'name' && STICKY_COL_2_STRONG
+                        cid === 'rank' && [STICKY_COL_1_STRONG, UNPIN_BELOW_MD],
+                        cid === 'name' && [STICKY_COL_2_STRONG, UNPIN_BELOW_MD]
                       )}
                     >
                       {flexRender(
@@ -417,31 +430,60 @@ export function MetaTable({
               <tr className="text-ink-3">
                 <td
                   className={cn(
-                    'border-line border-b px-3.5 py-[7px]',
-                    STICKY_COL_1_STRONG
+                    'border-line border-b py-[7px]',
+                    CELL_PAD,
+                    STICKY_COL_1_STRONG,
+                    UNPIN_BELOW_MD
                   )}
                 />
                 <td
                   className={cn(
-                    'border-line border-b px-3.5 py-[7px] font-semibold italic',
-                    STICKY_COL_2_STRONG
+                    'border-line border-b py-[7px] font-semibold italic',
+                    CELL_PAD,
+                    STICKY_COL_2_STRONG,
+                    UNPIN_BELOW_MD
                   )}
                 >
                   Other (collapsed tail)
                 </td>
-                <td className="border-line border-b px-3.5 py-[7px] hidden md:table-cell">
+                <td
+                  className={cn(
+                    'border-line hidden border-b py-[7px] md:table-cell',
+                    CELL_PAD
+                  )}
+                >
                   <ShareBar share={other.share} max={maxShare} />
                 </td>
-                <td className="border-line border-b px-3.5 py-[7px] text-right">
+                <td
+                  className={cn(
+                    'border-line border-b py-[7px] text-right',
+                    CELL_PAD
+                  )}
+                >
                   —
                 </td>
-                <td className="border-line border-b px-3.5 py-[7px] text-right hidden md:table-cell">
+                <td
+                  className={cn(
+                    'border-line hidden border-b py-[7px] text-right md:table-cell',
+                    CELL_PAD
+                  )}
+                >
                   —
                 </td>
-                <td className="border-line border-b px-3.5 py-[7px] text-right">
+                <td
+                  className={cn(
+                    'border-line hidden border-b py-[7px] text-right md:table-cell',
+                    CELL_PAD
+                  )}
+                >
                   —
                 </td>
-                <td className="num border-line border-b px-3.5 py-[7px] text-right">
+                <td
+                  className={cn(
+                    'num border-line border-b py-[7px] text-right',
+                    CELL_PAD
+                  )}
+                >
                   {other.matches.toLocaleString('en-US')}
                 </td>
               </tr>

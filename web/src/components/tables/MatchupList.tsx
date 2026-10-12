@@ -1,4 +1,4 @@
-import type { MatchupCellDTO, MatrixDTO } from '@/datasource/types'
+import type { MatchupCellDTO } from '@/datasource/types'
 import { LowSampleNotice } from '@/components/LowSampleNotice'
 import { ciText, inkFill, pctI, rec } from '@/lib/ink'
 import { cn } from '@/lib/utils'
@@ -6,8 +6,7 @@ import { cn } from '@/lib/utils'
 // ---------------------------------------------------------------------------
 // MatchupList — the single per-archetype matchup list (KTD2). Extracted from
 // the archetype page's local component so the matrix surfaces can feed it the
-// same `MatchupCellDTO[]` shape (archetype page: `ArchetypeDetailDTO.matchups`;
-// matrix surfaces: `MatrixDTO.cells` sliced by `?row=` via `selectRowCells`).
+// same `MatchupCellDTO[]` shape (`ArchetypeDetailDTO.matchups`).
 // A server component: ink bar + record math come from `lib/ink` (§9 rule 5),
 // and the 95% CI renders inline so nothing is hover-only on touch (R5).
 // ---------------------------------------------------------------------------
@@ -22,32 +21,6 @@ export type MatchupListProps = {
   /** Optional opponent slug → presence rank, shown as a `#2` chip on the
    *  matrix surfaces where the grid's numbered heads carry the identity. */
   ranks?: Record<string, number>
-}
-
-export type SelectedRowCells = {
-  slug: string
-  name: string
-  cells: MatchupCellDTO[]
-  ranks: Record<string, number>
-}
-
-/** Slice the selected archetype's row out of the full zero-filled matrix grid
- *  (`MatrixDTO.cells`); rank/name come from `MatrixDTO.order` — there is no
- *  `rows` field. Falls back to presence rank 1 when `row` is null/unknown.
- *  Requires a non-empty `order`; callers guard the empty matrix. */
-export function selectRowCells(
-  matrix: Pick<MatrixDTO, 'order' | 'cells'>,
-  row: string | null | undefined
-): SelectedRowCells {
-  const entry =
-    (row && matrix.order.find(o => o.slug === row)) || matrix.order[0]
-  const ranks: Record<string, number> = Object.fromEntries(
-    matrix.order.map(o => [String(o.slug), o.presenceRank])
-  )
-  const cells = matrix.cells.filter(
-    c => c.rowSlug === entry.slug && !c.isMirror && c.colSlug !== entry.slug
-  )
-  return { slug: entry.slug, name: entry.name, cells, ranks }
 }
 
 /** Pure ordering for the list. `games`: volume desc, then wr desc. `wrAsc`:

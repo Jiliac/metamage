@@ -23,7 +23,6 @@ import {
   expandPreset,
   parseMetaQuery,
   parseMatrixTopN,
-  parseRow,
   parseSort,
 } from '@/lib/params'
 import { buildPageMetadata } from '@/lib/seo'
@@ -396,11 +395,11 @@ export default async function MetaOverviewPage({
               'linear-gradient(160deg, var(--gold-soft), var(--line-strong) 40%, var(--gold-soft))',
           }}
         >
-          <div className="clip-notch-lg bg-surface p-5">
+          <div className="clip-notch-lg bg-surface p-3 sm:p-5">
             {/* Same `matrix:` seam inside the streamed boundary; the skeleton
                 mirrors it so the resolve shifts nothing (R6). */}
             <Suspense fallback={<MatrixSkeleton n={matrixTopN} />}>
-              <MatchupMatrixHero query={query} n={matrixTopN} sp={sp} />
+              <MatchupMatrixHero query={query} n={matrixTopN} />
             </Suspense>
           </div>
         </div>
@@ -459,16 +458,14 @@ export default async function MetaOverviewPage({
 
 // The matrix hero fetches its own grid; kept a server component (no client
 // boundary), so the landing streams the rest before the grid resolves. Both
-// variants (grid/list) render from the one MatrixDTO in this single server
+// variants (full/compact grid) render from the one MatrixDTO in this single server
 // pass; the `matrix:` media variant picks per viewport (KTD3, R3, R6).
 async function MatchupMatrixHero({
   query,
   n,
-  sp,
 }: {
   query: MetaQuery
   n: number
-  sp: Record<string, string | string[] | undefined>
 }) {
   const ds = getDataSource()
   const matrix: MatrixDTO = await ds.getMatchupMatrix({
@@ -485,7 +482,6 @@ async function MatchupMatrixHero({
   return (
     <MatchupSurface
       matrix={matrix}
-      row={parseRow(sp, matrix.order)}
       hrefFor={slug =>
         buildHref(query.format, query, { path: `/archetype/${slug}` })
       }
