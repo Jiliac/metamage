@@ -73,7 +73,9 @@ export function niceTicks(lo: number, hi: number): number[] {
 }
 
 // Presence stops, coarse to fine; the first list with ≥3 stops in the window
-// wins, so the full view keeps its familiar 1/5/10/15/20 labels.
+// wins, so the full view keeps its familiar 1/5/10/15/20 labels. A window none
+// of them covers (past 20%, or between two fine stops) gets evenly spaced
+// ticks instead.
 const PRESENCE_STOPS: readonly (readonly number[])[] = [
   [1, 5, 10, 15, 20, 25, 30],
   [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 30],
@@ -82,10 +84,18 @@ const PRESENCE_STOPS: readonly (readonly number[])[] = [
 
 /** Presence ticks (in %) for the window [lo, hi] (in %). */
 export function sqrtTicks(lo: number, hi: number): number[] {
-  let inRange: number[] = []
+  const inside = (t: number) => t >= lo - 1e-9 && t <= hi + 1e-9
   for (const stops of PRESENCE_STOPS) {
-    inRange = stops.filter(t => t >= lo - 1e-9 && t <= hi + 1e-9)
+    const inRange = stops.filter(inside)
     if (inRange.length >= 3) return inRange
   }
-  return inRange
+  // Fallback: the window's quarter points, even in √ space like the axis,
+  // rounded to whole percents from 10% up and to one decimal below.
+  const u0 = Math.sqrt(lo)
+  const du = (Math.sqrt(hi) - u0) / 4
+  const ticks = [1, 2, 3].map(i => {
+    const t = (u0 + i * du) ** 2
+    return t >= 10 ? Math.round(t) : Math.round(t * 10) / 10
+  })
+  return [...new Set(ticks)].filter(inside)
 }

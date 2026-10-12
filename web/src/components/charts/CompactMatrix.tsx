@@ -7,6 +7,7 @@ import { ArtCrop } from '@/components/ArtCrop'
 import { ciText, inkFill, pctI, rec } from '@/lib/ink'
 import { cn } from '@/lib/utils'
 import type {
+  ArchetypeSlug,
   MatchupCellDTO,
   MatrixDTO,
   MatrixOrderEntryDTO,
@@ -31,7 +32,29 @@ export type CompactMatrixProps = {
   rowHref?: Record<string, string>
 }
 
-type Sel = { r: number; c: number }
+/** The tapped cell, held by archetype rather than position: a lens change
+ *  swaps `order` under the mounted grid (client navigation keeps state). */
+export type Sel = { row: ArchetypeSlug; col: ArchetypeSlug }
+
+export type ResolvedPick = {
+  r: number
+  c: number
+  row: MatrixOrderEntryDTO
+  col: MatrixOrderEntryDTO
+}
+
+/** Where the pick sits in the current order; null when nothing is picked or
+ *  either archetype has left the grid. Pure. */
+export function resolvePick(
+  order: readonly MatrixOrderEntryDTO[],
+  sel: Sel | null
+): ResolvedPick | null {
+  if (!sel) return null
+  const r = order.findIndex(o => o.slug === sel.row)
+  const c = order.findIndex(o => o.slug === sel.col)
+  if (r < 0 || c < 0) return null
+  return { r, c, row: order[r], col: order[c] }
+}
 
 /** Head art: fills its grid slot like a small card; a gold ring marks the
  *  row/column of the tapped cell. The name rides in sr-only text beside it. */
@@ -69,7 +92,7 @@ function recordText(cell: MatchupCellDTO): string {
 
 export function CompactMatrix({ data, rowHref }: CompactMatrixProps) {
   const { order, cells } = data
-  const [pick, setPick] = React.useState<Sel | null>(null)
+  const [sel, setSel] = React.useState<Sel | null>(null)
 
   const cellBy = React.useMemo(() => {
     const m = new Map<string, MatchupCellDTO>()
@@ -80,11 +103,12 @@ export function CompactMatrix({ data, rowHref }: CompactMatrixProps) {
   const n = order.length
   const gridTemplateColumns = `30px repeat(${n}, minmax(24px, 1fr))`
 
+  const pick = resolvePick(order, sel)
   const picked = pick
-    ? cellBy.get(`${order[pick.r].slug}|${order[pick.c].slug}`)
+    ? cellBy.get(`${pick.row.slug}|${pick.col.slug}`)
     : undefined
-  const pickedRow = pick ? order[pick.r] : undefined
-  const pickedCol = pick ? order[pick.c] : undefined
+  const pickedRow = pick?.row
+  const pickedCol = pick?.col
 
   return (
     <div>
@@ -143,7 +167,11 @@ export function CompactMatrix({ data, rowHref }: CompactMatrixProps) {
                     aria-label={`${rowEntry.name} vs ${col.name}: ${
                       low ? 'too few games' : pctI(cell?.wr ?? 0)
                     }`}
-                    onClick={() => setPick(selected ? null : { r, c })}
+                    onClick={() =>
+                      setSel(
+                        selected ? null : { row: rowEntry.slug, col: col.slug }
+                      )
+                    }
                     className={cn(
                       'data relative grid h-[30px] cursor-pointer place-content-center text-[10.5px] font-bold tabular-nums sm:h-[40px] sm:text-[12.5px]',
                       'outline-none focus-visible:z-[3] focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--gold)]',

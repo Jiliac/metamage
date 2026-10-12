@@ -113,4 +113,22 @@ describe('sqrtTicks', () => {
     expect(sqrtTicks(0, 20)).toEqual([1, 5, 10, 15, 20])
     expect(sqrtTicks(1.5, 6.5)).toEqual([2, 3, 4, 5, 6])
   })
+
+  it('still labels a window past the last readable stop', () => {
+    // Zoomed onto a ~25% archetype: no stop list has three ticks in range.
+    for (const [lo, hi] of [
+      [21.8, 28.4],
+      [26, 30],
+      [16, 23],
+    ]) {
+      const ticks = sqrtTicks(lo, hi)
+      expect(ticks.length).toBeGreaterThanOrEqual(3)
+      expect(ticks.every(t => t >= lo && t <= hi)).toBe(true)
+      expect([...ticks].sort((a, b) => a - b)).toEqual(ticks)
+    }
+  })
+
+  it('evens out a narrow low-presence window to one decimal', () => {
+    expect(sqrtTicks(0.3, 0.7)).toEqual([0.4, 0.5, 0.6])
+  })
 })
