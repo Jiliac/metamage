@@ -16,36 +16,42 @@ import {
 
 import { ManaPips } from '@/components/ManaPips'
 import { useIsDesktop } from '@/hooks/useMediaQuery'
+import { usePlotZoom } from '@/hooks/usePlotZoom'
+import { niceTicks, sqrtTicks } from '@/lib/zoom'
 import { cn } from '@/lib/utils'
-import { wrPolarity, type WrPolarity } from '@/lib/stats'
 import type { ArchetypeRowDTO } from '@/datasource/types'
 
 // ---------------------------------------------------------------------------
 // WrPresenceScatter (blueprint §4) — a genuinely 2D encoding, so Recharts.
 // x = metagame presence on a √ scale; y = win rate. Dots are NUMBERED by the
-// archetype's presence rank (identity, §9 rule 3) and colored by where the 95%
-// CI sits relative to 50% (--good above / --bad below / --mid straddling — never
-// raw red/green). A plain <ol> side legend carries rank dot + name + ManaPips.
+// archetype's presence rank (identity, §9 rule 3) and colored on a continuous
+// ramp by win rate: --bad at the bottom of the band, --good at the top, mixed
+// in between (never raw red/green). A plain <ol> legend carries rank dot +
+// name + ManaPips. The plot zooms (usePlotZoom): pinch or ctrl-scroll to
+// spread a crowded pack, drag to pan, double-tap or Reset to go back; dots
+// keep their size, so a zoom separates them instead of magnifying them.
 // ---------------------------------------------------------------------------
 
-const POLE_VAR: Record<WrPolarity, string> = {
-  good: 'var(--good)',
-  bad: 'var(--bad)',
-  mid: 'var(--mid)',
+/** Win-rate band the ramp spans: at or below 42% is full --bad, at or above
+ *  58% full --good. The ramp runs through --gold at 50%, so the midpoint stays
+ *  warm rather than the grey a straight --bad→--good mix passes through. */
+const RAMP_LO = 42
+const RAMP_HI = 58
+
+/** Continuous dot fill for a win rate in percent: --bad → --gold → --good. */
+function rampFill(wrPct: number): string {
+  const t = Math.max(0, Math.min(1, (wrPct - RAMP_LO) / (RAMP_HI - RAMP_LO)))
+  return t < 0.5
+    ? `color-mix(in oklab, var(--gold) ${(t * 200).toFixed(0)}%, var(--bad))`
+    : `color-mix(in oklab, var(--good) ${((t - 0.5) * 200).toFixed(0)}%, var(--gold))`
 }
 
-// Rank badge paint per polarity. Pole fills carry `--bg` numerals (≥4.9:1 in
-// both themes); the neutral grey cannot, so the "mid" badge is an ink numeral
-// on the raised surface with a grey ring — same silhouette, legible figure.
-const BADGE_STYLE: Record<WrPolarity, React.CSSProperties> = {
-  good: { background: 'var(--good)', color: 'var(--bg)' },
-  bad: { background: 'var(--bad)', color: 'var(--bg)' },
-  mid: {
-    background: 'var(--raised)',
-    color: 'var(--ink)',
-    boxShadow: '0 0 0 1px var(--mid)',
-  },
-}
+// Every ramp stop (--bad, --gold, --good) carries `--bg` numerals in both
+// themes.
+const badgeStyle = (wrPct: number): React.CSSProperties => ({
+  background: rampFill(wrPct),
+  color: 'var(--bg)',
+})
 
 type ScatterDatum = {
   x: number // presence %, 0..100
@@ -57,7 +63,6 @@ type ScatterDatum = {
   matches: number
   wrLo: number
   wrHi: number
-  pol: WrPolarity
   href?: string
 }
 
@@ -66,9 +71,11 @@ type DotShapeProps = {
   cy?: number
   payload?: ScatterDatum
   onNavigate?: (href: string) => void
+  /** Phone sizing: smaller dots so the pack overlaps less. */
+  compact?: boolean
 }
 
-function NumberedDot({ cx, cy, payload, onNavigate }: DotShapeProps) {
+function NumberedDot({ cx, cy, payload, onNavigate, compact }: DotShapeProps) {
   if (cx == null || cy == null || !payload) return null
   const href = payload.href
   const dot = (
@@ -76,17 +83,17 @@ function NumberedDot({ cx, cy, payload, onNavigate }: DotShapeProps) {
       <circle
         cx={cx}
         cy={cy}
-        r={12}
-        fill={payload.pol === 'mid' ? 'var(--raised)' : POLE_VAR[payload.pol]}
-        stroke={payload.pol === 'mid' ? 'var(--mid)' : 'var(--surface)'}
-        strokeWidth={2}
+        r={compact ? 9 : 12}
+        fill={rampFill(payload.y)}
+        stroke="var(--surface)"
+        strokeWidth={compact ? 1.5 : 2}
       />
       <text
         x={cx}
-        y={cy + 4}
+        y={cy + (compact ? 3.5 : 4)}
         textAnchor="middle"
-        fill={payload.pol === 'mid' ? 'var(--ink)' : 'var(--bg)'}
-        fontSize={11}
+        fill="var(--bg)"
+        fontSize={compact ? 9.5 : 11}
         fontWeight={700}
         style={{ fontFamily: 'var(--font-mono)', pointerEvents: 'none' }}
       >
@@ -171,7 +178,6 @@ export function WrPresenceScatter({
           matches: r.matches,
           wrLo: r.wrLo,
           wrHi: r.wrHi,
-          pol: wrPolarity(r.wrLo, r.wrHi),
           href: rowHref?.[String(r.slug)],
         })),
     [rows, minMatches, rowHref]
@@ -195,8 +201,24 @@ export function WrPresenceScatter({
 
   const xTicks = [1, 5, 10, 15, 20, 25, 30].filter(t => t <= xMax)
 
-  // Fixed desktop height at ≥md, shorter below; SSR assumes desktop.
-  const chartHeight = useIsDesktop() ? 430 : 300
+  // Zoom works in the x axis's √ space so a pinch is even on screen.
+  const full = React.useMemo(
+    () => ({ u0: 0, u1: Math.sqrt(xMax), y0: yMin, y1: yMax }),
+    [xMax, yMin, yMax]
+  )
+  const minSpan = React.useMemo(() => ({ u: full.u1 * 0.12, y: 3 }), [full.u1])
+  const zoom = usePlotZoom(full, minSpan)
+  const v = zoom.view
+  const xDomain: [number, number] = zoom.zoomed
+    ? [v.u0 * v.u0, v.u1 * v.u1]
+    : [0, xMax]
+  const yDomain: [number, number] = zoom.zoomed ? [v.y0, v.y1] : [yMin, yMax]
+  const pctTick = (t: number) => `${Number.isInteger(t) ? t : t.toFixed(1)}%`
+
+  // Fixed desktop height at ≥md, shorter below; SSR assumes desktop. Phones
+  // also get smaller dots and slimmer margins so the pack spreads out.
+  const isDesktop = useIsDesktop()
+  const chartHeight = isDesktop ? 430 : 340
 
   return (
     <div
@@ -210,85 +232,122 @@ export function WrPresenceScatter({
           '.mm-scatter-link:focus{outline:none}.mm-scatter-link:focus-visible circle{stroke:var(--gold);stroke-width:3}@media (prefers-reduced-motion: no-preference){.mm-scatter-dot{animation:mm-pop .45s cubic-bezier(.16,1,.3,1) backwards}@keyframes mm-pop{from{opacity:0;transform:scale(.6)}}}'
         }
       </style>
-      <div className="border-b border-line px-4 py-3 md:border-b-0 md:border-r md:py-4">
-        <ol className="m-0 list-none p-0 text-[12.5px]">
+      <div className="relative p-3 max-md:px-1 max-md:pb-1 md:col-start-2 md:row-start-1">
+        {zoom.zoomed && (
+          <button
+            type="button"
+            onClick={zoom.reset}
+            className="border-gold-soft text-gold hover:bg-gold-wash bg-surface absolute top-3 right-4 z-10 border px-2.5 py-1 text-[12px]"
+          >
+            Reset zoom
+          </button>
+        )}
+        <div {...zoom.bind} className="select-none">
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <ScatterChart
+              margin={
+                isDesktop
+                  ? { top: 16, right: 18, bottom: 24, left: 4 }
+                  : { top: 10, right: 12, bottom: 22, left: 0 }
+              }
+            >
+              <CartesianGrid stroke="var(--line)" />
+              <XAxis
+                type="number"
+                dataKey="x"
+                scale="sqrt"
+                domain={xDomain}
+                allowDataOverflow
+                ticks={zoom.zoomed ? sqrtTicks(...xDomain) : xTicks}
+                tickFormatter={pctTick}
+                tick={{ fill: 'var(--ink-3)', fontSize: 11 }}
+                stroke="var(--line)"
+                label={{
+                  value: 'PRESENCE · √ SCALE',
+                  position: 'bottom',
+                  offset: 8,
+                  style: {
+                    fill: 'var(--ink-2)',
+                    fontSize: 11,
+                    letterSpacing: '0.1em',
+                  },
+                }}
+              />
+              <YAxis
+                type="number"
+                dataKey="y"
+                domain={yDomain}
+                allowDataOverflow
+                ticks={zoom.zoomed ? niceTicks(...yDomain) : undefined}
+                tickFormatter={pctTick}
+                tick={{ fill: 'var(--ink-3)', fontSize: 11 }}
+                stroke="var(--line)"
+                width={isDesktop ? 44 : 36}
+              />
+              <ReferenceLine
+                y={50}
+                stroke="var(--ref)"
+                strokeDasharray="7 5"
+                strokeWidth={1.5}
+              />
+              <Tooltip
+                cursor={{ stroke: 'var(--line-strong)' }}
+                content={<ScatterTip />}
+              />
+              <Scatter
+                data={points}
+                shape={
+                  <NumberedDot
+                    onNavigate={href => router.push(href)}
+                    compact={!isDesktop}
+                  />
+                }
+                isAnimationActive={false}
+              />
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>
+        <p className="text-ink-3 pt-1 text-center text-[11.5px]">
+          {isDesktop
+            ? 'Pinch the trackpad or ctrl-scroll to zoom · drag to pan · double-click to reset'
+            : 'Pinch to zoom · drag to pan · double-tap to reset'}
+        </p>
+      </div>
+      {/* Legend: after the chart in the DOM, so focus meets the plot first at
+          every width; grid-placed into the left column at md+, and below it
+          follows the chart as a two-column key. */}
+      <div className="border-t border-line px-4 py-3 md:col-start-1 md:row-start-1 md:border-t-0 md:border-r md:py-4">
+        <ol className="m-0 grid list-none grid-cols-2 gap-x-4 p-0 text-[12.5px] md:grid-cols-1">
           {legend.map(d => (
             <li
               key={d.slug}
-              className="flex items-center gap-2 py-2 md:py-[3.5px]"
+              className="flex min-w-0 items-center gap-2 py-1.5 md:py-[3.5px]"
             >
               <span
                 className="data grid size-[19px] flex-none place-items-center rounded-full text-[11px] font-bold"
-                style={BADGE_STYLE[d.pol]}
+                style={badgeStyle(d.y)}
               >
                 {d.rank}
               </span>
               {d.href ? (
                 <Link
                   href={d.href}
-                  className="text-ink-2 no-underline hover:text-gold hover:underline"
+                  className="min-w-0 text-ink-2 no-underline hover:text-gold hover:underline max-md:truncate"
                   style={{ textUnderlineOffset: 3 }}
                 >
                   {d.name}
                 </Link>
               ) : (
-                <span>{d.name}</span>
+                <span className="min-w-0 max-md:truncate">{d.name}</span>
               )}
-              <ManaPips colors={d.color} size={13} />
+              <ManaPips
+                colors={d.color}
+                size={13}
+                className="flex-none max-sm:hidden"
+              />
             </li>
           ))}
         </ol>
-      </div>
-      <div className="p-3">
-        <ResponsiveContainer width="100%" height={chartHeight}>
-          <ScatterChart margin={{ top: 16, right: 18, bottom: 24, left: 4 }}>
-            <CartesianGrid stroke="var(--line)" />
-            <XAxis
-              type="number"
-              dataKey="x"
-              scale="sqrt"
-              domain={[0, xMax]}
-              ticks={xTicks}
-              tickFormatter={v => `${v}%`}
-              tick={{ fill: 'var(--ink-3)', fontSize: 11 }}
-              stroke="var(--line)"
-              label={{
-                value: 'PRESENCE · √ SCALE',
-                position: 'bottom',
-                offset: 8,
-                style: {
-                  fill: 'var(--ink-2)',
-                  fontSize: 11,
-                  letterSpacing: '0.1em',
-                },
-              }}
-            />
-            <YAxis
-              type="number"
-              dataKey="y"
-              domain={[yMin, yMax]}
-              tickFormatter={v => `${v}%`}
-              tick={{ fill: 'var(--ink-3)', fontSize: 11 }}
-              stroke="var(--line)"
-              width={44}
-            />
-            <ReferenceLine
-              y={50}
-              stroke="var(--ref)"
-              strokeDasharray="7 5"
-              strokeWidth={1.5}
-            />
-            <Tooltip
-              cursor={{ stroke: 'var(--line-strong)' }}
-              content={<ScatterTip />}
-            />
-            <Scatter
-              data={points}
-              shape={<NumberedDot onNavigate={href => router.push(href)} />}
-              isAnimationActive={false}
-            />
-          </ScatterChart>
-        </ResponsiveContainer>
       </div>
     </div>
   )

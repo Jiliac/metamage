@@ -173,7 +173,7 @@ export function eventStats(
   standings: readonly StandingDTO[],
   matchups: readonly EventMatchupDTO[],
   date: IsoDate,
-  opts: { matrixTopN?: number } = {}
+  opts: EventMatrixOpts = {}
 ): EventStats {
   const total = standings.length
   const byArch = new Map<string, Omit<EventFieldRow, 'presenceRank'>>()
@@ -210,6 +210,13 @@ export function eventStats(
   return { field, matrix: eventMatrix(field, matchups, date, opts) }
 }
 
+export type EventMatrixOpts = {
+  matrixTopN?: number
+  /** Signature-card art for an archetype name (the page passes the static art
+   *  map lookup); absent → the matrix heads fall back to the mana gradient. */
+  artFor?: (name: string) => MatrixOrderEntryDTO['art']
+}
+
 type Totals = { w: number; l: number; d: number }
 
 /** Each row archetype's summed record across the event's matchup rows. */
@@ -230,7 +237,7 @@ function eventMatrix(
   field: readonly EventFieldRow[],
   matchups: readonly EventMatchupDTO[],
   date: IsoDate,
-  opts: { matrixTopN?: number }
+  opts: EventMatrixOpts
 ): MatrixDTO {
   const totals = rowTotals(matchups)
   const games = (slug: string) => {
@@ -252,6 +259,7 @@ function eventMatrix(
       share: r.share,
       matches: t.w + t.l + t.d,
       presenceRank: r.presenceRank,
+      art: opts.artFor?.(r.name) ?? null,
     }
   })
 

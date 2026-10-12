@@ -837,6 +837,7 @@ export class FixtureDataSource implements MetaDataSource {
       share: r.share,
       matches: r.matches,
       presenceRank: rankMap.get(r.slug) ?? 0,
+      art: r.art,
     }))
 
     const cells: MatchupCellDTO[] = []

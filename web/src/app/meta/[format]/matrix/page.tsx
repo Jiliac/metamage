@@ -6,12 +6,7 @@ import { getDataSource } from '@/datasource'
 import { platformScope } from '@/datasource/platform'
 import { isAllFormats } from '@/datasource/format-order'
 import type { ArchetypeRef, FormatDTO, MatrixDTO } from '@/datasource/types'
-import {
-  buildHref,
-  parseMetaQuery,
-  parseMatrixTopN,
-  parseRow,
-} from '@/lib/params'
+import { buildHref, parseMetaQuery, parseMatrixTopN } from '@/lib/params'
 import { buildPageMetadata } from '@/lib/seo'
 
 import { LensBar } from '@/components/LensBar/LensBar'
@@ -131,10 +126,9 @@ export default async function MatrixPage({
                 'linear-gradient(160deg, var(--gold-soft), var(--line-strong) 40%, var(--gold-soft))',
             }}
           >
-            <div className="clip-notch-lg bg-surface p-5">
+            <div className="clip-notch-lg bg-surface p-2 sm:p-5">
               <MatchupSurface
                 matrix={matrix}
-                row={parseRow(sp, matrix.order)}
                 hrefFor={slug =>
                   buildHref(query.format, query, { path: `/archetype/${slug}` })
                 }
