@@ -2368,6 +2368,10 @@
         "cardName": "delver of secrets // insectile aberration",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/6/9/6904ea20-e504-47da-95a0-08739fdde260.jpg?1783908173"
       },
+      "jeskai-energy": {
+        "cardName": "amped raptor",
+        "artCropUrl": "https://cards.scryfall.io/art_crop/front/1/a/1ac0e78b-0fdd-44f9-8b7b-c4f28a32782e.jpg?1783911274"
+      },
       "jeskai-mentor": {
         "cardName": "monastery mentor",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/2/3/2343e69d-f30e-4826-953c-fbf31c6079e6.jpg?1783907121"
@@ -2532,6 +2536,10 @@
         "cardName": "pinnacle emissary",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/3/c/3c922347-f05f-40a4-bbee-6bc02a1e0de5.jpg?1783905924"
       },
+      "mono-blue-arclight-phoenix": {
+        "cardName": "darklight phoenix",
+        "artCropUrl": "https://cards.scryfall.io/art_crop/front/e/c/ec454979-3839-4be3-a34a-9d25482948ba.jpg?1789470810"
+      },
       "mono-blue-delver": {
         "cardName": "delver of secrets // insectile aberration",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/6/9/6904ea20-e504-47da-95a0-08739fdde260.jpg?1783908173"
@@ -2572,6 +2580,10 @@
         "cardName": "chrome mox",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/f/3/f340cbf7-5bbe-45b9-a4bf-d1caa500ff93.jpg?1783930116"
       },
+      "mono-white-energy": {
+        "cardName": "ajani resolute",
+        "artCropUrl": "https://cards.scryfall.io/art_crop/front/a/5/a5e1a7dd-8c49-4435-935c-bcc78704082b.jpg?1788329189"
+      },
       "mono-white-hammer": {
         "cardName": "colossus hammer",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/8/9/897a134e-7e61-4fe1-bbae-23ef1fe5c0cf.jpg?1783926175"
@@ -2595,6 +2607,10 @@
       "mono-white-stompy": {
         "cardName": "archon of emeria",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/2/2/228c1650-da3c-4099-91b6-18e3873c9cdb.jpg?1783929424"
+      },
+      "mono-white-stoneblade": {
+        "cardName": "metalwork colossus",
+        "artCropUrl": "https://cards.scryfall.io/art_crop/front/d/7/d7e2d686-1fbc-449a-9af4-f00a71ff7911.jpg?1783903217"
       },
       "mortality-combo": {
         "cardName": "shadow of mortality",
@@ -2827,6 +2843,10 @@
       "sultai-control": {
         "cardName": "baleful strix",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/b/e/be8439e6-f779-49f0-806a-b04995697a6a.jpg?1783911902"
+      },
+      "sultai-cradle-control": {
+        "cardName": "marwyn, the preserver",
+        "artCropUrl": "https://cards.scryfall.io/art_crop/front/9/0/90f33f99-7bc5-42e1-815e-bfb4c2b74107.jpg?1789644564"
       },
       "sultai-delver": {
         "cardName": "fatal push",
@@ -3322,6 +3342,10 @@
         "cardName": "psychic frog",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/6/8/68924203-c3d9-41ce-8ca8-c6dd491eb3ca.jpg?1783911246"
       },
+      "dimir-graveyard": {
+        "cardName": "seasoned cryomancer",
+        "artCropUrl": "https://cards.scryfall.io/art_crop/front/5/1/51d86875-420d-4e82-b69c-4feeb99c9428.jpg?1789470781"
+      },
       "dimir-midrange": {
         "cardName": "fatal push",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/6/e/6e9d8fe4-fd9b-4923-92bf-7dd6b8fa02e7.jpg?1783930180"
@@ -3673,6 +3697,10 @@
       "jeskai-humans": {
         "cardName": "thalia's lieutenant",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/9/c/9c2000ef-3e6b-4f44-8bd6-ed8119336d5a.jpg?1783931193"
+      },
+      "jeskai-loki": {
+        "cardName": "oswald fiddlebender",
+        "artCropUrl": "https://cards.scryfall.io/art_crop/front/b/b/bba1650f-eddf-49a9-820e-489cb8d5b6fa.jpg?1783926527"
       },
       "jeskai-midrange": {
         "cardName": "helping hand",
@@ -4680,6 +4708,10 @@
         "cardName": "glint hawk",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/2/8/284c4710-4183-4743-9c8b-515cc98cbbb8.jpg?1783941745"
       },
+      "esper-pestilence": {
+        "cardName": "pestilence",
+        "artCropUrl": "https://cards.scryfall.io/art_crop/front/2/9/29d852c4-bd53-4a3b-b1e2-896917cbc27f.jpg?1783946180"
+      },
       "faeries": {
         "cardName": "humbling elder",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/3/a/3a84c3f8-0030-4653-880e-b2d19272f5fa.jpg?1783907393"
@@ -5152,6 +5184,10 @@
         "cardName": "ephemerate",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/2/d/2da5f3f8-5eef-498f-ba2c-2f3fbc3745aa.jpg?1783933164"
       },
+      "selesnya-garden": {
+        "cardName": "unflinching hortimancer",
+        "artCropUrl": "https://cards.scryfall.io/art_crop/front/6/3/63f82985-c9c2-4d0a-ac4f-560166bebd9f.jpg?1789556741"
+      },
       "selesnya-initiative": {
         "cardName": "goliath paladin",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/a/b/ab8324aa-f356-42bc-9664-46803bc8a93b.jpg?1783922814"
@@ -5204,6 +5240,10 @@
         "cardName": "slime against humanity",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/1/e/1eb21318-d32e-4724-8908-c0d7613de2f4.jpg?1783912861"
       },
+      "simic-terror": {
+        "cardName": "tolarian terror",
+        "artCropUrl": "https://cards.scryfall.io/art_crop/front/2/5/2569d4f3-55ed-4f99-9592-34c7df0aab72.jpg?1783909076"
+      },
       "slivers": {
         "cardName": "sinew sliver",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/1/e/1ecc983e-bbe3-4bc1-97e9-e40ead987ef0.jpg?1783915445"
@@ -5235,6 +5275,10 @@
       "sultai-midrange": {
         "cardName": "banishing knack",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/3/7/371a769a-ddae-47f6-b2c2-957de5c18417.jpg?1783942692"
+      },
+      "sultai-pestilence": {
+        "cardName": "pestilence",
+        "artCropUrl": "https://cards.scryfall.io/art_crop/front/2/9/29d852c4-bd53-4a3b-b1e2-896917cbc27f.jpg?1783946180"
       },
       "sultai-proliferate-poison": {
         "cardName": "pentad prism",
@@ -5299,6 +5343,14 @@
       "ubrg-affinity": {
         "cardName": "deadly dispute",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/d/8/d86fa72c-25c1-43ef-9cb0-fe76f7568ed3.jpg?1783903013"
+      },
+      "ubrg-control": {
+        "cardName": "stickytongue sentinel",
+        "artCropUrl": "https://cards.scryfall.io/art_crop/front/b/5/b5fa9651-b217-4f93-9c46-9bdb11feedcb.jpg?1783910804"
+      },
+      "ubrg-midrange": {
+        "cardName": "terminate",
+        "artCropUrl": "https://cards.scryfall.io/art_crop/front/3/7/379ffc67-4142-4ead-a871-0f851523745e.jpg?1783903230"
       },
       "ubrg-proliferate-poison": {
         "cardName": "pentad prism",
@@ -6252,6 +6304,10 @@
       }
     },
     "standard": {
+      "4c-control": {
+        "cardName": "inevitable defeat",
+        "artCropUrl": "https://cards.scryfall.io/art_crop/front/9/d/9d677980-b608-407e-9f17-790a81263f15.jpg?1783907309"
+      },
       "5-color-aggro": {
         "cardName": "serah farron // crystallized serah",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/6/2/62fa74c0-43ae-445c-8039-ca9d00e9709a.jpg?1783906569"
@@ -6716,6 +6772,10 @@
         "cardName": "quantum riddler",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/1/2/120be808-ff3b-4fca-96a1-4db6b9825856.jpg?1783905977"
       },
+      "grixis-sacrifice": {
+        "cardName": "gleaming geardrake",
+        "artCropUrl": "https://cards.scryfall.io/art_crop/front/c/a/cabb5875-42ff-4e3a-a32e-aab392fccff8.jpg?1783912848"
+      },
       "gruul-aggro": {
         "cardName": "callous sell-sword // burn together",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/7/7/770ee3da-d33e-466f-9a2e-ad2d08ef5012.jpg?1783915066"
@@ -6727,6 +6787,10 @@
       "gruul-delirium": {
         "cardName": "patchwork beastie",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/8/9/895de583-36d2-43fd-927f-8876d4302c73.jpg?1783909450"
+      },
+      "gruul-elementals": {
+        "cardName": "noggle robber",
+        "artCropUrl": "https://cards.scryfall.io/art_crop/front/0/0/0082ca96-10f3-4823-be16-117556b2afc3.jpg?1783904408"
       },
       "gruul-landfall": {
         "cardName": "sazh's chocobo",
@@ -6907,6 +6971,10 @@
       "jund-blade": {
         "cardName": "tithing blade // consuming sepulcher",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/d/b/dbaa9a2d-e9fd-4746-a26c-f99ae731f024.jpg?1783913774"
+      },
+      "jund-control": {
+        "cardName": "sanctum lurker",
+        "artCropUrl": "https://cards.scryfall.io/art_crop/front/2/1/2185c08f-bb4d-49d5-8b6c-c629a48bb61c.jpg?1789556729"
       },
       "jund-cub": {
         "cardName": "badgermole cub",
@@ -7183,6 +7251,10 @@
       "naya-landfall": {
         "cardName": "sazh's chocobo",
         "artCropUrl": "https://cards.scryfall.io/art_crop/front/d/d/dda6b4d0-1b60-46b0-b321-b9ffe15afff4.jpg?1783906582"
+      },
+      "naya-manufacturing": {
+        "cardName": "weapons manufacturing",
+        "artCropUrl": "https://cards.scryfall.io/art_crop/front/a/0/a058f1a6-318c-4bba-981e-ace079ada806.jpg?1783905943"
       },
       "naya-midrange": {
         "cardName": "elspeth, storm slayer",
