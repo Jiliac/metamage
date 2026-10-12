@@ -22,23 +22,31 @@ export function MatrixSkeleton({
     <div aria-hidden>
       {/* compact variant — matches CompactMatrix proportions */}
       <div className="matrix:hidden">
-        <div
-          className="grid gap-px"
-          style={{
-            gridTemplateColumns: `30px repeat(${n}, minmax(24px, 1fr))`,
-          }}
-        >
-          <div className="h-[38px] sm:h-[48px]" />
-          {Array.from({ length: n }, (_, i) => (
-            <div key={`ch-${i}`} className="h-[38px] sm:h-[48px]" />
-          ))}
-          {Array.from({ length: n * (n + 1) }, (_, i) =>
-            i % (n + 1) === 0 ? (
-              <div key={`cc-${i}`} />
-            ) : (
-              <div key={`cc-${i}`} className="h-[30px] bg-raised sm:h-[40px]" />
-            )
-          )}
+        {/* Same scroller and min width as the live grid, so a wide `?n`
+            scrolls in the frame instead of widening the page. */}
+        <div className="overflow-x-auto">
+          <div
+            className="grid gap-px"
+            style={{
+              gridTemplateColumns: `30px repeat(${n}, minmax(24px, 1fr))`,
+              minWidth: 30 + n * 25,
+            }}
+          >
+            <div className="h-[38px] sm:h-[48px]" />
+            {Array.from({ length: n }, (_, i) => (
+              <div key={`ch-${i}`} className="h-[38px] sm:h-[48px]" />
+            ))}
+            {Array.from({ length: n * (n + 1) }, (_, i) =>
+              i % (n + 1) === 0 ? (
+                <div key={`cc-${i}`} />
+              ) : (
+                <div
+                  key={`cc-${i}`}
+                  className="h-[30px] bg-raised sm:h-[40px]"
+                />
+              )
+            )}
+          </div>
         </div>
         <div className="mt-3 h-[60px]" />
         <div
