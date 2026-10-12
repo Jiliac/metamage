@@ -193,7 +193,9 @@ function withCache(inner: MetaDataSource): MetaDataSource {
     getMatchupMatrix: unstable_cache(
       (q: MetaQuery & { matrixTopN: number }): Promise<MatrixDTO> =>
         inner.getMatchupMatrix(q),
-      ['getMatchupMatrix'],
+      // v2: MatrixOrderEntryDTO gained `art`; a new key keeps entries cached
+      // before that change (the Data Cache outlives deploys) from serving.
+      ['getMatchupMatrix', 'v2'],
       { revalidate: HOUR, tags: ['matrix'] }
     ),
 

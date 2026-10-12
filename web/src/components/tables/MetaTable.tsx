@@ -41,13 +41,15 @@ const SORTABLE = new Set(['rank', 'share', 'wrlo', 'matches'])
 // second lines, so each fact renders exactly once at every width (KTD6) and
 // the phone table fits without a sideways scroll.
 const HIDE_BELOW_MD: Record<string, true> = {
+  // The rank number gives way to the art thumb in the name cell (identity).
+  rank: true,
   share: true,
   ci: true,
   record: true,
 }
 // Phone cells: tighter gutters, and the pinned columns unpin (nothing scrolls
 // sideways once the table fits, and the 58px offset would misalign them).
-const CELL_PAD = 'px-2 md:px-3.5'
+const CELL_PAD = 'px-1.5 md:px-3.5'
 const UNPIN_BELOW_MD = 'max-md:static'
 
 const recordText = (r: ArchetypeRowDTO) =>
@@ -116,11 +118,12 @@ function NameCell({
     path: `/archetype/${row.slug}`,
   })
   return (
-    <div className="flex items-center gap-2.5 max-sm:flex-col-reverse max-sm:items-start max-sm:gap-1">
+    <div className="flex items-center gap-2 sm:gap-2.5">
       {/* Signature-card thumb (same art + mana-gradient fallback as DeckTile).
-          Hidden below `sm` so the table doesn't get wider on phones. */}
+          On phones it stands in for the hidden `#` column as the row's
+          identity, so it shows at every width. */}
       <span
-        className="border-line-strong bg-raised relative hidden aspect-[626/457] h-10 flex-none overflow-hidden rounded-[4px] border sm:block"
+        className="border-line-strong bg-raised relative aspect-[626/457] h-8 flex-none overflow-hidden rounded-[4px] border sm:h-10"
         aria-hidden
       >
         <ArtCrop
@@ -131,21 +134,24 @@ function NameCell({
           sizes="55px"
         />
       </span>
-      <ManaPips colors={row.color} size={13} className="sm:hidden" />
-      <ManaPips colors={row.color} className="max-sm:hidden" />
-      {row.isBucket ? (
-        <span className="text-ink-3 inline-flex items-center gap-2 font-semibold">
-          {row.name}
-          <BucketBadge kind={row.slug} />
-        </span>
-      ) : (
-        <Link
-          href={href}
-          className="text-ink hover:text-gold leading-snug font-semibold hover:underline hover:underline-offset-[3px] max-md:inline-flex max-md:min-h-[28px] max-md:items-center"
-        >
-          {row.name}
-        </Link>
-      )}
+      {/* Pips + name: side by side from `sm`, name over pips on phones. */}
+      <div className="flex min-w-0 items-center gap-2.5 max-sm:flex-col-reverse max-sm:items-start max-sm:gap-1">
+        <ManaPips colors={row.color} size={13} className="sm:hidden" />
+        <ManaPips colors={row.color} className="max-sm:hidden" />
+        {row.isBucket ? (
+          <span className="text-ink-3 inline-flex items-center gap-2 font-semibold">
+            {row.name}
+            <BucketBadge kind={row.slug} />
+          </span>
+        ) : (
+          <Link
+            href={href}
+            className="text-ink hover:text-gold leading-snug font-semibold hover:underline hover:underline-offset-[3px] max-md:inline-flex max-md:min-h-[28px] max-md:items-center"
+          >
+            {row.name}
+          </Link>
+        )}
+      </div>
     </div>
   )
 }
@@ -430,7 +436,7 @@ export function MetaTable({
               <tr className="text-ink-3">
                 <td
                   className={cn(
-                    'border-line border-b py-[7px]',
+                    'border-line hidden border-b py-[7px] md:table-cell',
                     CELL_PAD,
                     STICKY_COL_1_STRONG,
                     UNPIN_BELOW_MD

@@ -17,35 +17,37 @@ import {
 import { ManaPips } from '@/components/ManaPips'
 import { useIsDesktop } from '@/hooks/useMediaQuery'
 import { cn } from '@/lib/utils'
-import { wrPolarity, type WrPolarity } from '@/lib/stats'
 import type { ArchetypeRowDTO } from '@/datasource/types'
 
 // ---------------------------------------------------------------------------
 // WrPresenceScatter (blueprint §4) — a genuinely 2D encoding, so Recharts.
 // x = metagame presence on a √ scale; y = win rate. Dots are NUMBERED by the
-// archetype's presence rank (identity, §9 rule 3) and colored by where the 95%
-// CI sits relative to 50% (--good above / --bad below / --mid straddling — never
-// raw red/green). A plain <ol> side legend carries rank dot + name + ManaPips.
+// archetype's presence rank (identity, §9 rule 3) and colored on a continuous
+// ramp by win rate: --bad at the bottom of the band, --good at the top, mixed
+// in between (never raw red/green). A plain <ol> legend carries rank dot +
+// name + ManaPips.
 // ---------------------------------------------------------------------------
 
-const POLE_VAR: Record<WrPolarity, string> = {
-  good: 'var(--good)',
-  bad: 'var(--bad)',
-  mid: 'var(--mid)',
+/** Win-rate band the ramp spans: at or below 42% is full --bad, at or above
+ *  58% full --good. The ramp runs through --gold at 50%, so the midpoint stays
+ *  warm rather than the grey a straight --bad→--good mix passes through. */
+const RAMP_LO = 42
+const RAMP_HI = 58
+
+/** Continuous dot fill for a win rate in percent: --bad → --gold → --good. */
+function rampFill(wrPct: number): string {
+  const t = Math.max(0, Math.min(1, (wrPct - RAMP_LO) / (RAMP_HI - RAMP_LO)))
+  return t < 0.5
+    ? `color-mix(in oklab, var(--gold) ${(t * 200).toFixed(0)}%, var(--bad))`
+    : `color-mix(in oklab, var(--good) ${((t - 0.5) * 200).toFixed(0)}%, var(--gold))`
 }
 
-// Rank badge paint per polarity. Pole fills carry `--bg` numerals (≥4.9:1 in
-// both themes); the neutral grey cannot, so the "mid" badge is an ink numeral
-// on the raised surface with a grey ring — same silhouette, legible figure.
-const BADGE_STYLE: Record<WrPolarity, React.CSSProperties> = {
-  good: { background: 'var(--good)', color: 'var(--bg)' },
-  bad: { background: 'var(--bad)', color: 'var(--bg)' },
-  mid: {
-    background: 'var(--raised)',
-    color: 'var(--ink)',
-    boxShadow: '0 0 0 1px var(--mid)',
-  },
-}
+// Every ramp stop (--bad, --gold, --good) carries `--bg` numerals in both
+// themes.
+const badgeStyle = (wrPct: number): React.CSSProperties => ({
+  background: rampFill(wrPct),
+  color: 'var(--bg)',
+})
 
 type ScatterDatum = {
   x: number // presence %, 0..100
@@ -57,7 +59,6 @@ type ScatterDatum = {
   matches: number
   wrLo: number
   wrHi: number
-  pol: WrPolarity
   href?: string
 }
 
@@ -66,9 +67,11 @@ type DotShapeProps = {
   cy?: number
   payload?: ScatterDatum
   onNavigate?: (href: string) => void
+  /** Phone sizing: smaller dots so the pack overlaps less. */
+  compact?: boolean
 }
 
-function NumberedDot({ cx, cy, payload, onNavigate }: DotShapeProps) {
+function NumberedDot({ cx, cy, payload, onNavigate, compact }: DotShapeProps) {
   if (cx == null || cy == null || !payload) return null
   const href = payload.href
   const dot = (
@@ -76,17 +79,17 @@ function NumberedDot({ cx, cy, payload, onNavigate }: DotShapeProps) {
       <circle
         cx={cx}
         cy={cy}
-        r={12}
-        fill={payload.pol === 'mid' ? 'var(--raised)' : POLE_VAR[payload.pol]}
-        stroke={payload.pol === 'mid' ? 'var(--mid)' : 'var(--surface)'}
-        strokeWidth={2}
+        r={compact ? 9 : 12}
+        fill={rampFill(payload.y)}
+        stroke="var(--surface)"
+        strokeWidth={compact ? 1.5 : 2}
       />
       <text
         x={cx}
-        y={cy + 4}
+        y={cy + (compact ? 3.5 : 4)}
         textAnchor="middle"
-        fill={payload.pol === 'mid' ? 'var(--ink)' : 'var(--bg)'}
-        fontSize={11}
+        fill="var(--bg)"
+        fontSize={compact ? 9.5 : 11}
         fontWeight={700}
         style={{ fontFamily: 'var(--font-mono)', pointerEvents: 'none' }}
       >
@@ -171,7 +174,6 @@ export function WrPresenceScatter({
           matches: r.matches,
           wrLo: r.wrLo,
           wrHi: r.wrHi,
-          pol: wrPolarity(r.wrLo, r.wrHi),
           href: rowHref?.[String(r.slug)],
         })),
     [rows, minMatches, rowHref]
@@ -195,8 +197,10 @@ export function WrPresenceScatter({
 
   const xTicks = [1, 5, 10, 15, 20, 25, 30].filter(t => t <= xMax)
 
-  // Fixed desktop height at ≥md, shorter below; SSR assumes desktop.
-  const chartHeight = useIsDesktop() ? 430 : 300
+  // Fixed desktop height at ≥md, shorter below; SSR assumes desktop. Phones
+  // also get smaller dots and slimmer margins so the pack spreads out.
+  const isDesktop = useIsDesktop()
+  const chartHeight = isDesktop ? 430 : 340
 
   return (
     <div
@@ -221,20 +225,20 @@ export function WrPresenceScatter({
             >
               <span
                 className="data grid size-[19px] flex-none place-items-center rounded-full text-[11px] font-bold"
-                style={BADGE_STYLE[d.pol]}
+                style={badgeStyle(d.y)}
               >
                 {d.rank}
               </span>
               {d.href ? (
                 <Link
                   href={d.href}
-                  className="min-w-0 truncate text-ink-2 no-underline hover:text-gold hover:underline"
+                  className="min-w-0 text-ink-2 no-underline hover:text-gold hover:underline max-md:truncate"
                   style={{ textUnderlineOffset: 3 }}
                 >
                   {d.name}
                 </Link>
               ) : (
-                <span className="min-w-0 truncate">{d.name}</span>
+                <span className="min-w-0 max-md:truncate">{d.name}</span>
               )}
               <ManaPips
                 colors={d.color}
@@ -245,9 +249,15 @@ export function WrPresenceScatter({
           ))}
         </ol>
       </div>
-      <div className="p-3 max-md:order-1">
+      <div className="p-3 max-md:order-1 max-md:px-1 max-md:pb-1">
         <ResponsiveContainer width="100%" height={chartHeight}>
-          <ScatterChart margin={{ top: 16, right: 18, bottom: 24, left: 4 }}>
+          <ScatterChart
+            margin={
+              isDesktop
+                ? { top: 16, right: 18, bottom: 24, left: 4 }
+                : { top: 10, right: 12, bottom: 22, left: 0 }
+            }
+          >
             <CartesianGrid stroke="var(--line)" />
             <XAxis
               type="number"
@@ -276,7 +286,7 @@ export function WrPresenceScatter({
               tickFormatter={v => `${v}%`}
               tick={{ fill: 'var(--ink-3)', fontSize: 11 }}
               stroke="var(--line)"
-              width={44}
+              width={isDesktop ? 44 : 36}
             />
             <ReferenceLine
               y={50}
@@ -290,7 +300,12 @@ export function WrPresenceScatter({
             />
             <Scatter
               data={points}
-              shape={<NumberedDot onNavigate={href => router.push(href)} />}
+              shape={
+                <NumberedDot
+                  onNavigate={href => router.push(href)}
+                  compact={!isDesktop}
+                />
+              }
               isAnimationActive={false}
             />
           </ScatterChart>

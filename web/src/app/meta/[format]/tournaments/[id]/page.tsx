@@ -39,6 +39,7 @@ import { KpiStat } from '@/components/KpiStat'
 import { ManaPips } from '@/components/ManaPips'
 import { Pager } from '@/components/Pager'
 import { MatchupSurface } from '@/components/charts/MatchupSurface'
+import { artFor } from '@/datasource/postgres/naming'
 import { PresenceBars } from '@/components/charts/PresenceBars'
 
 // ---------------------------------------------------------------------------
@@ -183,7 +184,9 @@ function EventBody({
   const t = detail.tournament
   const ranked = rankStandings(detail.standings)
   const standings = ranked.map(r => r.standing)
-  const { field, matrix } = eventStats(standings, detail.matchups, t.date)
+  const { field, matrix } = eventStats(standings, detail.matchups, t.date, {
+    artFor: name => artFor(String(t.format), name),
+  })
   const hrefFor = (slug: string) => archetypeHref(t.format, query, slug, t.date)
 
   const slice = slicePage(ranked, page, STANDINGS_PAGE_SIZE)

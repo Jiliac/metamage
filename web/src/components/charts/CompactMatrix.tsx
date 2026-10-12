@@ -3,19 +3,25 @@
 import * as React from 'react'
 import Link from 'next/link'
 
+import { ArtCrop } from '@/components/ArtCrop'
 import { ciText, inkFill, pctI, rec } from '@/lib/ink'
 import { cn } from '@/lib/utils'
-import type { MatchupCellDTO, MatrixDTO } from '@/datasource/types'
+import type {
+  MatchupCellDTO,
+  MatrixDTO,
+  MatrixOrderEntryDTO,
+} from '@/datasource/types'
 
 // ---------------------------------------------------------------------------
 // CompactMatrix — the N×N grid for phones and touch screens (the `matrix:`
 // seam's narrow side, KTD3). The whole field reads at a glance like the
-// desktop grid, just denser: numbered row and column heads, one integer win
-// rate per cell on the same confidence-as-ink fill (§9 rule 5, `lib/ink`).
-// Nothing is hover-only (R5): tapping a cell fills the readout under the grid
-// with the record and the 95% interval. A numbered legend maps ranks to names
-// and links each archetype. Cells keep a 24px minimum target (WCAG 2.2
-// 2.5.8); past ~13 columns on a phone the grid scrolls with the row heads
+// desktop grid, just denser: each row and column head is the archetype's
+// signature-card art (the same identity as the DeckTiles, §9 rule 3), and each
+// cell one integer win rate on the same confidence-as-ink fill (§9 rule 5,
+// `lib/ink`). Nothing is hover-only (R5): tapping a cell fills the readout
+// under the grid with the names, record and 95% interval. An art legend names
+// each archetype and links it. Cells keep a 24px minimum target (WCAG 2.2
+// 2.5.8); past ~12 columns on a phone the grid scrolls with the row heads
 // pinned.
 // ---------------------------------------------------------------------------
 
@@ -27,14 +33,32 @@ export type CompactMatrixProps = {
 
 type Sel = { r: number; c: number }
 
-function RankChip({ rank, active }: { rank: number; active: boolean }) {
+/** Head art: fills its grid slot like a small card; a gold ring marks the
+ *  row/column of the tapped cell. The name rides in sr-only text beside it. */
+function ArtHead({
+  entry,
+  active,
+  className,
+}: {
+  entry: MatrixOrderEntryDTO
+  active: boolean
+  className?: string
+}) {
   return (
     <span
       aria-hidden
-      className="data grid size-[19px] place-items-center rounded-full text-[10.5px] font-bold text-bg"
-      style={{ background: active ? 'var(--gold)' : 'var(--ink-3)' }}
+      className={cn(
+        'relative block overflow-hidden rounded-[4px] border border-line-strong',
+        active && 'border-gold shadow-[0_0_0_1.5px_var(--gold)]',
+        className
+      )}
     >
-      {rank}
+      <ArtCrop
+        url={entry.art?.artCropUrl ?? null}
+        colors={entry.color}
+        radius={3}
+        sizes="48px"
+      />
     </span>
   )
 }
@@ -54,7 +78,7 @@ export function CompactMatrix({ data, rowHref }: CompactMatrixProps) {
   }, [cells])
 
   const n = order.length
-  const gridTemplateColumns = `22px repeat(${n}, minmax(24px, 1fr))`
+  const gridTemplateColumns = `30px repeat(${n}, minmax(24px, 1fr))`
 
   const picked = pick
     ? cellBy.get(`${order[pick.r].slug}|${order[pick.c].slug}`)
@@ -67,17 +91,17 @@ export function CompactMatrix({ data, rowHref }: CompactMatrixProps) {
       <div className="overflow-x-auto">
         <div
           className="grid gap-px"
-          style={{ gridTemplateColumns, minWidth: 22 + n * 25 }}
+          style={{ gridTemplateColumns, minWidth: 30 + n * 25 }}
         >
           {/* corner */}
           <div className="sticky left-0 z-10 bg-surface" />
           {order.map((col, c) => (
-            <div
-              key={`h-${col.slug}`}
-              className="grid place-items-center pb-1"
-              title={col.name}
-            >
-              <RankChip rank={col.presenceRank} active={pick?.c === c} />
+            <div key={`h-${col.slug}`} className="pb-1" title={col.name}>
+              <ArtHead
+                entry={col}
+                active={pick?.c === c}
+                className="h-[34px] w-full sm:h-[44px]"
+              />
               <span className="sr-only">{col.name}</span>
             </div>
           ))}
@@ -85,10 +109,14 @@ export function CompactMatrix({ data, rowHref }: CompactMatrixProps) {
           {order.map((rowEntry, r) => (
             <React.Fragment key={`r-${rowEntry.slug}`}>
               <div
-                className="sticky left-0 z-10 grid place-items-center bg-surface pr-0.5"
+                className="sticky left-0 z-10 bg-surface pr-[3px]"
                 title={rowEntry.name}
               >
-                <RankChip rank={rowEntry.presenceRank} active={pick?.r === r} />
+                <ArtHead
+                  entry={rowEntry}
+                  active={pick?.r === r}
+                  className="h-full w-full"
+                />
                 <span className="sr-only">{rowEntry.name}</span>
               </div>
               {order.map((col, c) => {
@@ -174,15 +202,17 @@ export function CompactMatrix({ data, rowHref }: CompactMatrixProps) {
         )}
       </div>
 
-      {/* Numbered legend — rank → archetype, linking each detail page. */}
+      {/* Art legend — which card is which archetype, linking each detail page. */}
       <ol className="mt-3 grid list-none grid-cols-2 gap-x-4 border-t border-line p-0 pt-2 text-[12.5px] sm:grid-cols-3">
         {order.map(o => {
           const href = rowHref?.[o.slug]
           return (
             <li key={o.slug} className="flex min-w-0 items-center gap-2">
-              <span className="data w-5 flex-none text-right text-[11px] text-ink-3">
-                {o.presenceRank}
-              </span>
+              <ArtHead
+                entry={o}
+                active={false}
+                className="aspect-[626/457] h-[22px] flex-none"
+              />
               {href ? (
                 <Link
                   href={href}

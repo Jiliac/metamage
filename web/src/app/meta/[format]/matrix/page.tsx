@@ -126,7 +126,7 @@ export default async function MatrixPage({
                 'linear-gradient(160deg, var(--gold-soft), var(--line-strong) 40%, var(--gold-soft))',
             }}
           >
-            <div className="clip-notch-lg bg-surface p-3 sm:p-5">
+            <div className="clip-notch-lg bg-surface p-2 sm:p-5">
               <MatchupSurface
                 matrix={matrix}
                 hrefFor={slug =>

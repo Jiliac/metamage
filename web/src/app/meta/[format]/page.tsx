@@ -395,7 +395,7 @@ export default async function MetaOverviewPage({
               'linear-gradient(160deg, var(--gold-soft), var(--line-strong) 40%, var(--gold-soft))',
           }}
         >
-          <div className="clip-notch-lg bg-surface p-3 sm:p-5">
+          <div className="clip-notch-lg bg-surface p-2 sm:p-5">
             {/* Same `matrix:` seam inside the streamed boundary; the skeleton
                 mirrors it so the resolve shifts nothing (R6). */}
             <Suspense fallback={<MatrixSkeleton n={matrixTopN} />}>
@@ -437,8 +437,7 @@ export default async function MetaOverviewPage({
         </h2>
         <p className="mt-0.5 text-[13.5px] text-ink-2">
           Every archetype above the sample floor. Right of the pack is popular;
-          above the line is winning. Color marks the side of 50% the record
-          supports.
+          above the line is winning. Color runs from red to green with win rate.
         </p>
         <div className="mt-4 border border-line bg-surface shadow-ledger">
           <WrPresenceScatter

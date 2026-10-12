@@ -25,12 +25,12 @@ export function MatrixSkeleton({
         <div
           className="grid gap-px"
           style={{
-            gridTemplateColumns: `22px repeat(${n}, minmax(24px, 1fr))`,
+            gridTemplateColumns: `30px repeat(${n}, minmax(24px, 1fr))`,
           }}
         >
-          <div className="h-[23px]" />
+          <div className="h-[38px] sm:h-[48px]" />
           {Array.from({ length: n }, (_, i) => (
-            <div key={`ch-${i}`} className="h-[23px]" />
+            <div key={`ch-${i}`} className="h-[38px] sm:h-[48px]" />
           ))}
           {Array.from({ length: n * (n + 1) }, (_, i) =>
             i % (n + 1) === 0 ? (

@@ -116,6 +116,9 @@ export type MatrixOrderEntryDTO = {
   share: number
   matches: number
   presenceRank: number // dense identity rank (§9 rule 3), shared with the table
+  // identity — signature-card art, as on ArchetypeRowDTO. Absent/null → the UI
+  // falls back to the mana gradient (ArtCrop).
+  art?: ArchetypeRowDTO['art']
 }
 
 export type MatrixDTO = {
