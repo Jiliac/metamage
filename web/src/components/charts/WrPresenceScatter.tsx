@@ -16,6 +16,8 @@ import {
 
 import { ManaPips } from '@/components/ManaPips'
 import { useIsDesktop } from '@/hooks/useMediaQuery'
+import { usePlotZoom } from '@/hooks/usePlotZoom'
+import { niceTicks, sqrtTicks } from '@/lib/zoom'
 import { cn } from '@/lib/utils'
 import type { ArchetypeRowDTO } from '@/datasource/types'
 
@@ -25,7 +27,9 @@ import type { ArchetypeRowDTO } from '@/datasource/types'
 // archetype's presence rank (identity, §9 rule 3) and colored on a continuous
 // ramp by win rate: --bad at the bottom of the band, --good at the top, mixed
 // in between (never raw red/green). A plain <ol> legend carries rank dot +
-// name + ManaPips.
+// name + ManaPips. The plot zooms (usePlotZoom): pinch or ctrl-scroll to
+// spread a crowded pack, drag to pan, double-tap or Reset to go back; dots
+// keep their size, so a zoom separates them instead of magnifying them.
 // ---------------------------------------------------------------------------
 
 /** Win-rate band the ramp spans: at or below 42% is full --bad, at or above
@@ -197,6 +201,20 @@ export function WrPresenceScatter({
 
   const xTicks = [1, 5, 10, 15, 20, 25, 30].filter(t => t <= xMax)
 
+  // Zoom works in the x axis's √ space so a pinch is even on screen.
+  const full = React.useMemo(
+    () => ({ u0: 0, u1: Math.sqrt(xMax), y0: yMin, y1: yMax }),
+    [xMax, yMin, yMax]
+  )
+  const minSpan = React.useMemo(() => ({ u: full.u1 * 0.12, y: 3 }), [full.u1])
+  const zoom = usePlotZoom(full, minSpan)
+  const v = zoom.view
+  const xDomain: [number, number] = zoom.zoomed
+    ? [v.u0 * v.u0, v.u1 * v.u1]
+    : [0, xMax]
+  const yDomain: [number, number] = zoom.zoomed ? [v.y0, v.y1] : [yMin, yMax]
+  const pctTick = (t: number) => `${Number.isInteger(t) ? t : t.toFixed(1)}%`
+
   // Fixed desktop height at ≥md, shorter below; SSR assumes desktop. Phones
   // also get smaller dots and slimmer margins so the pack spreads out.
   const isDesktop = useIsDesktop()
@@ -249,67 +267,86 @@ export function WrPresenceScatter({
           ))}
         </ol>
       </div>
-      <div className="p-3 max-md:order-1 max-md:px-1 max-md:pb-1">
-        <ResponsiveContainer width="100%" height={chartHeight}>
-          <ScatterChart
-            margin={
-              isDesktop
-                ? { top: 16, right: 18, bottom: 24, left: 4 }
-                : { top: 10, right: 12, bottom: 22, left: 0 }
-            }
+      <div className="relative p-3 max-md:order-1 max-md:px-1 max-md:pb-1">
+        {zoom.zoomed && (
+          <button
+            type="button"
+            onClick={zoom.reset}
+            className="border-gold-soft text-gold hover:bg-gold-wash bg-surface absolute top-3 right-4 z-10 border px-2.5 py-1 text-[12px]"
           >
-            <CartesianGrid stroke="var(--line)" />
-            <XAxis
-              type="number"
-              dataKey="x"
-              scale="sqrt"
-              domain={[0, xMax]}
-              ticks={xTicks}
-              tickFormatter={v => `${v}%`}
-              tick={{ fill: 'var(--ink-3)', fontSize: 11 }}
-              stroke="var(--line)"
-              label={{
-                value: 'PRESENCE · √ SCALE',
-                position: 'bottom',
-                offset: 8,
-                style: {
-                  fill: 'var(--ink-2)',
-                  fontSize: 11,
-                  letterSpacing: '0.1em',
-                },
-              }}
-            />
-            <YAxis
-              type="number"
-              dataKey="y"
-              domain={[yMin, yMax]}
-              tickFormatter={v => `${v}%`}
-              tick={{ fill: 'var(--ink-3)', fontSize: 11 }}
-              stroke="var(--line)"
-              width={isDesktop ? 44 : 36}
-            />
-            <ReferenceLine
-              y={50}
-              stroke="var(--ref)"
-              strokeDasharray="7 5"
-              strokeWidth={1.5}
-            />
-            <Tooltip
-              cursor={{ stroke: 'var(--line-strong)' }}
-              content={<ScatterTip />}
-            />
-            <Scatter
-              data={points}
-              shape={
-                <NumberedDot
-                  onNavigate={href => router.push(href)}
-                  compact={!isDesktop}
-                />
+            Reset zoom
+          </button>
+        )}
+        <div {...zoom.bind} className="select-none">
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <ScatterChart
+              margin={
+                isDesktop
+                  ? { top: 16, right: 18, bottom: 24, left: 4 }
+                  : { top: 10, right: 12, bottom: 22, left: 0 }
               }
-              isAnimationActive={false}
-            />
-          </ScatterChart>
-        </ResponsiveContainer>
+            >
+              <CartesianGrid stroke="var(--line)" />
+              <XAxis
+                type="number"
+                dataKey="x"
+                scale="sqrt"
+                domain={xDomain}
+                allowDataOverflow
+                ticks={zoom.zoomed ? sqrtTicks(...xDomain) : xTicks}
+                tickFormatter={pctTick}
+                tick={{ fill: 'var(--ink-3)', fontSize: 11 }}
+                stroke="var(--line)"
+                label={{
+                  value: 'PRESENCE · √ SCALE',
+                  position: 'bottom',
+                  offset: 8,
+                  style: {
+                    fill: 'var(--ink-2)',
+                    fontSize: 11,
+                    letterSpacing: '0.1em',
+                  },
+                }}
+              />
+              <YAxis
+                type="number"
+                dataKey="y"
+                domain={yDomain}
+                allowDataOverflow
+                ticks={zoom.zoomed ? niceTicks(...yDomain) : undefined}
+                tickFormatter={pctTick}
+                tick={{ fill: 'var(--ink-3)', fontSize: 11 }}
+                stroke="var(--line)"
+                width={isDesktop ? 44 : 36}
+              />
+              <ReferenceLine
+                y={50}
+                stroke="var(--ref)"
+                strokeDasharray="7 5"
+                strokeWidth={1.5}
+              />
+              <Tooltip
+                cursor={{ stroke: 'var(--line-strong)' }}
+                content={<ScatterTip />}
+              />
+              <Scatter
+                data={points}
+                shape={
+                  <NumberedDot
+                    onNavigate={href => router.push(href)}
+                    compact={!isDesktop}
+                  />
+                }
+                isAnimationActive={false}
+              />
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>
+        <p className="text-ink-3 pt-1 text-center text-[11.5px]">
+          {isDesktop
+            ? 'Pinch the trackpad or ctrl-scroll to zoom · drag to pan · double-click to reset'
+            : 'Pinch to zoom · drag to pan · double-tap to reset'}
+        </p>
       </div>
     </div>
   )
