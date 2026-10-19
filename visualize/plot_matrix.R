@@ -24,6 +24,16 @@ plot_matrix <- function(
       col_name = factor(col_archetype, levels = order_levels)
     )
 
+  # A matrix row is all-or-nothing: every archetype in the grid needs its
+  # global win rate, otherwise the row renders without its summary tile.
+  missing_wr <- setdiff(order_levels, global_wr_df$archetype_name)
+  if (length(missing_wr) > 0) {
+    stop(
+      "plot_matrix: no global win rate for matrix archetype(s): ",
+      paste(missing_wr, collapse = ", ")
+    )
+  }
+
   # Use global win rates (against ALL opponents, not just matrix opponents)
   row_sum <- global_wr_df %>%
     filter(archetype_name %in% order_levels) %>%

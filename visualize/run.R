@@ -104,12 +104,16 @@ presence_filtered <- filter_archetypes_by_presence(
 top_order <- presence_filtered$archetype_name
 presence_top_other <- collapse_other(presence_filtered, nrow(presence_filtered))
 
-wr <- fetch_wr_by_archetype(
+# Unfiltered records: the matrix picks its rows by match count, so it must not
+# depend on the presence cut or the tier filter applied to `wr` below.
+wr_all <- fetch_wr_by_archetype(
   con,
   format_id,
   params$start_date,
   params$end_date
-) %>%
+)
+
+wr <- wr_all %>%
   filter(archetype_name %in% top_order)
 
 # Fetch per-player aggregates for clustered CI
@@ -235,7 +239,7 @@ p_wr_ci <- plot_wr_ci(
 )
 p_matrix <- plot_matrix(
   mat,
-  wr %>% filter(archetype_name %in% matrix_order),
+  wr_all %>% filter(archetype_name %in% matrix_order),
   presence %>% filter(archetype_name %in% matrix_order),
   color_map,
   matrix_order,
